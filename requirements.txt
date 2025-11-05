@@ -1,0 +1,86 @@
+# Core FastAPI
+fastapi==0.120.1
+uvicorn[standard]==0.38.0
+
+# Pydantic for data validation
+pydantic==2.12.3
+pydantic-settings==2.11.0
+
+# Database
+sqlalchemy==2.0.44
+alembic==1.17.0
+
+# Database drivers (PostgreSQL with pre-built wheels)
+psycopg==3.2.12  # Modern PostgreSQL driver with better wheel support
+
+# Authentication & Security
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.20
+bcrypt==5.0.0
+
+# Email validation
+email-validator==2.3.0
+
+# HTTP requests
+httpx==0.28.1
+# aiohttp  # Requires C++ build tools on Windows - use httpx instead
+
+# Environment variables
+python-dotenv==1.2.1
+
+# Testing
+pytest==8.4.2
+pytest-asyncio==1.2.0
+pytest-cov==7.0.0
+
+# Database testing
+faker==37.12.0
+
+# Code quality
+black==25.9.0
+flake8==7.3.0
+pylint==4.0.2
+mypy==1.18.2
+
+# Documentation
+mkdocs==1.6.1
+mkdocs-material==9.6.22
+
+# Caching
+redis==7.0.1
+# aioredis  # Deprecated, use redis[async] instead
+
+# Task queue (optional)
+celery==5.5.3
+
+# File uploads
+# python-magic  # Requires libmagic - skip on Windows
+pillow==12.0.0
+
+# Date/Time handling
+python-dateutil==2.9.0.post0
+
+# Logging
+loguru==0.7.3
+
+# JSON Web Tokens
+pyjwt==2.10.1
+
+# WebSockets support
+websockets==15.0.1
+
+# Rate limiting
+slowapi==0.1.9
+
+# Monitoring & Performance
+prometheus-client==0.23.1
+
+# Data serialization (use built-in json or httpx's ujson alternative)
+# ujson  # Requires C++ compiler - skip for now
+
+# Template engine (optional)
+jinja2==3.1.6
+
+# Static files & forms
+aiofiles==25.1.0
