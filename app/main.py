@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status
-from routes.auth import authRouter
+from auth_module.routes.auth import authRouter
 from app.database import create_tables
 
 app = FastAPI()

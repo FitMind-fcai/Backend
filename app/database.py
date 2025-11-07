@@ -23,7 +23,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Create all tables
 def create_tables():
     # Import models here to register them with Base
-    from models import user
+    from auth_module.models import user
     Base.metadata.create_all(bind=engine)
 
 
