@@ -45,3 +45,43 @@ docs/
 
 # Logs
 *.log
+logs/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+dump.rdb
+appendonly.aof
+
+# Backups
+*.bak
+*.backup
+*.old
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Node modules (if any)
+node_modules/
+
+# Uploads
+uploads/
+user_uploads/
+
+# AI/ML models
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Cache
+.cache/
+.ruff_cache/
