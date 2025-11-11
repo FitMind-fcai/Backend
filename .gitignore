@@ -211,7 +211,6 @@ temp/
 # ========== Docker ==========
 # Docker volumes
 docker-compose.override.yml
-.dockerignore
 
 # Docker data directories (if not using named volumes)
 postgres_data/
@@ -282,3 +281,38 @@ user_uploads/
 
 # Migration backups
 *.sql.backup
+
+# AI/ML models (if storing locally)
+*.pkl
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.onnx
+models/*.pkl
+models/*.h5
+
+# Cache directories
+.cache/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# JetBrains IDEs (PyCharm, IntelliJ)
+.idea/
+*.iml
+out/
+.idea_modules/
+
+# Local development
+local_config.py
+local_settings.py
+
+# Redis persistence files
+appendonly.aof
+dump.rdb
+
+# PostgreSQL
+*.dump
+*.sql.gz
+
