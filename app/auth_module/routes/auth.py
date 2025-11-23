@@ -8,11 +8,11 @@ from app.auth_module.schemas.user import (
 from app.auth_module.services.auth_service import AuthService
 from app.auth_module.services.otp_service_redis import OTPService
 from app.auth_module.services.email_service import AuthEmailService
+from app.core.dependencies import get_current_user
 from app.auth_module.core.dependencies import (
     get_auth_service,
     get_otp_service,
-    get_auth_email_service,
-    get_current_user
+    get_auth_email_service
 )
 
 authRouter = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -236,53 +236,13 @@ def reset_password(
     }
 
 
-# ========== PROTECTED ROUTE EXAMPLE ==========
-@authRouter.get(
-    "/me",
-    response_model=UserResponse,
-    summary="Get Current User",
-    description="Get authenticated user's profile information. Requires valid JWT token in Authorization header.",
-    responses={
-        200: {
-            "description": "Successfully retrieved user information",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "id": 1,
-                        "name": "Ahmed",
-                        "email": "user@example.com",
-                        "age": 22,
-                        "is_verified": True,
-                        "created_at": "2025-11-23T10:00:00Z"
-                    }
-                }
-            }
-        },
-        401: {
-            "description": "Unauthorized - Invalid or missing token",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Could not validate credentials"}
-                }
-            }
-        },
-    }
-)
+# ========== GET CURRENT USER ==========
+@authRouter.get("/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """
-    **Get Current User Information**
-
-    Returns the profile information of the currently authenticated user.
-
-    **Authentication Required:**
-    - Click the 🔓 Authorize button at the top right
-    - Enter your JWT token in the format: `Bearer <your_token>`
-    - Or add header manually: `Authorization: Bearer <your_token>`
-
-    **How to get a token:**
-    1. Use the `/auth/login` endpoint with your credentials
-    2. Copy the `token` from the response
-    3. Click "Authorize" and paste it (with or without "Bearer " prefix)
+    Get authenticated user's profile information.
+    
+    Requires valid JWT token in Authorization header.
     """
     return current_user
 
