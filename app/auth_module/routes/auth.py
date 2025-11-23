@@ -237,15 +237,52 @@ def reset_password(
 
 
 # ========== PROTECTED ROUTE EXAMPLE ==========
-@authRouter.get("/me", response_model=UserResponse)
+@authRouter.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get Current User",
+    description="Get authenticated user's profile information. Requires valid JWT token in Authorization header.",
+    responses={
+        200: {
+            "description": "Successfully retrieved user information",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Ahmed",
+                        "email": "user@example.com",
+                        "age": 22,
+                        "is_verified": True,
+                        "created_at": "2025-11-23T10:00:00Z"
+                    }
+                }
+            }
+        },
+        401: {
+            "description": "Unauthorized - Invalid or missing token",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Could not validate credentials"}
+                }
+            }
+        },
+    }
+)
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """
-    Get current authenticated user's information.
+    **Get Current User Information**
 
-    Protected route - requires valid JWT token.
+    Returns the profile information of the currently authenticated user.
 
-    Dependencies injected:
-        - current_user: Authenticated user from JWT token
+    **Authentication Required:**
+    - Click the 🔓 Authorize button at the top right
+    - Enter your JWT token in the format: `Bearer <your_token>`
+    - Or add header manually: `Authorization: Bearer <your_token>`
+
+    **How to get a token:**
+    1. Use the `/auth/login` endpoint with your credentials
+    2. Copy the `token` from the response
+    3. Click "Authorize" and paste it (with or without "Bearer " prefix)
     """
     return current_user
 
