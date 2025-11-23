@@ -151,7 +151,7 @@ def forgot_password(
         - AuthEmailService: Sends auth-specific emails
     """
     # Check if user exists
-    user = auth_service.get_user_by_email(request.email)
+    user = auth_service.get_user_by_email(request.email, require_verified= True)
 
     # Generate OTP
     otp = otp_service.create_password_reset_otp(user.email)
@@ -189,7 +189,7 @@ def verify_otp(
         - OTPService: Validates OTP
     """
     # Check if user exists
-    user = auth_service.get_user_by_email(request.email)
+    user = auth_service.get_user_by_email(request.email, require_verified= True)
 
     # Validate OTP
     otp_service.validate_otp(user.email, request.otp)

@@ -186,18 +186,20 @@ class AuthService:
         hashed_password = hash_password(new_password)
         self.user_repo.update_password(user, hashed_password)
 
-    def get_user_by_email(self, email: str) -> User:
+    def get_user_by_email(self, email: str, require_verified: bool = False) -> User:
         """
         Get user by email address.
 
         Args:
             email: User's email address
+            require_verified: If True, raises exception if user not verified
 
         Returns:
             User: User object
 
         Raises:
             HTTPException 404: If user not found
+            HTTPException 403: If user not verified and require_verified=True
         """
         user = self.user_repo.get_by_email(email)
 
@@ -205,6 +207,12 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
+            )
+
+        if require_verified and not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email before using this feature"
             )
 
         return user
