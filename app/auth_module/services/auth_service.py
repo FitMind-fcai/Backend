@@ -60,7 +60,6 @@ class AuthService:
         new_user = self.user_repo.create_user(
             name=user_data.name,
             email=user_data.email,
-            age=user_data.age,
             hashed_password=hashed_password
         )
 

@@ -46,14 +46,13 @@ class UserRepository(BaseRepository[User]):
         """
         return self.exists(email=email)
 
-    def create_user(self, name: str, email: str, age: int, hashed_password: str) -> User:
+    def create_user(self, name: str, email: str, hashed_password: str) -> User:
         """
         Create a new user with the given details.
 
         Args:
             name: User's name
             email: User's email address
-            age: User's age
             hashed_password: User's hashed password
 
         Returns:
@@ -62,7 +61,6 @@ class UserRepository(BaseRepository[User]):
         user_data = {
             "name": name,
             "email": email,
-            "age": age,
             "password": hashed_password,
             "is_verified": False
         }
