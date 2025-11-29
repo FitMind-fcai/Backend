@@ -3,6 +3,8 @@ from fastapi.openapi.utils import get_openapi
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables
 from app.profile_module.routes import profileRouter
+from app.planning_module.routes.workout_routes import workout_plan_router
+from app.planning_module.routes.nutrition_routes import nutrition_plan_router
 
 app = FastAPI(
     title="FitMind API",
@@ -56,6 +58,8 @@ def startup_event():
 
 app.include_router(authRouter, tags=["Authentication"])
 app.include_router(profileRouter, tags=["Profiles"])
+app.include_router(workout_plan_router, tags=["Workout Plans"])
+app.include_router(nutrition_plan_router, tags=["Nutrition Plans"])
 
 
 

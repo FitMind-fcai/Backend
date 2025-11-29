@@ -22,6 +22,10 @@ REDIS_DECODE_RESPONSES = True  # Auto decode bytes to strings
 # Redis Key Prefixes (can be extended by individual modules)
 REDIS_OTP_PREFIX = "otp:"  # otp:user@email.com
 REDIS_OTP_ATTEMPTS_PREFIX = "otp_attempts:"  # otp_attempts:user@email.com
+REDIS_OTP_RESEND_COOLDOWN_PREFIX = "otp_cooldown:"  # otp_cooldown:user@email.com
+REDIS_OTP_HOURLY_COUNT_PREFIX = "otp_hourly:"  # otp_hourly:user@email.com
+REDIS_OTP_DAILY_COUNT_PREFIX = "otp_daily:"  # otp_daily:user@email.com
+REDIS_OTP_BLOCKED_PREFIX = "otp_blocked:"  # otp_blocked:user@email.com
 REDIS_VERIFICATION_PREFIX = "verify:"  # verify:token_string
 
 # ========== JWT Configuration ==========

@@ -11,11 +11,11 @@ from app.planning_module.schemas import (
     MealResponse
 )
 
-router = APIRouter(prefix="/nutrition-plans", tags=["Nutrition Plans"])
+nutrition_plan_router = APIRouter(prefix="/nutrition-plans", tags=["Nutrition Plans"])
 
 
 
-@router.get("/", response_model=List[NutritionPlanSummary])
+@nutrition_plan_router.get("/", response_model=List[NutritionPlanSummary])
 def get_my_nutrition_plans(
     skip: int = 0,
     limit: int = 10,
@@ -39,7 +39,7 @@ def get_my_nutrition_plans(
     return summaries
 
 
-@router.get("/active", response_model=NutritionPlanResponse)
+@nutrition_plan_router.get("/active", response_model=NutritionPlanResponse)
 def get_active_nutrition_plan(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db)
@@ -62,7 +62,7 @@ def get_active_nutrition_plan(
     return NutritionPlanResponse.model_validate(plan)
 
 
-@router.get("/{plan_id}", response_model=NutritionPlanResponse)
+@nutrition_plan_router.get("/{plan_id}", response_model=NutritionPlanResponse)
 def get_nutrition_plan(
     plan_id: int,
     current_user: User = Depends(get_current_verified_user),
@@ -92,7 +92,7 @@ def get_nutrition_plan(
     return NutritionPlanResponse.model_validate(plan)
 
 
-@router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+@nutrition_plan_router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_nutrition_plan(
     plan_id: int,
     current_user: User = Depends(get_current_verified_user),
@@ -119,7 +119,7 @@ def delete_nutrition_plan(
 # MEAL ENDPOINTS
 # ========================================
 
-@router.get("/{plan_id}/meals", response_model=List[MealResponse])
+@nutrition_plan_router.get("/{plan_id}/meals", response_model=List[MealResponse])
 def get_meals(
     plan_id: int,
     meal_type: str = None,
@@ -147,7 +147,7 @@ def get_meals(
     return [MealResponse.model_validate(meal) for meal in meals]
 
 
-@router.get("/{plan_id}/meals/{meal_id}", response_model=MealResponse)
+@nutrition_plan_router.get("/{plan_id}/meals/{meal_id}", response_model=MealResponse)
 def get_meal(
     plan_id: int,
     meal_id: int,
