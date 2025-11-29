@@ -62,20 +62,25 @@ Table profiles {
 Table workout_plans {
   id integer [pk, increment]
   user_id integer [not null, ref: > users.id, note: 'User who owns this plan']
+  profile_id integer [not null, ref: > profiles.id, note: 'Profile used for plan generation']
   plan_name varchar(255) [not null, note: 'Name of the workout plan']
   description text [note: 'Plan description and goals']
   start_date date [not null, note: 'Plan start date']
   end_date date [note: 'Plan end date']
   frequency varchar(50) [note: 'Weekly frequency (e.g., 3x per week)']
   difficulty_level varchar(50) [note: 'Beginner, Intermediate, Advanced']
+  estimated_duration_per_session integer [note: 'Minutes per session']
+  generated_from_preferences json [note: 'User preferences used to generate plan (workout_days_per_week, location, equipment, focus, etc.)']
   created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [note: 'Last update timestamp']
   
   Indexes {
     user_id [name: 'idx_workout_plans_user_id']
+    profile_id [name: 'idx_workout_plans_profile_id']
     (user_id, start_date) [name: 'idx_workout_plans_user_date']
   }
   
-  Note: 'AI-generated personalized workout plans'
+  Note: 'AI-generated personalized workout plans based on Profile and user preferences'
 }
 
 Table workout_days {
@@ -101,10 +106,13 @@ Table exercises {
   exercise_type varchar(50) [note: 'Strength, Cardio, Flexibility, etc.']
   sets integer [note: 'Number of sets']
   reps integer [note: 'Number of repetitions per set']
-  weight float [note: 'Weight in kg']
+  weight_kg float [note: 'Recommended weight in kg']
   duration_seconds integer [note: 'Duration for time-based exercises']
+  rest_seconds integer [note: 'Rest between sets']
   instructions text [note: 'Exercise execution instructions']
   video_url varchar(500) [note: 'Tutorial video URL']
+  image_url varchar(500) [note: 'Exercise demonstration image']
+  order_index integer [not null, default: 0, note: 'Exercise order in the day']
   
   Indexes {
     workout_day_id [name: 'idx_exercises_day_id']
@@ -120,21 +128,26 @@ Table exercises {
 Table nutrition_plans {
   id integer [pk, increment]
   user_id integer [not null, ref: > users.id, note: 'User who owns this plan']
+  profile_id integer [not null, ref: > profiles.id, note: 'Profile used for plan generation']
   plan_name varchar(255) [not null, note: 'Name of the nutrition plan']
+  description text [note: 'Plan description and guidelines']
   daily_calories integer [not null, note: 'Target daily calories']
-  daily_protein integer [not null, note: 'Target daily protein in grams']
-  daily_carbs integer [not null, note: 'Target daily carbs in grams']
-  daily_fats integer [not null, note: 'Target daily fats in grams']
+  daily_protein_g integer [not null, note: 'Target daily protein in grams']
+  daily_carbs_g integer [not null, note: 'Target daily carbs in grams']
+  daily_fats_g integer [not null, note: 'Target daily fats in grams']
   start_date date [not null, note: 'Plan start date']
   end_date date [note: 'Plan end date']
+  generated_from_preferences json [note: 'User preferences used to generate plan (calorie_preference, meals_per_day, meal_complexity, cuisine, etc.)']
   created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [note: 'Last update timestamp']
   
   Indexes {
     user_id [name: 'idx_nutrition_plans_user_id']
+    profile_id [name: 'idx_nutrition_plans_profile_id']
     (user_id, start_date) [name: 'idx_nutrition_plans_user_date']
   }
   
-  Note: 'AI-generated personalized nutrition plans'
+  Note: 'AI-generated personalized nutrition plans based on Profile and user preferences'
 }
 
 Table meals {
@@ -143,11 +156,16 @@ Table meals {
   meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack']
   meal_name varchar(255) [not null, note: 'Name of the meal']
   calories integer [not null, note: 'Meal calories']
-  protein integer [not null, note: 'Protein content in grams']
-  carbs integer [not null, note: 'Carbs content in grams']
-  fats integer [not null, note: 'Fats content in grams']
+  protein_g integer [not null, note: 'Protein content in grams']
+  carbs_g integer [not null, note: 'Carbs content in grams']
+  fats_g integer [not null, note: 'Fats content in grams']
   ingredients text [note: 'List of ingredients']
   instructions text [note: 'Cooking instructions']
+  prep_time_minutes integer [note: 'Preparation time']
+  cook_time_minutes integer [note: 'Cooking time']
+  servings integer [default: 1, note: 'Number of servings']
+  image_url varchar(500) [note: 'Meal image']
+  order_index integer [not null, default: 0, note: 'Meal order in the day']
   
   Indexes {
     nutrition_plan_id [name: 'idx_meals_plan_id']
