@@ -1,0 +1,202 @@
+---
+title: FitMind Design - Repositories (Data Access Layer)
+---
+classDiagram
+    %% ========== BASE REPOSITORY ==========
+    
+    class BaseRepository {
+        <<Abstract Repository>>
+        #Session db
+        +get_by_id(id) T
+        +get_all() list[T]
+        +create(data) T
+        +update(id, data) T
+        +delete(id) bool
+    }
+
+    %% ========== AUTHENTICATION MODULE - REPOSITORIES ==========
+    
+    namespace AuthModule {
+        class UserRepository {
+            <<Repository>>
+            -Session db
+            +create_user(name, email, age, hashed_password) User
+            +get_by_id(user_id) User
+            +get_by_email(email) User
+            +email_exists(email) bool
+            +mark_as_verified(user) User
+            +update_password(user, hashed_password) User
+            +delete_user(user_id) bool
+        }
+    }
+
+    %% ========== PROFILE MODULE - REPOSITORIES ==========
+    
+    namespace ProfileModule {
+        class ProfileRepository {
+            <<Repository>>
+            -Session db
+            +create_profile(user_id, profile_data) Profile
+            +get_by_user_id(user_id) Profile
+            +get_by_id(profile_id) Profile
+            +update_profile(user_id, profile_data) Profile
+            +delete_profile(user_id) bool
+            +profile_exists(user_id) bool
+        }
+    }
+
+    %% ========== PLANNING MODULE - REPOSITORIES ==========
+    
+    namespace PlanningModule {
+        class WorkoutPlanRepository {
+            <<Repository>>
+            -Session db
+            +create_plan(user_id, plan_data) WorkoutPlan
+            +get_by_user_id(user_id) WorkoutPlan
+            +get_by_id(plan_id) WorkoutPlan
+            +get_active_plan(user_id) WorkoutPlan
+            +update_plan(plan_id, plan_data) WorkoutPlan
+            +delete_plan(plan_id) bool
+            +get_plan_with_days(plan_id) WorkoutPlan
+        }
+
+        class WorkoutDayRepository {
+            <<Repository>>
+            -Session db
+            +create_workout_day(plan_id, day_data) WorkoutDay
+            +get_by_plan_id(plan_id) list[WorkoutDay]
+            +get_by_id(day_id) WorkoutDay
+            +update_workout_day(day_id, day_data) WorkoutDay
+            +delete_workout_day(day_id) bool
+        }
+
+        class ExerciseRepository {
+            <<Repository>>
+            -Session db
+            +create_exercise(day_id, exercise_data) Exercise
+            +get_by_workout_day_id(day_id) list[Exercise]
+            +get_by_id(exercise_id) Exercise
+            +update_exercise(exercise_id, exercise_data) Exercise
+            +delete_exercise(exercise_id) bool
+        }
+
+        class NutritionPlanRepository {
+            <<Repository>>
+            -Session db
+            +create_plan(user_id, plan_data) NutritionPlan
+            +get_by_user_id(user_id) NutritionPlan
+            +get_by_id(plan_id) NutritionPlan
+            +get_active_plan(user_id) NutritionPlan
+            +update_plan(plan_id, plan_data) NutritionPlan
+            +delete_plan(plan_id) bool
+            +get_plan_with_meals(plan_id) NutritionPlan
+        }
+
+        class MealRepository {
+            <<Repository>>
+            -Session db
+            +create_meal(plan_id, meal_data) Meal
+            +get_by_plan_id(plan_id) list[Meal]
+            +get_by_id(meal_id) Meal
+            +get_by_meal_type(plan_id, meal_type) list[Meal]
+            +update_meal(meal_id, meal_data) Meal
+            +delete_meal(meal_id) bool
+        }
+    }
+
+    %% ========== TRACKING MODULE - REPOSITORIES ==========
+    
+    namespace TrackingModule {
+        class WorkoutLogRepository {
+            <<Repository>>
+            -Session db
+            +create_log(user_id, log_data) WorkoutLog
+            +get_by_user_id(user_id, start_date, end_date) list[WorkoutLog]
+            +get_by_id(log_id) WorkoutLog
+            +get_by_date_range(user_id, start, end) list[WorkoutLog]
+            +get_by_exercise(user_id, exercise_id) list[WorkoutLog]
+            +get_completion_rate(user_id, days) float
+            +delete_log(log_id) bool
+        }
+
+        class MealLogRepository {
+            <<Repository>>
+            -Session db
+            +create_log(user_id, log_data) MealLog
+            +get_by_user_id(user_id, start_date, end_date) list[MealLog]
+            +get_by_id(log_id) MealLog
+            +get_daily_nutrition(user_id, date) dict
+            +get_by_meal_type(user_id, meal_type, date) list[MealLog]
+            +get_weekly_nutrition(user_id, start_date) dict
+            +delete_log(log_id) bool
+        }
+
+        class WeightLogRepository {
+            <<Repository>>
+            -Session db
+            +create_log(user_id, log_data) WeightLog
+            +get_by_user_id(user_id) list[WeightLog]
+            +get_by_id(log_id) WeightLog
+            +get_latest_weight(user_id) WeightLog
+            +get_weight_trend(user_id, days) list[WeightLog]
+            +get_by_date_range(user_id, start, end) list[WeightLog]
+            +delete_log(log_id) bool
+        }
+    }
+
+    %% ========== CHATBOT MODULE - REPOSITORIES ==========
+    
+    namespace ChatbotModule {
+        class ChatMessageRepository {
+            <<Repository>>
+            -Session db
+            +create_message(user_id, message_data) ChatMessage
+            +get_conversation_history(user_id, limit) list[ChatMessage]
+            +get_by_user_id(user_id) list[ChatMessage]
+            +get_by_id(message_id) ChatMessage
+            +delete_message(message_id) bool
+            +delete_conversation(user_id) bool
+            +get_recent_context(user_id, messages_count) list[ChatMessage]
+        }
+    }
+
+    %% ========== NOTIFICATION MODULE - REPOSITORIES ==========
+    
+    namespace NotificationModule {
+        class NotificationRepository {
+            <<Repository>>
+            -Session db
+            +create_notification(user_id, notification_data) Notification
+            +get_by_user_id(user_id) list[Notification]
+            +get_by_id(notification_id) Notification
+            +get_unread_notifications(user_id) list[Notification]
+            +get_unread_count(user_id) int
+            +mark_as_read(notification_id) Notification
+            +mark_all_as_read(user_id) bool
+            +delete_notification(notification_id) bool
+            +get_scheduled_notifications(current_time) list[Notification]
+        }
+    }
+
+    %% ========== INHERITANCE RELATIONSHIPS ==========
+    
+    UserRepository --|> BaseRepository
+    ProfileRepository --|> BaseRepository
+    WorkoutPlanRepository --|> BaseRepository
+    WorkoutDayRepository --|> BaseRepository
+    ExerciseRepository --|> BaseRepository
+    NutritionPlanRepository --|> BaseRepository
+    MealRepository --|> BaseRepository
+    WorkoutLogRepository --|> BaseRepository
+    MealLogRepository --|> BaseRepository
+    WeightLogRepository --|> BaseRepository
+    ChatMessageRepository --|> BaseRepository
+    NotificationRepository --|> BaseRepository
+
+    %% ========== REPOSITORY RELATIONSHIPS ==========
+    
+    WorkoutPlanRepository ..> WorkoutDayRepository : coordinates_with
+    WorkoutDayRepository ..> ExerciseRepository : coordinates_with
+    NutritionPlanRepository ..> MealRepository : coordinates_with
+    WorkoutLogRepository ..> ExerciseRepository : references
+    

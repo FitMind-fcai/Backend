@@ -1,0 +1,263 @@
+---
+title: FitMind Design - Entities (Models)
+---
+classDiagram
+    %% ========== AUTHENTICATION MODULE - ENTITIES ==========
+    
+    namespace AuthModule {
+        class User {
+            <<Entity>>
+            +int id
+            +string name
+            +string email
+            +int age
+            +string password
+            +boolean is_verified
+            +datetime created_at
+            +datetime updated_at
+        }
+    }
+
+    %% ========== PROFILE MODULE - ENTITIES ==========
+    
+    namespace ProfileModule {
+        class Profile {
+            <<Entity>>
+            +int id
+            +int user_id
+            +int age
+            +Gender gender
+            +float height
+            +float weight
+            +FitnessGoal fitness_goal
+            +ActivityLevel activity_level
+            +string dietary_preference
+            +string medical_conditions
+            +string allergies
+            +string injuries
+            +string medications
+            +datetime updated_at
+        }
+
+        class Gender {
+            <<Enumeration>>
+            MALE
+            FEMALE
+        }
+
+        class ActivityLevel {
+            <<Enumeration>>
+            SEDENTARY
+            LIGHTLY_ACTIVE
+            MODERATELY_ACTIVE
+            VERY_ACTIVE
+            EXTRA_ACTIVE
+        }
+
+        class FitnessGoal {
+            <<Enumeration>>
+            LOSE_WEIGHT
+            MAINTAIN_WEIGHT
+            BUILD_MUSCLE
+        }
+    }
+
+    %% ========== PLANNING MODULE - ENTITIES ==========
+    
+    namespace PlanningModule {
+        class WorkoutPlan {
+            <<Entity>>
+            +int id
+            +int user_id
+            +string plan_name
+            +string description
+            +date start_date
+            +date end_date
+            +string frequency
+            +string difficulty_level
+            +datetime created_at
+        }
+
+        class WorkoutDay {
+            <<Entity>>
+            +int id
+            +int workout_plan_id
+            +string day_name
+            +int day_number
+            +string focus_area
+            +int estimated_duration
+        }
+
+        class Exercise {
+            <<Entity>>
+            +int id
+            +int workout_day_id
+            +string exercise_name
+            +string exercise_type
+            +int sets
+            +int reps
+            +float weight
+            +int duration_seconds
+            +string instructions
+            +string video_url
+        }
+
+        class NutritionPlan {
+            <<Entity>>
+            +int id
+            +int user_id
+            +string plan_name
+            +int daily_calories
+            +int daily_protein
+            +int daily_carbs
+            +int daily_fats
+            +date start_date
+            +date end_date
+            +datetime created_at
+        }
+
+        class Meal {
+            <<Entity>>
+            +int id
+            +int nutrition_plan_id
+            +string meal_type
+            +string meal_name
+            +int calories
+            +int protein
+            +int carbs
+            +int fats
+            +string ingredients
+            +string instructions
+        }
+    }
+
+    %% ========== TRACKING MODULE - ENTITIES ==========
+    
+    namespace TrackingModule {
+        class WorkoutLog {
+            <<Entity>>
+            +int id
+            +int user_id
+            +int exercise_id
+            +date log_date
+            +int sets_completed
+            +int reps_completed
+            +float weight_used
+            +int duration_seconds
+            +string notes
+            +datetime created_at
+        }
+
+        class MealLog {
+            <<Entity>>
+            +int id
+            +int user_id
+            +date log_date
+            +string meal_type
+            +string meal_name
+            +int calories
+            +int protein
+            +int carbs
+            +int fats
+            +LogMethod log_method
+            +string image_url
+            +datetime created_at
+        }
+
+        class WeightLog {
+            <<Entity>>
+            +int id
+            +int user_id
+            +date log_date
+            +float weight
+            +string notes
+            +datetime created_at
+        }
+
+        class LogMethod {
+            <<Enumeration>>
+            TEXT
+            VOICE
+            CAMERA
+        }
+    }
+
+    %% ========== CHATBOT MODULE - ENTITIES ==========
+    
+    namespace ChatbotModule {
+        class ChatMessage {
+            <<Entity>>
+            +int id
+            +int user_id
+            +string message_content
+            +string response_content
+            +MessageRole role
+            +datetime created_at
+        }
+
+        class MessageRole {
+            <<Enumeration>>
+            USER
+            AI_COACH
+        }
+    }
+
+    %% ========== NOTIFICATION MODULE - ENTITIES ==========
+    
+    namespace NotificationModule {
+        class Notification {
+            <<Entity>>
+            +int id
+            +int user_id
+            +NotificationType notification_type
+            +string title
+            +string message
+            +boolean is_read
+            +datetime scheduled_time
+            +datetime sent_at
+            +datetime created_at
+        }
+
+        class NotificationType {
+            <<Enumeration>>
+            WORKOUT_REMINDER
+            MEAL_REMINDER
+            PROGRESS_UPDATE
+            MOTIVATIONAL
+            SYSTEM
+        }
+    }
+
+    %% ========== RELATIONSHIPS BETWEEN ENTITIES ==========
+
+    %% Core User Relationships
+    User "1" --> "0..1" Profile : has
+    User "1" --> "*" WorkoutPlan : requests
+    User "1" --> "*" NutritionPlan : requests
+    User "1" --> "*" WorkoutLog : creates
+    User "1" --> "*" MealLog : creates
+    User "1" --> "*" WeightLog : creates
+    User "1" --> "*" ChatMessage : exchanges
+    User "1" --> "*" Notification : receives
+
+    %% Planning Module Relationships
+    WorkoutPlan "1" --> "*" WorkoutDay : contains
+    WorkoutDay "1" --> "*" Exercise : includes
+    NutritionPlan "1" --> "*" Meal : contains
+
+    %% Tracking Module Relationships
+    WorkoutLog "*" --> "1" Exercise : references
+
+    %% Profile Enumerations
+    Profile --> Gender : uses
+    Profile --> ActivityLevel : uses
+    Profile --> FitnessGoal : uses
+
+    %% Tracking Enumerations
+    MealLog --> LogMethod : uses
+
+    %% Chatbot Enumerations
+    ChatMessage --> MessageRole : has
+
+    %% Notification Enumerations
+    Notification --> NotificationType : has

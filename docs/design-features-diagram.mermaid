@@ -1,0 +1,314 @@
+---
+title: FitMind Design - Features (Services & Business Logic)
+---
+classDiagram
+    %% ========== AUTHENTICATION MODULE - SERVICES ==========
+    
+    namespace AuthModule {
+        class AuthService {
+            <<Service>>
+            -UserRepository user_repo
+            -VerificationService verification_service
+            -AuthEmailService email_service
+            +create_user(user_data) tuple[User, str]
+            +authenticate_user(credentials) tuple[User, str]
+            +verify_user_email(token) User
+            +resend_verification(email) str
+            +reset_user_password(user, new_password) void
+            +get_user_by_email(email, require_verified) User
+        }
+
+        class VerificationService {
+            <<Service>>
+            -Redis redis_client
+            +create_verification_token(email) str
+            +validate_verification_token(token) str
+            +delete_verification_token(token) void
+            +get_token_ttl(token) int
+        }
+
+        class OTPService {
+            <<Service>>
+            -Redis redis_client
+            +create_password_reset_otp(email) str
+            +validate_otp(email, otp) bool
+            +clear_otp(email) void
+            +is_otp_valid(email) bool
+            +get_otp_ttl(email) int
+            +increment_attempt(email) void
+        }
+
+        class AuthEmailService {
+            <<Service>>
+            -EmailService base_email_service
+            +send_verification_email(email, token) bool
+            +send_resend_verification_email(email, token) bool
+            +send_password_reset_otp(email, otp) bool
+        }
+
+        class SecurityUtils {
+            <<Utility>>
+            +hash_password(password) str
+            +verify_password(plain_password, hashed_password) bool
+            +create_access_token(user_id, email) str
+            +verify_access_token(token) dict
+            +generate_otp() str
+            +hash_otp(otp) str
+            +verify_otp(plain_otp, hashed_otp) bool
+            +generate_verification_token() str
+        }
+    }
+
+    %% ========== PROFILE MODULE - SERVICES ==========
+    
+    namespace ProfileModule {
+        class ProfileService {
+            <<Service>>
+            -ProfileRepository profile_repo
+            +create_profile(user_id, profile_data) Profile
+            +get_profile_by_user_id(user_id) Profile
+            +update_profile(user_id, profile_data) Profile
+            +delete_profile(user_id) bool
+            +calculate_bmi(height, weight) float
+            +calculate_bmr(profile) int
+            +calculate_tdee(bmr, activity_level) int
+        }
+    }
+
+    %% ========== PLANNING MODULE - SERVICES ==========
+    
+    namespace PlanningModule {
+        class PlanningService {
+            <<Service>>
+            -WorkoutPlanRepository workout_repo
+            -NutritionPlanRepository nutrition_repo
+            -AICoachService ai_coach
+            -ProfileService profile_service
+            +request_workout_plan(user_id, plan_preferences) WorkoutPlan
+            +request_nutrition_plan(user_id, plan_preferences) NutritionPlan
+            +get_current_workout_plan(user_id) WorkoutPlan
+            +get_current_nutrition_plan(user_id) NutritionPlan
+            +adapt_plan_based_on_progress(user_id) void
+            +regenerate_plan(user_id, plan_type, preferences) Plan
+        }
+
+        class WorkoutPlanService {
+            <<Service>>
+            -WorkoutPlanRepository workout_plan_repo
+            -WorkoutDayRepository workout_day_repo
+            -ExerciseRepository exercise_repo
+            +create_workout_plan(user_id, plan_data) WorkoutPlan
+            +add_workout_day(plan_id, day_data) WorkoutDay
+            +add_exercise(day_id, exercise_data) Exercise
+            +get_plan_details(plan_id) WorkoutPlan
+            +update_plan(plan_id, plan_data) WorkoutPlan
+        }
+
+        class NutritionPlanService {
+            <<Service>>
+            -NutritionPlanRepository nutrition_plan_repo
+            -MealRepository meal_repo
+            +create_nutrition_plan(user_id, plan_data) NutritionPlan
+            +add_meal(plan_id, meal_data) Meal
+            +get_plan_details(plan_id) NutritionPlan
+            +calculate_daily_macros(plan_id) dict
+            +update_plan(plan_id, plan_data) NutritionPlan
+        }
+    }
+
+    %% ========== TRACKING MODULE - SERVICES ==========
+    
+    namespace TrackingModule {
+        class TrackingService {
+            <<Service>>
+            -WorkoutLogRepository workout_log_repo
+            -MealLogRepository meal_log_repo
+            -WeightLogRepository weight_log_repo
+            -MealScannerService meal_scanner
+            -VoiceTranscriberService voice_transcriber
+            +log_workout(user_id, workout_data) WorkoutLog
+            +log_meal_text(user_id, meal_data) MealLog
+            +log_meal_voice(user_id, audio_file) MealLog
+            +log_meal_camera(user_id, image_file) MealLog
+            +log_weight(user_id, weight_data) WeightLog
+            +get_progress_summary(user_id) dict
+            +get_workout_history(user_id, days) list[WorkoutLog]
+            +get_nutrition_history(user_id, days) list[MealLog]
+            +get_weight_history(user_id, days) list[WeightLog]
+        }
+
+        class ProgressAnalyticsService {
+            <<Service>>
+            -WorkoutLogRepository workout_log_repo
+            -MealLogRepository meal_log_repo
+            -WeightLogRepository weight_log_repo
+            +calculate_workout_adherence(user_id, period) float
+            +calculate_nutrition_adherence(user_id, period) float
+            +analyze_weight_trend(user_id, period) dict
+            +generate_progress_report(user_id) dict
+            +get_streak_count(user_id, log_type) int
+            +predict_goal_achievement(user_id) dict
+        }
+    }
+
+    %% ========== CHATBOT MODULE - SERVICES ==========
+    
+    namespace ChatbotModule {
+        class ChatbotService {
+            <<Service>>
+            -ChatMessageRepository message_repo
+            -AICoachService ai_coach
+            -ProfileService profile_service
+            +send_message(user_id, message) ChatMessage
+            +get_conversation_history(user_id, limit) list[ChatMessage]
+            +clear_conversation(user_id) bool
+            +get_contextual_response(user_id, message) str
+        }
+    }
+
+    %% ========== NOTIFICATION MODULE - SERVICES ==========
+    
+    namespace NotificationModule {
+        class NotificationService {
+            <<Service>>
+            -NotificationRepository notification_repo
+            -PushNotificationProvider push_provider
+            +schedule_workout_reminder(user_id, workout_time) Notification
+            +schedule_meal_reminder(user_id, meal_time) Notification
+            +send_progress_update(user_id, progress_data) Notification
+            +send_motivational_message(user_id) Notification
+            +get_user_notifications(user_id) list[Notification]
+            +mark_notification_read(notification_id) Notification
+            +process_scheduled_notifications() void
+        }
+
+        class PushNotificationProvider {
+            <<Service>>
+            -FCMClient fcm_client
+            +send_push_notification(user_device_token, notification_data) bool
+            +send_batch_notifications(notifications) list[bool]
+            +register_device_token(user_id, device_token) void
+            +unregister_device_token(user_id, device_token) void
+        }
+    }
+
+    %% ========== AI SERVICES MODULE ==========
+    
+    namespace AIServicesModule {
+        class AICoachService {
+            <<Service>>
+            -GroqAPI groq_client
+            -VectorStore vector_store
+            -ProfileService profile_service
+            +generate_workout_plan(profile, plan_preferences) WorkoutPlan
+            +generate_nutrition_plan(profile, plan_preferences) NutritionPlan
+            +adapt_plan(user_id, progress_data) void
+            +chat_with_user(message, conversation_history, profile) str
+            +generate_motivational_message(profile, progress) str
+            +analyze_progress_patterns(logs) dict
+        }
+
+        class MealScannerService {
+            <<Service>>
+            -VisionAPI vision_client
+            -NutritionDatabase nutrition_db
+            +analyze_food_image(image) dict
+            +identify_food_items(image) list[str]
+            +estimate_nutrition(food_items) dict
+            +estimate_portion_size(image, food_item) float
+        }
+
+        class VoiceTranscriberService {
+            <<Service>>
+            -SpeechAPI speech_client
+            +transcribe_audio(audio_file, language) str
+            +supported_languages() list[str]
+            +detect_language(audio_file) str
+            +extract_meal_info(transcription) dict
+        }
+
+        class RAGService {
+            <<Service>>
+            -VectorStore vector_store
+            -EmbeddingModel embedding_model
+            +index_fitness_knowledge(documents) void
+            +retrieve_relevant_context(query, top_k) list[str]
+            +generate_response_with_context(query, context) str
+            +update_knowledge_base(new_documents) void
+        }
+    }
+
+    %% ========== SHARED SERVICES ==========
+    
+    namespace SharedModule {
+        class EmailService {
+            <<Service>>
+            -SMTPConfig smtp_config
+            +send_email(recipient, subject, body) bool
+            +send_html_email(recipient, subject, html_body) bool
+            +send_bulk_email(recipients, subject, body) list[bool]
+            +validate_email_format(email) bool
+        }
+
+        class RedisClient {
+            <<Service>>
+            -Redis redis_instance
+            +get_client() Redis
+            +set_value(key, value, expiration) bool
+            +get_value(key) str
+            +delete_key(key) bool
+            +exists(key) bool
+            +get_ttl(key) int
+            +close() void
+        }
+
+        class MediaService {
+            <<Service>>
+            -StorageProvider storage_provider
+            +upload_image(file, user_id) str
+            +compress_image(image, quality) bytes
+            +delete_media(media_url) bool
+            +get_media_url(media_id) str
+            +validate_media_type(file) bool
+        }
+    }
+
+    %% ========== SERVICE DEPENDENCIES ==========
+
+    %% Auth Module Dependencies
+    AuthService --> VerificationService : uses
+    AuthService --> AuthEmailService : uses
+    AuthService --> SecurityUtils : uses
+    VerificationService --> RedisClient : uses
+    OTPService --> RedisClient : uses
+    AuthEmailService --> EmailService : extends
+
+    %% Profile Module Dependencies
+    ProfileService ..> AICoachService : provides_data_to
+
+    %% Planning Module Dependencies
+    PlanningService --> WorkoutPlanService : uses
+    PlanningService --> NutritionPlanService : uses
+    PlanningService --> AICoachService : uses
+    PlanningService --> ProfileService : uses
+    AICoachService --> RAGService : uses
+
+    %% Tracking Module Dependencies
+    TrackingService --> MealScannerService : uses
+    TrackingService --> VoiceTranscriberService : uses
+    TrackingService --> MediaService : uses
+    ProgressAnalyticsService --> TrackingService : analyzes
+
+    %% Chatbot Module Dependencies
+    ChatbotService --> AICoachService : uses
+    ChatbotService --> ProfileService : uses
+    ChatbotService --> RAGService : uses
+
+    %% Notification Module Dependencies
+    NotificationService --> PushNotificationProvider : uses
+    NotificationService --> AICoachService : generates_content
+
+    %% Cross-Module Dependencies
+    AICoachService ..> ProfileService : reads_profile
+    AICoachService ..> ProgressAnalyticsService : uses_analytics
+    PlanningService ..> NotificationService : triggers_notifications
