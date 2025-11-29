@@ -236,8 +236,9 @@ classDiagram
             -WorkoutPlanRepository workout_repo
             -NutritionPlanRepository nutrition_repo
             -AICoachService ai_coach
-            +request_workout_plan(user_id) WorkoutPlan
-            +request_nutrition_plan(user_id) NutritionPlan
+            -ProfileService profile_service
+            +request_workout_plan(user_id, plan_preferences) WorkoutPlan
+            +request_nutrition_plan(user_id, plan_preferences) NutritionPlan
             +get_current_workout_plan(user_id) WorkoutPlan
             +get_current_nutrition_plan(user_id) NutritionPlan
             +adapt_plan_based_on_progress(user_id) void
@@ -430,11 +431,12 @@ classDiagram
             <<Service>>
             -GroqAPI groq_client
             -VectorStore vector_store
-            +generate_workout_plan(user_profile) WorkoutPlan
-            +generate_nutrition_plan(user_profile) NutritionPlan
+            -ProfileService profile_service
+            +generate_workout_plan(profile, plan_preferences) WorkoutPlan
+            +generate_nutrition_plan(profile, plan_preferences) NutritionPlan
             +adapt_plan(user_id, progress_data) void
-            +chat_with_user(message, conversation_history) str
-            +generate_motivational_message(user_profile) str
+            +chat_with_user(message, conversation_history, profile) str
+            +generate_motivational_message(profile) str
         }
 
         class MealScannerService {
@@ -504,6 +506,8 @@ classDiagram
     PlanningService --> WorkoutPlanRepository : uses
     PlanningService --> NutritionPlanRepository : uses
     PlanningService --> AICoachService : uses
+    PlanningService --> ProfileService : fetches_profile
+    AICoachService --> ProfileService : reads_profile
     WorkoutPlanRepository --> WorkoutPlan : manages
     NutritionPlanRepository --> NutritionPlan : manages
     WorkoutPlan "1" --> "*" WorkoutDay : contains

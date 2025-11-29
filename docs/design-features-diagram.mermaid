@@ -84,12 +84,12 @@ classDiagram
             -NutritionPlanRepository nutrition_repo
             -AICoachService ai_coach
             -ProfileService profile_service
-            +request_workout_plan(user_id) WorkoutPlan
-            +request_nutrition_plan(user_id) NutritionPlan
+            +request_workout_plan(user_id, plan_preferences) WorkoutPlan
+            +request_nutrition_plan(user_id, plan_preferences) NutritionPlan
             +get_current_workout_plan(user_id) WorkoutPlan
             +get_current_nutrition_plan(user_id) NutritionPlan
             +adapt_plan_based_on_progress(user_id) void
-            +regenerate_plan(user_id, plan_type) Plan
+            +regenerate_plan(user_id, plan_type, preferences) Plan
         }
 
         class WorkoutPlanService {
@@ -200,11 +200,11 @@ classDiagram
             -GroqAPI groq_client
             -VectorStore vector_store
             -ProfileService profile_service
-            +generate_workout_plan(user_profile) WorkoutPlan
-            +generate_nutrition_plan(user_profile) NutritionPlan
+            +generate_workout_plan(profile, plan_preferences) WorkoutPlan
+            +generate_nutrition_plan(profile, plan_preferences) NutritionPlan
             +adapt_plan(user_id, progress_data) void
-            +chat_with_user(message, conversation_history, user_profile) str
-            +generate_motivational_message(user_profile, progress) str
+            +chat_with_user(message, conversation_history, profile) str
+            +generate_motivational_message(profile, progress) str
             +analyze_progress_patterns(logs) dict
         }
 
@@ -312,10 +312,3 @@ classDiagram
     AICoachService ..> ProfileService : reads_profile
     AICoachService ..> ProgressAnalyticsService : uses_analytics
     PlanningService ..> NotificationService : triggers_notifications
-
-    %% Notes
-    note for AuthService "Orchestrates user authentication\nand account management.\nCoordinates verification\nand password reset flows."
-    note for AICoachService "Core AI intelligence.\nGenerates personalized plans.\nProvides conversational support.\nUses RAG for knowledge retrieval."
-    note for TrackingService "Central tracking coordinator.\nSupports multiple log methods.\nIntegrates with AI services\nfor intelligent logging."
-    note for NotificationService "Manages all user notifications.\nSchedules reminders based on\nuser plans and preferences.\nGenerates motivational content."
-    note for RAGService "Retrieval-Augmented Generation.\nCombines vector search with\nLLM generation for accurate\nfitness guidance."

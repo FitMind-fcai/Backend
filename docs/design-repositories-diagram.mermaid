@@ -200,10 +200,3 @@ classDiagram
     NutritionPlanRepository ..> MealRepository : coordinates_with
     WorkoutLogRepository ..> ExerciseRepository : references
     
-    %% Notes
-    note for BaseRepository "Abstract base providing\ncommon CRUD operations.\nAll repositories inherit\nfrom this class."
-    note for UserRepository "Manages user authentication\nand account data.\nHandles email verification\nand password resets."
-    note for ProfileRepository "Manages comprehensive\nuser profile information.\nUsed by AI services for\nplan generation."
-    note for WorkoutLogRepository "Tracks workout completion.\nCalculates adherence rates\nand progress metrics."
-    note for MealLogRepository "Supports multiple log methods.\nCalculates daily and weekly\nnutrition summaries."
-    note for ChatMessageRepository "Maintains conversation history.\nProvides context for AI\nchatbot responses."
