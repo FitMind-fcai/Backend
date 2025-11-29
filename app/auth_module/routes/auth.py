@@ -236,6 +236,25 @@ def reset_password(
     }
 
 
+# ========== CHECK OTP STATUS ==========
+@authRouter.get("/otp-status/{email}")
+def check_otp_status(
+    email: str,
+    otp_service: OTPService = Depends(get_otp_service)
+):
+    """
+    Check if user can request OTP and get remaining cooldown/block time.
+    
+    Returns rate limit status with remaining seconds.
+    Useful for frontend to display countdown timers.
+    
+    Dependencies injected:
+        - OTPService: Checks rate limiting status
+    """
+    status = otp_service.get_rate_limit_status(email)
+    return status
+
+
 # ========== GET CURRENT USER ==========
 @authRouter.get("/me", response_model=UserResponse)
 def get_current_user_info(current_user: User = Depends(get_current_user)):

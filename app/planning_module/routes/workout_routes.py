@@ -12,14 +12,14 @@ from app.planning_module.schemas import (
     ExerciseResponse
 )
 
-router = APIRouter(prefix="/workout-plans", tags=["Workout Plans"])
+workout_plan_router = APIRouter(prefix="/workout-plans", tags=["Workout Plans"])
 
 
 # ========================================
 # WORKOUT PLAN ENDPOINTS
 # ========================================
 
-@router.get("/", response_model=List[WorkoutPlanSummary])
+@workout_plan_router.get("/", response_model=List[WorkoutPlanSummary])
 def get_my_workout_plans(
     skip: int = 0,
     limit: int = 10,
@@ -43,7 +43,7 @@ def get_my_workout_plans(
     return summaries
 
 
-@router.get("/active", response_model=WorkoutPlanResponse)
+@workout_plan_router.get("/active", response_model=WorkoutPlanResponse)
 def get_active_workout_plan(
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db)
@@ -66,7 +66,7 @@ def get_active_workout_plan(
     return WorkoutPlanResponse.model_validate(plan)
 
 
-@router.get("/{plan_id}", response_model=WorkoutPlanResponse)
+@workout_plan_router.get("/{plan_id}", response_model=WorkoutPlanResponse)
 def get_workout_plan(
     plan_id: int,
     current_user: User = Depends(get_current_verified_user),
@@ -96,7 +96,7 @@ def get_workout_plan(
     return WorkoutPlanResponse.model_validate(plan)
 
 
-@router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+@workout_plan_router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_workout_plan(
     plan_id: int,
     current_user: User = Depends(get_current_verified_user),
@@ -123,7 +123,7 @@ def delete_workout_plan(
 # WORKOUT DAY ENDPOINTS
 # ========================================
 
-@router.get("/{plan_id}/days", response_model=List[WorkoutDayResponse])
+@workout_plan_router.get("/{plan_id}/days", response_model=List[WorkoutDayResponse])
 def get_workout_days(
     plan_id: int,
     current_user: User = Depends(get_current_verified_user),
@@ -146,7 +146,7 @@ def get_workout_days(
     return [WorkoutDayResponse.model_validate(day) for day in days]
 
 
-@router.get("/{plan_id}/days/{day_id}", response_model=WorkoutDayResponse)
+@workout_plan_router.get("/{plan_id}/days/{day_id}", response_model=WorkoutDayResponse)
 def get_workout_day(
     plan_id: int,
     day_id: int,
@@ -181,7 +181,7 @@ def get_workout_day(
 # EXERCISE ENDPOINTS
 # ========================================
 
-@router.get("/{plan_id}/days/{day_id}/exercises", response_model=List[ExerciseResponse])
+@workout_plan_router.get("/{plan_id}/days/{day_id}/exercises", response_model=List[ExerciseResponse])
 def get_exercises(
     plan_id: int,
     day_id: int,

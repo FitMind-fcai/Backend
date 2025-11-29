@@ -14,6 +14,9 @@ docker-compose up --build
 
 # Or run in detached mode (background)
 docker-compose up -d --build
+
+# Delete containers AND volumes
+docker-compose down -v
 ```
 
 ### 2. Access the Application
