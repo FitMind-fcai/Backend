@@ -9,9 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Install system dependencies
+# Install system dependencies (including C++ compiler for chromadb)
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
+    make \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 

@@ -1,15 +1,16 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # Directory where Chroma will store its data
-PERSIST_DIR = "chroma_db"
+PERSIST_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
 
 # Load PDF file
 print("📄 Loading PDF file...")
-loader = PyPDFLoader("fitness-handbook.pdf")
+pdf_path = os.path.join(os.path.dirname(__file__), "fitness-handbook.pdf")
+loader = PyPDFLoader(pdf_path)
 documents = loader.load()
 
 print(f"✓ Loaded {len(documents)} pages from PDF")
