@@ -3,8 +3,8 @@ OTP (One Time Password) service using Redis with dependency injection.
 Handles OTP generation, validation, expiration logic, and rate limiting.
 
 Security Layers:
-1. Max 5 verification attempts per OTP
-2. 5-minute cooldown after max failed attempts
+1. 2-minute cooldown after each OTP request
+2. Max 4 verification attempts per OTP
 3. Max 3 requests per hour
 4. Max 5 requests per day
 """
@@ -36,8 +36,8 @@ class OTPService:
     Service for managing OTP (One Time Password) using Redis with rate limiting.
     
     Security Layers:
-    1. Max verification attempts per OTP
-    2. Cooldown after max failed attempts
+    1. Cooldown after each OTP request (independent of verification)
+    2. Max verification attempts per OTP
     3. Hourly request limit
     4. Daily request limit
     """
@@ -97,6 +97,9 @@ class OTPService:
             0
         )
 
+        # Set cooldown for next OTP request
+        self._set_resend_cooldown(email)
+
         # Increment request counters
         self._increment_request_counters(email)
 
@@ -139,20 +142,12 @@ class OTPService:
         attempts = int(attempts) if attempts else 0
 
         if attempts >= OTP_MAX_ATTEMPTS:
-            # Set cooldown before allowing resend
-            self._set_resend_cooldown(email)
-            
             # Clear OTP after max attempts
             self.clear_otp(email)
             
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "message": f"Maximum OTP verification attempts ({OTP_MAX_ATTEMPTS}) exceeded. "
-                               f"Please wait {OTP_RESEND_COOLDOWN_MINUTES} minutes before requesting a new OTP.",
-                    "remaining_seconds": OTP_RESEND_COOLDOWN_MINUTES * 60,
-                    "reason": "max_attempts"
-                }
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum OTP verification attempts ({OTP_MAX_ATTEMPTS}) exceeded. Please request a new OTP."
             )
 
         # Increment attempts
@@ -168,18 +163,12 @@ class OTPService:
                     detail=f"Invalid OTP. {remaining_attempts} attempt(s) remaining."
                 )
             else:
-                # Last attempt failed - set cooldown
-                self._set_resend_cooldown(email)
+                # Last attempt failed - clear OTP
                 self.clear_otp(email)
                 
                 raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail={
-                        "message": f"Invalid OTP. Maximum attempts exceeded. "
-                                   f"Please wait {OTP_RESEND_COOLDOWN_MINUTES} minutes before requesting a new OTP.",
-                        "remaining_seconds": OTP_RESEND_COOLDOWN_MINUTES * 60,
-                        "reason": "max_attempts"
-                    }
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid OTP. Maximum attempts exceeded. Please request a new OTP."
                 )
 
         # OTP is valid - clear everything
@@ -332,7 +321,7 @@ class OTPService:
             )
 
     def _set_resend_cooldown(self, email: str) -> None:
-        """Set cooldown period after max failed verification attempts."""
+        """Set cooldown period after each OTP request."""
         cooldown_key = f"{REDIS_OTP_RESEND_COOLDOWN_PREFIX}{email}"
         self.redis_client.setex(
             cooldown_key,
