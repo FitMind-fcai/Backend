@@ -224,6 +224,9 @@ def reset_password(
     # Validate OTP again
     otp_service.validate_otp(user.email, request.otp)
 
+    # OTP is valid - clear everything
+    otp_service.clear_otp(user.email)
+
     # Reset password
     auth_service.reset_user_password(user, request.new_password)
 

@@ -84,3 +84,15 @@ jinja2==3.1.6
 
 # Static files & forms
 aiofiles==25.1.0
+
+# AI & LLM
+langchain==1.1.0
+langchain_community==0.4.1
+groq==0.36.0
+chromadb==0.5.23
+pypdf==5.1.0
+# Use CPU-only PyTorch to reduce image size (100MB vs 900MB)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers==3.3.1
+tiktoken==0.8.0

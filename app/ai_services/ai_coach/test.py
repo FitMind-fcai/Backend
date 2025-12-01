@@ -2,14 +2,11 @@ from groq import Groq
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from datetime import datetime
-from local_exercise_db import LocalExerciseDB
-from exercise_helper import ai_search_with_function_calling  # Updated to use function calling
+
 
 # Load Groq client
 client = Groq(api_key="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")
 
-# Initialize local exercise database
-exercise_db = LocalExerciseDB("cleaned_fitness_exercises.csv")
 
 # Create markdown file for output
 output_file = f"fitness_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
@@ -110,16 +107,6 @@ for idx, query in enumerate(queries, 1):
     # AI-powered exercise search with function calling
     print("\n🔍 AI searching exercises using function calling...")
     
-    # Use AI function calling to intelligently search exercises
-    all_exercises = ai_search_with_function_calling(query, exercise_db, client, user_profile)
-    
-    if all_exercises:
-        # Format for LLM
-        exercise_context = exercise_db.format_exercises_for_llm(all_exercises)  # Limit to 6 exercises
-    
-    else:
-        exercise_context = "No specific exercises found in the database for this query."
-        print("   ⚠️ No exercises found in database")
         
     # Ask LLM
     print("\n🤖 Generating personalized answer with exercise recommendations...")
@@ -153,9 +140,6 @@ Remember: You're their trusted coach who knows their limitations and is here to 
 IMPORTANT: I will provide you with specific exercises from a professional database. Use these exercises in your recommendations when relevant. Include exercise names, instructions, and explain why each exercise is suitable for the client's profile."""},
             {"role": "user", "content": f"""Reference information from fitness knowledge:
 {context}
-
-Available exercises from professional database:
-{exercise_context}
 
 Question: {query}
 

@@ -171,8 +171,6 @@ class OTPService:
                     detail=f"Invalid OTP. Maximum attempts exceeded. Please request a new OTP."
                 )
 
-        # OTP is valid - clear everything
-        self.clear_otp(email)
         return True
 
     def clear_otp(self, email: str) -> None:
