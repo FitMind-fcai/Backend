@@ -55,7 +55,3 @@ class NutritionPlanService:
         meal = self.meal_repo.get_by_id(meal_id)
         return meal is not None and meal.nutrition_plan_id == plan_id
     
-    # TODO: AI Generation methods will be added here
-    # def generate_nutrition_plan(self, user_id: int, profile_id: int, preferences: dict) -> NutritionPlan:
-    #     """Generate a new nutrition plan using AI Coach service"""
-    #     pass

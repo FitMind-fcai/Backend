@@ -59,7 +59,3 @@ class WorkoutPlanService:
         day = self.workout_day_repo.get_by_id(day_id)
         return day is not None and day.workout_plan_id == plan_id
     
-    # TODO: AI Generation methods will be added here
-    # def generate_workout_plan(self, user_id: int, profile_id: int, preferences: dict) -> WorkoutPlan:
-    #     """Generate a new workout plan using AI Coach service"""
-    #     pass

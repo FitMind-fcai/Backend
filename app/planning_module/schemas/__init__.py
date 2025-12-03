@@ -1,8 +1,9 @@
 from app.planning_module.schemas.plan import (
     # Request schemas
+    WorkoutPlanGenerationRequest,
+    NutritionPlanGenerationRequest,
     WorkoutPreferences,
     NutritionPreferences,
-    PlanGenerationRequest,
     
     # Exercise schemas
     ExerciseBase,
@@ -37,9 +38,10 @@ from app.planning_module.schemas.plan import (
 
 __all__ = [
     # Request schemas
+    "WorkoutPlanGenerationRequest",
+    "NutritionPlanGenerationRequest",
     "WorkoutPreferences",
     "NutritionPreferences",
-    "PlanGenerationRequest",
     
     # Exercise schemas
     "ExerciseBase",

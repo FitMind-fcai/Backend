@@ -58,7 +58,7 @@ def get_active_nutrition_plan(
         )
     
     # Load full details
-    plan = service.get_plan_with_details(plan.id)
+    plan = service.get_plan_with_meals(plan.id)
     return NutritionPlanResponse.model_validate(plan)
 
 
@@ -81,7 +81,7 @@ def get_nutrition_plan(
             detail="Nutrition plan not found or you do not have permission to access it"
         )
     
-    plan = service.get_plan_with_details(plan_id)
+    plan = service.get_plan_with_meals(plan_id)
     
     if not plan:
         raise HTTPException(
@@ -139,10 +139,7 @@ def get_meals(
             detail="Nutrition plan not found or you do not have permission to access it"
         )
     
-    if meal_type:
-        meals = service.get_meals_by_type(plan_id, meal_type)
-    else:
-        meals = service.get_meals(plan_id)
+    meals = service.get_meals(plan_id, meal_type)
     
     return [MealResponse.model_validate(meal) for meal in meals]
 
@@ -173,7 +170,7 @@ def get_meal(
             detail="Meal not found in this plan"
         )
     
-    meal = service.get_meal(meal_id)
+    meal = service.get_meal_by_id(meal_id)
     
     if not meal:
         raise HTTPException(

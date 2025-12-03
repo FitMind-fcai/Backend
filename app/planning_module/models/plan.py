@@ -15,7 +15,6 @@ from app.planning_module.models.enums import (
 
 
 class WorkoutPlan(Base):
-    """AI-generated workout plan based on user profile and preferences"""
     __tablename__ = "workout_plans"
     
     id = Column(Integer, primary_key=True, index=True)

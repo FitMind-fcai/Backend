@@ -43,3 +43,9 @@ APP_URL = os.getenv("APP_URL", "http://localhost:8000")  # Change in production
 # ========== Password Configuration ==========
 MIN_PASSWORD_LENGTH = 6
 MAX_PASSWORD_LENGTH = 50
+
+# ========== AI Coach Configuration ==========
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # Set in environment
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+AI_COACH_TEMPERATURE = float(os.getenv("AI_COACH_TEMPERATURE", "0.3"))
+AI_COACH_MAX_TOKENS = int(os.getenv("AI_COACH_MAX_TOKENS", "4000"))

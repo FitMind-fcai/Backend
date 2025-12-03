@@ -2,9 +2,8 @@ from enum import Enum
 
 class PlanType(str, Enum):
     """Type of plan user wants to generate"""
-    WORKOUT_ONLY = "Workout Only"
-    NUTRITION_ONLY = "Nutrition Only"
-    BOTH = "Both"
+    WORKOUT = "Workout"
+    NUTRITION = "Nutrition"
 
 class WorkoutLocation(str, Enum):
     """Where user will perform workouts"""
@@ -35,14 +34,14 @@ class WorkoutDifficulty(str, Enum):
 
 class CaloriePreference(str, Enum):
     """How to set calorie targets"""
-    AUTO = "Auto (AI Decides)"
-    CUSTOM = "Custom (User Specified)"
+    AUTO = "Auto"
+    CUSTOM = "Custom"
 
 class MealComplexity(str, Enum):
     """Cooking time and complexity preference"""
-    QUICK = "Quick (< 20 min)"
-    MODERATE = "Moderate (20-40 min)"
-    ELABORATE = "Elaborate (> 40 min)"
+    QUICK = "Quick"
+    MODERATE = "Moderate"
+    ELABORATE = "Elaborate"
     MIXED = "Mixed"
 
 class CuisineType(str, Enum):
