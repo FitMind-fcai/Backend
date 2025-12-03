@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from typing import Optional, Dict, Any
 from groq import Groq
 
@@ -16,6 +17,9 @@ from app.ai_services.ai_coach.dtos import (
     ExerciseDTO,
     MealDTO
 )
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class AICoachService:    
@@ -281,7 +285,18 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
             WorkoutPlanDTO with the generated plan
         """
         # Get relevant context from fitness knowledge base
-        query = f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} {preferences.workout_location}"
+        # Include user profile information for better context retrieval
+        profile_context = []
+        if user_profile.injuries:
+            profile_context.append(f"injuries: {user_profile.injuries}")
+        if user_profile.medical_conditions:
+            profile_context.append(f"medical conditions: {user_profile.medical_conditions}")
+        if user_profile.fitness_goal:
+            profile_context.append(f"goal: {user_profile.fitness_goal}")
+        
+        profile_str = " ".join(profile_context) if profile_context else ""
+        query = f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} {preferences.workout_location} {profile_str}"
+        logger.info(f"🏋️ Generating workout plan - RAG query: {query}")
         rag_context = self.vector_db.get_context(query, k=5)
         
         # Build and send prompt
@@ -353,7 +368,20 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
             NutritionPlanDTO with the generated plan
         """
         # Get relevant context from nutrition knowledge base
-        query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference}"
+        # Include user profile information for better context retrieval
+        profile_context = []
+        if user_profile.allergies:
+            profile_context.append(f"allergies: {user_profile.allergies}")
+        if user_profile.medical_conditions:
+            profile_context.append(f"medical conditions: {user_profile.medical_conditions}")
+        if user_profile.fitness_goal:
+            profile_context.append(f"goal: {user_profile.fitness_goal}")
+        if preferences.dietary_preference:
+            profile_context.append(f"diet: {preferences.dietary_preference}")
+        
+        profile_str = " ".join(profile_context) if profile_context else ""
+        query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference} {profile_str}"
+        logger.info(f"🍽️ Generating nutrition plan - RAG query: {query}")
         rag_context = self.vector_db.get_context(query, k=5)
         
         # Build and send prompt
@@ -455,7 +483,26 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
             AI coach response
         """
         # Get relevant context from knowledge base
-        rag_context = self.vector_db.get_context(question, k=3)
+        # Include user profile information for better context retrieval
+        query = question
+        if user_profile:
+            profile_context = []
+            if user_profile.injuries:
+                profile_context.append(f"injuries: {user_profile.injuries}")
+            if user_profile.medical_conditions:
+                profile_context.append(f"medical conditions: {user_profile.medical_conditions}")
+            if user_profile.allergies:
+                profile_context.append(f"allergies: {user_profile.allergies}")
+            if user_profile.fitness_goal:
+                profile_context.append(f"goal: {user_profile.fitness_goal}")
+            
+            if profile_context:
+                profile_str = " ".join(profile_context)
+                query = f"{question} {profile_str}"
+        
+        logger.info(f"💬 Ask Coach - Question: {question}")
+        logger.info(f"💬 Enhanced query with profile: {query}")
+        rag_context = self.vector_db.get_context(query, k=3)
         
         # Build user context if available
         user_context = ""

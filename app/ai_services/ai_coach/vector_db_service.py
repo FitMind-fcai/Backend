@@ -1,9 +1,15 @@
 import os
-from typing import List, Optional
+import json
+import logging
+from typing import List, Optional, Dict, Any
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_core.documents import Document
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class VectorDBService:
@@ -12,6 +18,9 @@ class VectorDBService:
     BASE_DIR = os.path.dirname(__file__)
     DEFAULT_PERSIST_DIR = os.path.join(BASE_DIR, "chroma_db")
     DEFAULT_PDF_PATH = os.path.join(BASE_DIR, "fitness-handbook.pdf")
+    # Path to scraped documents (from scraper script)
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))))
+    DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
     
     # Embedding model configuration
     EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -71,23 +80,79 @@ class VectorDBService:
             persist_directory=self.persist_directory
         )
     
+    def _load_scraped_documents(self, json_path: str) -> List[Document]:
+        """
+        Load scraped documents from JSON file.
+        
+        Args:
+            json_path: Path to scraped_documents.json
+            
+        Returns:
+            List of LangChain Document objects
+        """
+        if not os.path.exists(json_path):
+            raise FileNotFoundError(f"Scraped documents not found at {json_path}")
+        
+        print(f"📄 Loading scraped documents from: {json_path}")
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Handle both list format (from scraper) and dict format
+        scraped_docs = data if isinstance(data, list) else data.get('documents', [])
+        
+        documents = []
+        for doc in scraped_docs:
+            # Create LangChain Document with metadata
+            documents.append(Document(
+                page_content=doc['content'],
+                metadata={
+                    'source': doc['url'],
+                    'title': doc.get('resource_name', doc.get('title', 'Unknown')),
+                    'category': doc.get('category', 'Unknown'),
+                    'organization': doc.get('organization', 'Unknown'),
+                    'scraped_at': doc.get('scraped_at', '')
+                }
+            ))
+        
+        print(f"✓ Loaded {len(documents)} documents from JSON")
+        return documents
+    
+    def _load_pdf_documents(self, pdf_path: str) -> List[Document]:
+        """
+        Load documents from PDF file (legacy method).
+        
+        Args:
+            pdf_path: Path to PDF file
+            
+        Returns:
+            List of LangChain Document objects
+        """
+        if not os.path.exists(pdf_path):
+            raise FileNotFoundError(f"PDF file not found at {pdf_path}")
+        
+        print(f"📄 Loading PDF file: {pdf_path}")
+        loader = PyPDFLoader(pdf_path)
+        documents = loader.load()
+        print(f"✓ Loaded {len(documents)} pages from PDF")
+        return documents
+    
     def create_vector_db(
         self,
-        pdf_path: Optional[str] = None,
+        source_path: Optional[str] = None,
+        source_type: str = "scraped",  # "scraped" or "pdf"
         force_recreate: bool = False
     ) -> dict:
         """
-        Create the vector database from a PDF file.
+        Create the vector database from scraped documents or PDF file.
         
         Args:
-            pdf_path: Path to the PDF file to process
+            source_path: Path to source file (JSON for scraped, PDF for pdf)
+            source_type: Type of source - "scraped" (default) or "pdf"
             force_recreate: If True, recreate even if DB exists
             
         Returns:
             Dictionary with creation statistics
         """
-        pdf_path = pdf_path or self.DEFAULT_PDF_PATH
-        
         # Check if database already exists
         if os.path.exists(self.persist_directory) and not force_recreate:
             return {
@@ -96,15 +161,15 @@ class VectorDBService:
                 "persist_directory": self.persist_directory
             }
         
-        # Validate PDF path
-        if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"PDF file not found at {pdf_path}")
-        
-        # Load PDF
-        print(f"📄 Loading PDF file: {pdf_path}")
-        loader = PyPDFLoader(pdf_path)
-        documents = loader.load()
-        print(f"✓ Loaded {len(documents)} pages from PDF")
+        # Load documents based on source type
+        if source_type == "scraped":
+            source_path = source_path or self.DEFAULT_SCRAPED_PATH
+            documents = self._load_scraped_documents(source_path)
+        elif source_type == "pdf":
+            source_path = source_path or self.DEFAULT_PDF_PATH
+            documents = self._load_pdf_documents(source_path)
+        else:
+            raise ValueError(f"Invalid source_type: {source_type}. Must be 'scraped' or 'pdf'")
         
         # Split documents into chunks
         print("✂️ Splitting documents into chunks...")
@@ -114,7 +179,7 @@ class VectorDBService:
             separators=["\n\n", "\n", " ", ""]
         )
         texts = text_splitter.split_documents(documents)
-        print(f"📝 Created {len(texts)} text chunks from PDF")
+        print(f"📝 Created {len(texts)} text chunks")
         
         # Create vector store
         print("🔧 Creating and saving vector store...")
@@ -129,7 +194,9 @@ class VectorDBService:
         return {
             "status": "created",
             "message": "Vector database created successfully",
-            "pages_loaded": len(documents),
+            "source_type": source_type,
+            "source_path": source_path,
+            "documents_loaded": len(documents),
             "chunks_created": len(texts),
             "persist_directory": self.persist_directory,
             "collection_name": self.collection_name
@@ -151,6 +218,24 @@ class VectorDBService:
             List of relevant document contents
         """
         results = self.vectorstore.similarity_search(query, k=k)
+        
+        # Log retrieved documents
+        logger.info(f"\n{'='*70}")
+        logger.info(f"📊 Vector DB Query")
+        logger.info(f"{'='*70}")
+        logger.info(f"Query: {query}")
+        logger.info(f"Retrieved {len(results)} documents")
+        
+        for idx, doc in enumerate(results, 1):
+            logger.info(f"\n--- Document {idx} ---")
+            logger.info(f"Source: {doc.metadata.get('source', 'Unknown')}")
+            logger.info(f"Title: {doc.metadata.get('title', 'Unknown')}")
+            logger.info(f"Category: {doc.metadata.get('category', 'Unknown')}")
+            logger.info(f"Organization: {doc.metadata.get('organization', 'Unknown')}")
+            logger.info(f"Content preview: {doc.page_content[:200]}...")
+        
+        logger.info(f"{'='*70}\n")
+        
         return [doc.page_content for doc in results]
     
     def get_context(self, query: str, k: int = 3) -> str:
@@ -165,7 +250,11 @@ class VectorDBService:
             Concatenated context string
         """
         documents = self.similarity_search(query, k=k)
-        return "\n\n".join(documents)
+        context = "\n\n".join(documents)
+        
+        logger.info(f"📝 Total context length: {len(context)} characters")
+        
+        return context
     
     def is_initialized(self) -> bool:
         """Check if the vector database is initialized."""
@@ -189,19 +278,29 @@ def get_vector_db_service() -> VectorDBService:
     return _vector_db_service
 
 
-def initialize_vector_db(force_recreate: bool = False) -> dict:
+def initialize_vector_db(
+    force_recreate: bool = False,
+    source_path: Optional[str] = None,
+    source_type: str = "scraped"
+) -> dict:
     """
     Initialize the vector database.
     This should be called once during application setup.
     
     Args:
         force_recreate: If True, recreate even if DB exists
+        source_path: Path to source file (JSON for scraped, PDF for pdf)
+        source_type: Type of source - "scraped" (default) or "pdf"
         
     Returns:
         Dictionary with initialization status
     """
     service = get_vector_db_service()
-    return service.create_vector_db(force_recreate=force_recreate)
+    return service.create_vector_db(
+        source_path=source_path,
+        source_type=source_type,
+        force_recreate=force_recreate
+    )
 
 
 if __name__ == "__main__":
