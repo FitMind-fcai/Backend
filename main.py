@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+import logging
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables
 from app.profile_module.routes import profileRouter
@@ -12,6 +13,20 @@ from app.planning_module.routes import (
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler('logs/fitmind.log')  # File output
+    ]
+)
+
+# Set specific log levels for AI services
+logging.getLogger('app.ai_services.ai_coach.vector_db_service').setLevel(logging.INFO)
+logging.getLogger('app.ai_services.ai_coach.ai_coach_service').setLevel(logging.INFO)
 
 app = FastAPI(
     title="FitMind API",

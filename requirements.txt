@@ -24,6 +24,8 @@ email-validator==2.3.0
 
 # HTTP requests
 httpx==0.28.1
+requests>=2.32.5
+beautifulsoup4==4.12.3
 # aiohttp  # Requires C++ build tools on Windows - use httpx instead
 
 # Environment variables

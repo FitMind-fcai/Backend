@@ -1,0 +1,44 @@
+[
+  {
+    "scraping_completed_at": "2025-12-03T23:03:33.493339",
+    "statistics": {
+      "total_resources": 28,
+      "successfully_scraped": 27,
+      "failed": 1,
+      "skipped": 0
+    },
+    "documents_created": 27,
+    "total_content_length": 1716823,
+    "categories": {
+      "Exercise Programming & Fitness Guidelines": 6,
+      "Exercise Database & Anatomy": 4,
+      "Nutrition Guidelines & Databases": 5,
+      "Sports Nutrition & Supplementation": 4,
+      "Periodization & Training Principles": 3,
+      "Macronutrient Calculations & TDEE": 3,
+      "Fitness Books & Comprehensive Guides": 2
+    },
+    "organizations": {
+      "American College of Sports Medicine": 1,
+      "ACSM": 2,
+      "National Strength & Conditioning Association": 1,
+      "NSCA": 2,
+      "ExRx.net": 4,
+      "World Health Organization": 1,
+      "WHO": 1,
+      "WHO Europe": 1,
+      "US Department of Agriculture": 1,
+      "USDA": 1,
+      "International Society of Sports Nutrition": 1,
+      "ISSN": 3,
+      "National Academy of Sports Medicine": 1,
+      "Sports Science Insider": 1,
+      "PT Pioneer": 1,
+      "Calculator.net": 1,
+      "TDEE Calculator": 1,
+      "NASM": 1,
+      "Clemson University": 1,
+      "Wiley Publishing": 1
+    }
+  }
+]
