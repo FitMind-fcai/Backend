@@ -1,14 +1,21 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables
 from app.profile_module.routes import profileRouter
-from app.planning_module.routes.workout_routes import workout_plan_router
-from app.planning_module.routes.nutrition_routes import nutrition_plan_router
+from app.planning_module.routes import (
+    workout_router,
+    nutrition_router,
+    plan_generation_router
+)
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI(
     title="FitMind API",
-    description="""FitMind Backend API with Authentication and Profile Management.
+    description="""FitMind Backend API with Authentication, Profile Management, and AI-Powered Fitness Planning.
     
     ## Authentication
     Most endpoints require a JWT Bearer token. To authenticate:
@@ -56,10 +63,11 @@ def startup_event():
     create_tables()
     print("✅ Database tables created successfully!")
 
-app.include_router(authRouter, tags=["Authentication"])
+app.include_router(authRouter,tags=["Authentication"])
 app.include_router(profileRouter, tags=["Profiles"])
-app.include_router(workout_plan_router, tags=["Workout Plans"])
-app.include_router(nutrition_plan_router, tags=["Nutrition Plans"])
+app.include_router(plan_generation_router, tags=["Plan Generation"])
+app.include_router(workout_router, tags=["Workout Plans"])
+app.include_router(nutrition_router, tags=["Nutrition Plans"])
 
 
 

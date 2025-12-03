@@ -33,7 +33,7 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
                 NutritionPlan.start_date <= today,
                 (NutritionPlan.end_date >= today) | (NutritionPlan.end_date.is_(None))
             )
-            .order_by(desc(NutritionPlan.start_date))
+            .order_by(desc(NutritionPlan.created_at))
             .first()
         )
     

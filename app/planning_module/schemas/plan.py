@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 from app.planning_module.models.enums import (
     PlanType,
     WorkoutLocation,
@@ -46,32 +46,16 @@ class NutritionPreferences(BaseModel):
         return v
 
 
-class PlanGenerationRequest(BaseModel):
-    """Complete plan generation request from user"""
-    plan_type: PlanType
+class WorkoutPlanGenerationRequest(BaseModel):
+    """Request for generating/updating workout plan"""
     duration_weeks: int = Field(..., ge=1, le=52, description="Plan duration in weeks")
-    
-    # Optional based on plan_type
-    workout_preferences: Optional[WorkoutPreferences] = None
-    nutrition_preferences: Optional[NutritionPreferences] = None
+    workout_preferences: WorkoutPreferences
 
-    @field_validator('workout_preferences')
-    @classmethod
-    def validate_workout_preferences(cls, v, info):
-        """Ensure workout_preferences is provided when plan includes workout"""
-        plan_type = info.data.get('plan_type')
-        if plan_type in [PlanType.WORKOUT_ONLY, PlanType.BOTH] and not v:
-            raise ValueError('workout_preferences is required for WORKOUT_ONLY or BOTH plan types')
-        return v
 
-    @field_validator('nutrition_preferences')
-    @classmethod
-    def validate_nutrition_preferences(cls, v, info):
-        """Ensure nutrition_preferences is provided when plan includes nutrition"""
-        plan_type = info.data.get('plan_type')
-        if plan_type in [PlanType.NUTRITION_ONLY, PlanType.BOTH] and not v:
-            raise ValueError('nutrition_preferences is required for NUTRITION_ONLY or BOTH plan types')
-        return v
+class NutritionPlanGenerationRequest(BaseModel):
+    """Request for generating/updating nutrition plan"""
+    duration_weeks: int = Field(..., ge=1, le=52, description="Plan duration in weeks")
+    nutrition_preferences: NutritionPreferences
 
 
 # ========================================
@@ -161,8 +145,8 @@ class WorkoutPlanResponse(WorkoutPlanBase):
     user_id: int
     profile_id: int
     generated_from_preferences: Optional[dict] = None
-    created_at: date
-    updated_at: Optional[date] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     workout_days: List[WorkoutDayResponse] = []
 
     class Config:
@@ -178,7 +162,7 @@ class WorkoutPlanSummary(BaseModel):
     end_date: Optional[date] = None
     frequency: Optional[str] = None
     difficulty_level: Optional[str] = None
-    created_at: date
+    created_at: datetime
     total_workout_days: int = 0
 
     class Config:
@@ -247,8 +231,8 @@ class NutritionPlanResponse(NutritionPlanBase):
     user_id: int
     profile_id: int
     generated_from_preferences: Optional[dict] = None
-    created_at: date
-    updated_at: Optional[date] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     meals: List[MealResponse] = []
 
     class Config:
@@ -266,7 +250,7 @@ class NutritionPlanSummary(BaseModel):
     daily_protein_g: int
     daily_carbs_g: int
     daily_fats_g: int
-    created_at: date
+    created_at: datetime
     total_meals: int = 0
 
     class Config:

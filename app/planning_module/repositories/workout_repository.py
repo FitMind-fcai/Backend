@@ -33,7 +33,7 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
                 WorkoutPlan.start_date <= today,
                 (WorkoutPlan.end_date >= today) | (WorkoutPlan.end_date.is_(None))
             )
-            .order_by(desc(WorkoutPlan.start_date))
+            .order_by(desc(WorkoutPlan.created_at))
             .first()
         )
     
