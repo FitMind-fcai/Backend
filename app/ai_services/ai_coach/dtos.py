@@ -129,6 +129,21 @@ class WorkoutPlanDTO(BaseModel):
     estimated_duration_per_session: Optional[int] = None
     workout_days: List[WorkoutDayDTO] = []
 
+    def to_context_string(self) -> str:
+        """Convert workout plan to context string for LLM prompt."""
+        days_info = "\n".join(
+            [f"- {day.day_name} (Day {day.day_number}): {len(day.exercises)} exercises" for day in self.workout_days]
+        )
+        return f"""WORKOUT PLAN:
+        - Plan Name: {self.plan_name}
+        - Description: {self.description or 'N/A'}
+        - Frequency: {self.frequency or 'N/A'}
+        - Difficulty Level: {self.difficulty_level or 'N/A'}
+        - Estimated Duration per Session: {self.estimated_duration_per_session or 'N/A'} minutes
+        {days_info}
+
+        """
+
 
 class MealDTO(BaseModel):
     """DTO for a single meal."""
@@ -156,6 +171,22 @@ class NutritionPlanDTO(BaseModel):
     daily_carbs_g: int
     daily_fats_g: int
     meals: List[MealDTO] = []
+
+    def to_context_string(self) -> str:
+        """Convert nutrition plan to context string for LLM prompt."""
+        meals_info = "\n".join(
+            [f"- {meal.meal_type}: {meal.meal_name} ({meal.calories} kcal)" for meal in self.meals]
+        )
+        return f"""NUTRITION PLAN:
+        - Plan Name: {self.plan_name}
+        - Description: {self.description or 'N/A'}
+        - Daily Calories: {self.daily_calories} kcal
+        - Daily Protein: {self.daily_protein_g} g
+        - Daily Carbs: {self.daily_carbs_g} g
+        - Daily Fats: {self.daily_fats_g} g
+        {meals_info}
+
+        """
 
 
 class GeneratedPlansDTO(BaseModel):

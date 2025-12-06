@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class AICoachService:    
     # LLM Configuration
-    DEFAULT_MODEL = "llama-3.3-70b-versatile"
+    DEFAULT_MODEL = "gpt-oss-120b"
     DEFAULT_TEMPERATURE = 0.0
     DEFAULT_MAX_TOKENS = 4000
     
@@ -69,18 +69,14 @@ class AICoachService:
         regeneration_instruction = ""
         if existing_plan:
             existing_plan_context = f"""\n\nEXISTING WORKOUT PLAN TO UPDATE:
-Plan Name: {existing_plan.plan_name}
-Description: {existing_plan.description}
-Current Days: {len(existing_plan.workout_days)}
-Current Structure: {', '.join([day.day_name for day in existing_plan.workout_days])}
+{existing_plan.to_context_string()}
 """
-            regeneration_instruction = """\n\nREGENERATION MODE:
+            regeneration_instruction = """\n\nREGENERATION MODE IF YOU HAVE AN EXISTING PLAN ONLY:
 - The user has an EXISTING plan and wants to UPDATE it based on NEW preferences
-- KEEP exercises and structure that still match the new preferences
+- KEEP everything that still matches the new preferences
 - ONLY MODIFY parts that conflict with or don't align with the new preferences
 - Maintain progression and familiarity where appropriate
 - If the new preferences are very similar, make minimal changes
-- Focus changes on: workout focus, difficulty level, equipment, or location changes
 """
         
         return f"""You are an expert fitness coach creating a personalized workout plan.
@@ -160,19 +156,14 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         regeneration_instruction = ""
         if existing_plan:
             existing_plan_context = f"""\n\nEXISTING NUTRITION PLAN TO UPDATE:
-Plan Name: {existing_plan.plan_name}
-Description: {existing_plan.description}
-Current Calories: {existing_plan.daily_calories}
-Current Meals: {len(existing_plan.meals)}
-Meal Types: {', '.join([meal.meal_type for meal in existing_plan.meals])}
+{existing_plan.to_context_string()}
 """
-            regeneration_instruction = """\n\nREGENERATION MODE:
+            regeneration_instruction = """\n\nREGENERATION MODE IF YOU HAVE AN EXISTING PLAN ONLY:
 - The user has an EXISTING meal plan and wants to UPDATE it based on NEW preferences
 - KEEP meals that still match the new dietary preferences and restrictions
 - ONLY MODIFY meals that conflict with new preferences (allergies, cuisine, restrictions)
 - If calorie target changed slightly, adjust portions rather than replacing entire meals
 - If the new preferences are very similar, make minimal changes
-- Focus changes on: new dietary restrictions, cuisine preferences, or calorie adjustments
 """
         
         return f"""You are an expert nutritionist creating a personalized meal plan.
@@ -423,45 +414,6 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
             daily_carbs_g=plan_data.get("daily_carbs_g", 200),
             daily_fats_g=plan_data.get("daily_fats_g", 65),
             meals=meals
-        )
-    
-    def generate_plan(
-        self,
-        user_profile: UserProfileDTO,
-        request: PlanGenerationRequestDTO
-    ) -> GeneratedPlansDTO:
-        """
-        Generate workout and/or nutrition plan based on request.
-        
-        Args:
-            user_profile: UserProfileDTO with user's profile data
-            request: PlanGenerationRequestDTO with preferences
-            
-        Returns:
-            GeneratedPlansDTO containing the generated plan(s)
-        """
-        workout_plan = None
-        nutrition_plan = None
-        
-        if request.plan_type in ["WORKOUT_ONLY", "BOTH"]:
-            if request.workout_preferences:
-                workout_plan = self.generate_workout_plan(
-                    user_profile=user_profile,
-                    preferences=request.workout_preferences,
-                    duration_weeks=request.duration_weeks
-                )
-        
-        if request.plan_type in ["NUTRITION_ONLY", "BOTH"]:
-            if request.nutrition_preferences:
-                nutrition_plan = self.generate_nutrition_plan(
-                    user_profile=user_profile,
-                    preferences=request.nutrition_preferences,
-                    duration_weeks=request.duration_weeks
-                )
-        
-        return GeneratedPlansDTO(
-            workout_plan=workout_plan,
-            nutrition_plan=nutrition_plan
         )
     
     def ask_coach(

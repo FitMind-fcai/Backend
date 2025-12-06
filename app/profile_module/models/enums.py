@@ -16,5 +16,6 @@ class ActivityLevel(str, Enum):
 class FitnessGoal(str, Enum):
     """User's primary fitness objective"""
     LOSE_WEIGHT = "Lose Weight"  # Weight loss focus
-    MAINTAIN_WEIGHT = "Maintain Weight"  # Weight maintenance
-    BUILD_MUSCLE = "Build Muscle"  # Muscle gain focus
+    TRY_AI_COACH = "Try AI Coach"  
+    GET_BULKS = "Get Bulks"  # Muscle gain focus
+    IMPROVE_ENDURANCE = "Improve Endurance"  # Cardiovascular fitness
