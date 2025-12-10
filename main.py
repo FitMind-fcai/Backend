@@ -14,13 +14,12 @@ from app.planning_module.routes import (
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
+# Configure logging (console only for Docker/terminal debugging)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),  # Console output
-        logging.FileHandler('logs/fitmind.log')  # File output
+        logging.StreamHandler()  # Console output visible in docker-compose logs
     ]
 )
 
