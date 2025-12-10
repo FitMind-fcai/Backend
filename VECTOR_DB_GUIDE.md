@@ -205,7 +205,7 @@ def ask_coach(self, question, user_profile=None):
 
 ## 📊 Logging & Debugging
 
-Logs are written to console and `logs/fitmind.log`:
+Logs are written to console output (visible in Docker logs):
 
 ```
 2025-12-04 10:30:15 - vector_db_service - INFO - 
@@ -227,11 +227,11 @@ Content preview: Comprehensive strength training guide...
 
 **To view logs:**
 ```powershell
-# Docker logs
+# Docker logs (real-time)
 docker-compose logs -f web
 
-# Or check file
-cat logs/fitmind.log
+# Or view recent logs
+docker-compose logs --tail=100 web
 ```
 
 ---
