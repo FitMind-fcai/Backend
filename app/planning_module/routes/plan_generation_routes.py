@@ -47,6 +47,16 @@ def generate_workout_plan(
     - Different difficulty level → Modifies intensity
     - Already have nutrition plan → Creates workout plan (keeps nutrition)
     
+    **Workout Preferences Options:**
+    
+    - **workout_location**: Gym | Home | Outdoor | Hybrid
+    - **equipment_availability**: Full Gym Equipment | Basic Equipment | No Equipment
+    - **workout_focus**: Strength Training | Cardiovascular | Flexibility | Hybrid | Sport Specific
+    - **workout_difficulty**: Beginner | Intermediate | Advanced
+    - **workout_days_per_week**: 1-7 days
+    - **session_duration_minutes**: 15-180 minutes
+    - **focus_areas**: Optional list of specific muscle groups or body areas
+    
     **Requirements:**
     - User must have a verified account
     - User must have a complete profile with required fields
@@ -103,6 +113,15 @@ def generate_nutrition_plan(
     - New dietary restriction → Replaces only conflicting meals
     - Different cuisine preference → Updates meal types
     - Already have workout plan → Creates nutrition plan (keeps workout)
+    
+    **Nutrition Preferences Options:**
+    
+    - **calorie_preference**: Auto | Custom
+    - **custom_calorie_target**: 1000-5000 (required if calorie_preference is Custom)
+    - **meals_per_day**: 3-6 meals
+    - **meal_complexity**: Quick | Moderate | Elaborate | Mixed
+    - **cuisine_preference**: Mediterranean | Asian | Western | Middle Eastern | Latin American | Vegetarian | Vegan | Mixed
+    - **exclude_ingredients**: Optional list of ingredients to avoid
     
     **Requirements:**
     - User must have a verified account
