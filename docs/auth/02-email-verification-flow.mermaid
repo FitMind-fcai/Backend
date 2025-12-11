@@ -1,0 +1,54 @@
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant API as FastAPI Route
+    participant VerificationService
+    participant Redis
+    participant UserRepo as UserRepository
+    participant DB as PostgreSQL
+
+    User->>+Frontend: Click verification link<br/>in email
+    Note over Frontend: Extract token from URL:<br/>/verify?token={uuid}
+    
+    Frontend->>+API: POST /auth/verify-email<br/>{token}
+    
+    API->>+VerificationService: verify_email(token)
+    
+    rect rgb(230, 240, 255)
+        Note over VerificationService,Redis: Step 1: Validate Token
+        VerificationService->>+Redis: GET verification:{token}
+        Redis-->>-VerificationService: user_id or None
+        
+        alt Token not found or expired
+            VerificationService-->>API: HTTPException(400, "Invalid/expired token")
+            API-->>Frontend: 400 Bad Request
+            Frontend-->>User: Error: Link expired or invalid
+        end
+    end
+    
+    rect rgb(255, 240, 230)
+        Note over VerificationService,DB: Step 2: Activate User Account
+        VerificationService->>+UserRepo: get_user_by_id(user_id)
+        UserRepo->>+DB: SELECT * FROM users<br/>WHERE id = ?
+        DB-->>-UserRepo: User
+        UserRepo-->>-VerificationService: UserDTO
+        
+        alt User already verified
+            VerificationService-->>API: {message: "Already verified"}
+            API-->>Frontend: 200 OK
+            Frontend-->>User: Account already verified
+        else User not verified
+            VerificationService->>+UserRepo: update_user(user_id, is_verified=True)
+            UserRepo->>+DB: UPDATE users<br/>SET is_verified = TRUE,<br/>verified_at = NOW()<br/>WHERE id = ?
+            DB-->>-UserRepo: Updated user
+            UserRepo-->>-VerificationService: UserDTO
+            
+            Note over VerificationService,Redis: Clean up token
+            VerificationService->>+Redis: DEL verification:{token}
+            Redis-->>-VerificationService: Deleted
+            
+            VerificationService-->>-API: {message: "Email verified successfully"}
+            API-->>-Frontend: 200 OK
+            Frontend-->>-User: ✓ Email verified!<br/>You can now log in
+        end
+    end

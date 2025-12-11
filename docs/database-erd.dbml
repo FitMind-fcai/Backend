@@ -302,8 +302,9 @@ Enum activity_level_enum {
 
 Enum fitness_goal_enum {
   "Lose Weight"
-  "Maintain Weight"
-  "Build Muscle"
+  "Try AI Coach"
+  "Get Bulks"
+  "Improve Endurance"
 }
 
 Enum log_method_enum {

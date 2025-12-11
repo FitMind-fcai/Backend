@@ -1,0 +1,57 @@
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant API as FastAPI Route
+    participant AuthService
+    participant UserRepo as UserRepository
+    participant DB as PostgreSQL
+    participant Redis
+    participant EmailService
+    participant SMTP
+
+    User->>+Frontend: Enter signup details<br/>(email, password, name)
+    Frontend->>+API: POST /auth/signup<br/>{email, password, full_name}
+    
+    rect rgb(230, 240, 255)
+        Note over API,DB: Step 1: Validate & Create User
+        API->>+AuthService: signup(user_data)
+        
+        AuthService->>+UserRepo: get_user_by_email(email)
+        UserRepo->>+DB: SELECT * FROM users<br/>WHERE email = ?
+        DB-->>-UserRepo: User or None
+        UserRepo-->>-AuthService: Existing user check
+        
+        alt Email already exists
+            AuthService-->>API: HTTPException(400, "Email exists")
+            API-->>Frontend: 400 Bad Request
+            Frontend-->>User: Error: Email already registered
+        else Email available
+            AuthService->>AuthService: hash_password(password)<br/>using bcrypt
+            
+            AuthService->>+UserRepo: create_user(hashed_data)
+            UserRepo->>+DB: INSERT INTO users<br/>(email, hashed_password, full_name,<br/>is_verified=False, created_at)
+            DB-->>-UserRepo: Created user
+            UserRepo-->>-AuthService: UserDTO
+        end
+    end
+    
+    rect rgb(255, 240, 230)
+        Note over AuthService,SMTP: Step 2: Generate & Send Verification
+        AuthService->>+Redis: Generate verification token (UUID)
+        AuthService->>Redis: SET verification:{token} = user_id<br/>EX 86400 (24 hours)
+        Redis-->>-AuthService: Token stored
+        
+        AuthService->>+EmailService: send_verification_email(email, token)
+        EmailService->>EmailService: Build email HTML:<br/>"Click to verify:<br/>{frontend_url}/verify?token={token}"
+        
+        EmailService->>+SMTP: Send email via SMTP
+        SMTP-->>-EmailService: Email sent
+        EmailService-->>-AuthService: Verification email sent
+        
+        AuthService-->>-API: {message: "User created,<br/>check email for verification"}
+    end
+    
+    API-->>-Frontend: 201 Created<br/>{id, email, full_name, is_verified: false}
+    Frontend-->>-User: Success!<br/>Check your email to verify account
+    
+    Note over User: User receives email<br/>with verification link
