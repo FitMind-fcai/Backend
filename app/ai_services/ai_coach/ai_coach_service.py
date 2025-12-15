@@ -367,8 +367,6 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
             profile_context.append(f"medical conditions: {user_profile.medical_conditions}")
         if user_profile.fitness_goal:
             profile_context.append(f"goal: {user_profile.fitness_goal}")
-        if preferences.dietary_preference:
-            profile_context.append(f"diet: {preferences.dietary_preference}")
         
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference} {profile_str}"
