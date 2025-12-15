@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class AICoachService:    
     # LLM Configuration
-    DEFAULT_MODEL = "gpt-oss-120b"
+    DEFAULT_MODEL = "openai/gpt-oss-120b"
     DEFAULT_TEMPERATURE = 0.0
     DEFAULT_MAX_TOKENS = 4000
     
