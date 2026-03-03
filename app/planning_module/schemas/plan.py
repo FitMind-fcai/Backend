@@ -177,10 +177,10 @@ class MealBase(BaseModel):
     """Base meal schema"""
     meal_type: str = Field(..., max_length=50)
     meal_name: str = Field(..., min_length=1, max_length=255)
-    calories: int = Field(..., ge=0)
-    protein_g: int = Field(..., ge=0)
-    carbs_g: int = Field(..., ge=0)
-    fats_g: int = Field(..., ge=0)
+    calories: float = Field(..., ge=0)
+    protein_g: float = Field(..., ge=0)
+    carbs_g: float = Field(..., ge=0)
+    fats_g: float = Field(..., ge=0)
     ingredients: Optional[str] = None
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = Field(None, ge=0)
@@ -214,10 +214,10 @@ class NutritionPlanBase(BaseModel):
     description: Optional[str] = None
     start_date: date
     end_date: Optional[date] = None
-    daily_calories: int = Field(..., ge=0)
-    daily_protein_g: int = Field(..., ge=0)
-    daily_carbs_g: int = Field(..., ge=0)
-    daily_fats_g: int = Field(..., ge=0)
+    daily_calories: float = Field(..., ge=0)
+    daily_protein_g: float = Field(..., ge=0)
+    daily_carbs_g: float = Field(..., ge=0)
+    daily_fats_g: float = Field(..., ge=0)
 
 
 class NutritionPlanCreate(NutritionPlanBase):
@@ -246,10 +246,10 @@ class NutritionPlanSummary(BaseModel):
     plan_name: str
     start_date: date
     end_date: Optional[date] = None
-    daily_calories: int
-    daily_protein_g: int
-    daily_carbs_g: int
-    daily_fats_g: int
+    daily_calories: float
+    daily_protein_g: float
+    daily_carbs_g: float
+    daily_fats_g: float
     created_at: datetime
     total_meals: int = 0
 
