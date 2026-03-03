@@ -33,7 +33,7 @@ class AuthEmailService:
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        verification_link = f"{self.app_url}/auth/verify-email?token={verification_token}"
+        verification_link = f"{self.app_url}/v1/auth/verify-email?token={verification_token}"
         print(f"🔗 Verification link: {verification_link}")
 
         html = f"""
@@ -76,7 +76,7 @@ class AuthEmailService:
         Returns:
             bool: True if email sent successfully, False otherwise
         """
-        verification_link = f"{self.app_url}/auth/verify-email?token={verification_token}"
+        verification_link = f"{self.app_url}/v1/auth/verify-email?token={verification_token}"
         print(f"🔗 Resend verification link: {verification_link}")
 
         html = f"""
