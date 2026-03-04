@@ -17,8 +17,9 @@ A FastAPI backend for the FitMind fitness application — featuring AI-powered w
 9. [Docker Setup](#docker-setup)
 10. [Deployment (Railway)](#deployment-railway)
 11. [Vector Database (RAG / AI Coach)](#vector-database-rag--ai-coach)
-12. [Development Guidelines](#development-guidelines)
-13. [Troubleshooting](#troubleshooting)
+12. [AI Coach Evaluation (LLM-as-Judge)](#ai-coach-evaluation-llm-as-judge)
+13. [Development Guidelines](#development-guidelines)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -61,6 +62,7 @@ Backend/
     ├── shared/                      # Base repository, shared email service
     ├── ai_services/                 # AI integrations (Groq wrappers)
     │   ├── ai_coach/                # RAG-based plan generation
+    │   ├── evaluation/              # LLM-as-judge evaluation pipeline
     │   ├── meal_scanner/            # Food image analysis
     │   └── voice_transcriber/       # Audio → structured data
     ├── auth_module/                 # Registration, login, OTP, JWT
@@ -515,6 +517,154 @@ python -c "from app.ai_services.ai_coach.vector_db_service import initialize_vec
 | Default k | 3–5 documents |
 | Query time | < 100ms |
 | DB disk size | ~100–150MB (HIGH priority) |
+
+---
+
+## AI Coach Evaluation (LLM-as-Judge)
+
+The evaluation pipeline measures how accurately the AI Coach respects user constraints (injuries, allergies, equipment, dietary preferences) across a large batch of synthetic test cases.
+
+### Why LLM-as-Judge?
+
+Keyword matching misses **indirect** violations:
+
+| Constraint | Plan output | Keyword result | Judge result |
+|---|---|---|---|
+| Tomato allergy | "Marinara Pasta" | ✅ Pass (no word "tomato") | ❌ Fail (tomato sauce) |
+| Egg allergy | "Hollandaise Sauce" | ✅ Pass | ❌ Fail (egg-based) |
+| Knee injury | "Depth Jumps" | ✅ Pass | ❌ Fail (high impact) |
+| Vegan | "Greek Yogurt Parfait" | ✅ Pass | ❌ Fail (dairy) |
+
+A second LLM call semantically audits each generated plan using world knowledge of ingredient composition and exercise biomechanics, catching violations that any keyword approach would miss.
+
+---
+
+### Package Structure
+
+```
+app/ai_services/evaluation/
+├── __init__.py       # Package docstring
+├── models.py         # CheckResult + EvalReport dataclasses
+├── test_cases.py     # Synthetic profile generators
+├── judge.py          # LLM-as-judge prompts + JSON parsing
+├── evaluators.py     # Per-plan evaluation (rule-based + LLM judge)
+├── reporting.py      # Aggregation, tables, accuracy banner
+└── runner.py         # Main run_evaluation() loop
+
+scripts/
+└── evaluate_rag_pipeline.py   # Thin CLI wrapper (argparse → run_evaluation)
+```
+
+---
+
+### Constraint Checks
+
+**Workout plans** — 2 LLM calls per test case (1 generate + 1 judge)
+
+| Check | Type | Weight | Applicable when |
+|---|---|---|---|
+| `days_count_match` | Rule-based | 10 | Always |
+| `injury_safety` | LLM judge | 30 | User has stated injuries |
+| `medical_condition_safety` | LLM judge | 30 | User has medical conditions |
+| `equipment_compliance` | LLM judge | 25 | Always |
+| `goal_alignment` | LLM judge | 15 | Always |
+
+**Nutrition plans** — 2 LLM calls per test case
+
+| Check | Type | Weight | Applicable when |
+|---|---|---|---|
+| `meals_count_match` | Rule-based | 10 | Always |
+| `calorie_accuracy` (±15%) | Rule-based | 15 | Always |
+| `allergen_safety` | LLM judge | 35 | User has food allergies |
+| `dietary_preference_respected` | LLM judge | 25 | User has a diet preference |
+| `exclusion_compliance` | LLM judge | 20 | User excluded ingredients |
+| `goal_alignment` | LLM judge | 15 | Always |
+
+> **Applicable-only scoring:** Checks marked inapplicable (e.g. `allergen_safety` when the user has no allergies) are excluded from the weighted average entirely — they do not inflate or deflate the score.
+
+---
+
+### Scoring & Grades
+
+```
+Overall score = weighted average of applicable checks (0–100%)
+```
+
+| Grade | Score |
+|---|---|
+| EXCELLENT | ≥ 90% |
+| GOOD | ≥ 80% |
+| FAIR | ≥ 70% |
+| NEEDS IMPROVEMENT | < 70% |
+
+Pass threshold per plan: **70%**
+
+---
+
+### Running the Evaluation
+
+```bash
+# Run 100 test cases (50 workout + 50 nutrition) — default
+python3 scripts/evaluate_rag_pipeline.py
+
+# Run 20 workout-only cases
+python3 scripts/evaluate_rag_pipeline.py --samples 20 --plan-type workout
+
+# Run 50 nutrition-only cases
+python3 scripts/evaluate_rag_pipeline.py --samples 50 --plan-type nutrition
+
+# Custom output file and rate-limit delay
+python3 scripts/evaluate_rag_pipeline.py --output results/run1.json --delay 2.0
+```
+
+| Option | Default | Description |
+|---|---|---|
+| `--samples` | 100 | Total test cases |
+| `--plan-type` | `both` | `workout` \| `nutrition` \| `both` |
+| `--output` | `eval_results.json` | JSON results file |
+| `--delay` | `1.5` | Seconds between API calls (rate limiting) |
+
+> **Cost note:** Each test case makes **2 LLM calls** — one to generate the plan, one for the judge. 100 cases = 200 Groq API calls.
+
+---
+
+### Output
+
+**Console — per-case progress:**
+```
+  [  1/50] goal=Weight Loss            equip=No Equipment         cond=—        … ✅ PASS  (92.3%)
+  [  2/50] goal=Muscle Building        equip=Full Gym             cond=Knee Pain … ❌ FAIL  (58.0%)
+```
+
+**Console — accuracy banner (end of run):**
+```
+#######################################################
+###                                                 ###
+###   OVERALL MODEL ACCURACY                        ###
+###   Score     :  85.4%                            ###
+###   Pass Rate :  78 / 100  (78.0%)                ###
+###   Grade     :  GOOD                             ###
+###   Plans     :  100  evaluated                   ###
+###                                                 ###
+#######################################################
+```
+
+**JSON file** (`eval_results.json`) — machine-readable results with per-check breakdowns and full per-plan reports, suitable for trend analysis across runs.
+
+---
+
+### Test Case Generation
+
+Profiles are generated deterministically from domain pools:
+
+- **Goals:** Weight Loss, Muscle Building, Endurance, Flexibility, General Fitness
+- **Medical conditions:** Hypertension, Diabetes Type 2, Knee Pain, Back Pain, Cardiac Condition, Asthma, …
+- **Injuries:** Knee Injury, Shoulder Injury, Lower Back Pain, Ankle Sprain, …
+- **Allergies:** Gluten, Dairy, Nuts, Eggs, Soy, Shellfish, **Tomatoes**, …
+- **Dietary preferences:** Vegan, Vegetarian, Keto, Paleo, Halal, …
+
+Workout cases: 25% no-equipment, 25% cardiac/joint conditions, 50% free.  
+Nutrition cases: 33% forced allergies, 33% vegan/vegetarian, 33% free.
 
 ---
 
