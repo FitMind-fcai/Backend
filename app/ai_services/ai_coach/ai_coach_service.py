@@ -9,10 +9,8 @@ from app.ai_services.ai_coach.dtos import (
     UserProfileDTO,
     WorkoutPreferencesDTO,
     NutritionPreferencesDTO,
-    PlanGenerationRequestDTO,
     WorkoutPlanDTO,
     NutritionPlanDTO,
-    GeneratedPlansDTO,
     WorkoutDayDTO,
     ExerciseDTO,
     MealDTO
@@ -261,7 +259,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         user_profile: UserProfileDTO,
         preferences: WorkoutPreferencesDTO,
         duration_weeks: int = 4,
-        existing_plan: Optional[WorkoutPlanDTO] = None
+        existing_plan: Optional[WorkoutPlanDTO] = None,
     ) -> WorkoutPlanDTO:
         """
         Generate a personalized workout plan.
@@ -330,7 +328,7 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
                 exercises=exercises
             ))
         
-        return WorkoutPlanDTO(
+        plan = WorkoutPlanDTO(
             plan_name=plan_data.get("plan_name", "AI Generated Workout Plan"),
             description=plan_data.get("description"),
             frequency=plan_data.get("frequency"),
@@ -338,13 +336,15 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
             estimated_duration_per_session=plan_data.get("estimated_duration_per_session"),
             workout_days=workout_days
         )
-    
+
+        return plan
+
     def generate_nutrition_plan(
         self,
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
         duration_weeks: int = 4,
-        existing_plan: Optional[NutritionPlanDTO] = None
+        existing_plan: Optional[NutritionPlanDTO] = None,
     ) -> NutritionPlanDTO:
         """
         Generate a personalized nutrition plan.
@@ -404,7 +404,7 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
             for idx, meal in enumerate(plan_data.get("meals", []))
         ]
         
-        return NutritionPlanDTO(
+        plan = NutritionPlanDTO(
             plan_name=plan_data.get("plan_name", "AI Generated Nutrition Plan"),
             description=plan_data.get("description"),
             daily_calories=plan_data.get("daily_calories", 2000),
@@ -413,6 +413,8 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
             daily_fats_g=plan_data.get("daily_fats_g", 65),
             meals=meals
         )
+
+        return plan
     
     def ask_coach(
         self,
