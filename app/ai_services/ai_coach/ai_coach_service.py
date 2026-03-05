@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 from typing import Optional, Dict, Any
 from groq import Groq
 
@@ -24,7 +25,7 @@ class AICoachService:
     # LLM Configuration
     DEFAULT_MODEL = "openai/gpt-oss-120b"
     DEFAULT_TEMPERATURE = 0.0
-    DEFAULT_MAX_TOKENS = 4000
+    DEFAULT_MAX_TOKENS = 8000
     
     def __init__(
         self,
@@ -236,23 +237,39 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
         """
         Parse JSON response from LLM, handling potential formatting issues.
-        
+
         Args:
             response: Raw LLM response
-            
+
         Returns:
             Parsed JSON dictionary
         """
-        # Clean up response - remove markdown code blocks if present
-        cleaned = response.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        
-        return json.loads(cleaned.strip())
+        cleaned = (response or "").strip()
+        # Strip markdown code fences
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+        cleaned = cleaned.strip()
+
+        # Direct parse
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: extract the first {...} block (handles leading/trailing prose
+        # and partially-truncated responses where the outermost object is intact)
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError(
+            f"Could not parse LLM response as JSON "
+            f"(response length: {len(cleaned)} chars). "
+            f"Preview: {cleaned[:300]!r}"
+        )
     
     def generate_workout_plan(
         self,

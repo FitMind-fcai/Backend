@@ -56,10 +56,11 @@ def _parse_args() -> argparse.Namespace:
         description="Evaluate the AI Coach RAG + Prompt Engineering pipeline.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--samples",   type=int,   default=100,                 help="Total test cases")
-    p.add_argument("--plan-type", type=str,   default="both",              help="workout | nutrition | both")
-    p.add_argument("--output",    type=str,   default="eval_results.json", help="JSON output file path")
-    p.add_argument("--delay",     type=float, default=1.5,                 help="Seconds between API calls")
+    p.add_argument("--samples",   type=int,   default=100,   help="Total test cases")
+    p.add_argument("--plan-type", type=str,   default="both", help="workout | nutrition | both")
+    p.add_argument("--output",    type=str,   default="",    help="JSON output path (default: evaluation/results/eval_results.json)")
+    p.add_argument("--report",    type=str,   default="",    help="Markdown report path (default: same dir as --output with .md extension)")
+    p.add_argument("--delay",     type=float, default=1.5,   help="Seconds between API calls")
     return p.parse_args()
 
 
@@ -70,4 +71,5 @@ if __name__ == "__main__":
         plan_type=args.plan_type,
         output_path=args.output,
         delay_seconds=args.delay,
+        report_path=args.report,
     )

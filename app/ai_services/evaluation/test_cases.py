@@ -162,6 +162,15 @@ def make_nutrition_test_cases(
         "Tomatoes",
     ]
 
+    _PREFERENCE_EXCLUSIONS = [
+        ["olive oil", "sugar", "raw onion"],
+        ["coconut oil", "honey", "mushrooms"],
+        ["canola oil", "maple syrup", "cilantro"],
+        ["vegetable oil", "artificial sweetener", "broccoli"],
+        ["heavy cream", "refined sugar", "tofu"],
+        ["lard", "corn syrup", "blue cheese"],
+    ]
+
     for i in range(n):
         if i < allergy_end:
             allergy_val: Optional[str] = _ALLERGY_POOL[i % len(_ALLERGY_POOL)]
@@ -176,21 +185,7 @@ def make_nutrition_test_cases(
         profile = _make_profile(i, overrides)
         profile = profile.model_copy(update={"allergies": allergy_val})
 
-        # Mirror allergy into exclude_ingredients for maximum strictness
-        exclude: List[str] = []
-        if allergy_val:
-            if "Nuts" in allergy_val:
-                exclude.extend(["peanuts", "almonds", "cashews", "walnuts", "peanut butter"])
-            if "Dairy" in allergy_val:
-                exclude.extend(["milk", "cheese", "butter", "cream", "yogurt", "ghee"])
-            if "Gluten" in allergy_val:
-                exclude.extend(["wheat", "bread", "pasta", "flour", "soy sauce"])
-            if "Shellfish" in allergy_val:
-                exclude.extend(["shrimp", "lobster", "crab", "prawns", "seafood stock"])
-            if "Eggs" in allergy_val:
-                exclude.extend(["egg", "eggs", "mayonnaise", "hollandaise"])
-            if "Tomatoes" in allergy_val:
-                exclude.extend(["tomato", "tomatoes", "marinara", "ketchup", "tomato sauce"])
+        exclude: List[str] = list(_PREFERENCE_EXCLUSIONS[i % len(_PREFERENCE_EXCLUSIONS)])
 
         cal_pref = _CALORIE_PREFS[i % len(_CALORIE_PREFS)]
         custom_cal: Optional[int] = (1800 + (i * 50) % 1200) if cal_pref == "Custom" else None
