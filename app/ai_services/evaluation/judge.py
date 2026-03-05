@@ -65,7 +65,11 @@ def _summarize_nutrition(plan: NutritionPlanDTO) -> str:
 # ---------------------------------------------------------------------------
 
 def _call_judge(groq_client, model: str, system: str, prompt: str) -> Dict[str, Any]:
-    """Call the LLM judge and parse the JSON response. Returns {} on failure."""
+    """Call the LLM judge and parse the JSON response.
+
+    Always injects ``_judge_prompt`` and ``_judge_raw_response`` into the
+    returned dict so callers can log / display them for fact-checking.
+    """
     try:
         response = groq_client.chat.completions.create(
             model=model,
@@ -74,14 +78,51 @@ def _call_judge(groq_client, model: str, system: str, prompt: str) -> Dict[str, 
                 {"role": "user",   "content": prompt},
             ],
             temperature=0.0,
-            max_tokens=1500,
+            max_tokens=2000,
         )
-        raw = response.choices[0].message.content.strip()
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw_original = (response.choices[0].message.content or "").strip()
+        raw = re.sub(r"^```(?:json)?\s*", "", raw_original)
         raw = re.sub(r"\s*```$", "", raw)
-        return json.loads(raw)
+        raw = raw.strip()
+
+        if not raw:
+            return {
+                "_judge_error": "Empty response from judge LLM",
+                "_judge_prompt": prompt,
+                "_judge_raw_response": raw_original,
+            }
+
+        # Direct parse
+        try:
+            result = json.loads(raw)
+            result["_judge_prompt"] = prompt
+            result["_judge_raw_response"] = raw_original
+            return result
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: extract the first {...} block from prose-wrapped responses
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            try:
+                result = json.loads(match.group())
+                result["_judge_prompt"] = prompt
+                result["_judge_raw_response"] = raw_original
+                return result
+            except json.JSONDecodeError:
+                pass
+
+        return {
+            "_judge_error": f"Could not parse judge response: {raw[:200]!r}",
+            "_judge_prompt": prompt,
+            "_judge_raw_response": raw_original,
+        }
     except Exception as exc:
-        return {"_judge_error": str(exc)}
+        return {
+            "_judge_error": str(exc),
+            "_judge_prompt": prompt,
+            "_judge_raw_response": "",
+        }
 
 
 # ---------------------------------------------------------------------------

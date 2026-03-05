@@ -1,11 +1,12 @@
 """
 reporting.py — Aggregation and terminal display helpers.
 
-aggregate_reports(reports)          → Dict   (pass rates, avg scores, per-check stats)
-print_section(title)                → None
-print_summary_block(label, agg)     → None
-print_check_table(per_check)        → None
-print_accuracy_banner(combined_agg) → None
+aggregate_reports(reports)                          → Dict
+print_section(title)                                → None
+print_summary_block(label, agg)                     → None
+print_check_table(per_check)                        → None
+print_accuracy_banner(combined_agg)                 → None
+generate_markdown_report(results, output_path)      → None
 """
 from __future__ import annotations
 
@@ -125,3 +126,234 @@ def print_accuracy_banner(agg: Dict[str, Any]) -> None:
     print(f"#  Plans fully passed (≥70%) : {pass_rate:>5.1f}%   ({passed} / {total} plans)  #")
     print(f"#  Total plans evaluated      : {total:<5}                            #")
     print(f"{'#' * _WIDTH}\n")
+
+
+# ---------------------------------------------------------------------------
+# Markdown report
+# ---------------------------------------------------------------------------
+
+def _md_check_table(per_check: Dict[str, Any]) -> str:
+    """Render a per-check stats dict as a markdown table string."""
+    rows = ["| Check | Pass% | Avg Score | N | Status |",
+            "|---|---|---|---|---|"]
+    for name, stats in sorted(per_check.items(), key=lambda x: x[1]["pass_rate_pct"]):
+        pr = stats["pass_rate_pct"]
+        status = "✅ PASS" if pr >= 80 else ("⚠️ WARN" if pr >= 60 else "❌ FAIL")
+        rows.append(
+            f"| {name} | {pr:.1f}% | {stats['avg_score_pct']:.1f}% "
+            f"| {stats['total']} | {status} |"
+        )
+    return "\n".join(rows)
+
+
+def generate_markdown_report(results: Dict[str, Any], output_path: str) -> None:
+    """
+    Write a human-readable Markdown evaluation report to output_path.
+
+    Args:
+        results:     The full results dict returned by run_evaluation().
+        output_path: Absolute path to write the .md file.
+    """
+    meta = results.get("metadata", {})
+    overall = results.get("overall_accuracy", {})
+    workout_agg = (results.get("workout") or {}).get("aggregate") or {}
+    nutrition_agg = (results.get("nutrition") or {}).get("aggregate") or {}
+    errors: List[Dict[str, Any]] = results.get("errors", [])
+
+    score = overall.get("avg_score_pct", 0.0)
+    grade = overall.get("grade", "N/A")
+
+    lines: List[str] = []
+
+    # ── Title ────────────────────────────────────────────────────────────
+    lines += [
+        "# AI Coach — Evaluation Report",
+        "",
+        f"> Generated: {meta.get('timestamp', 'N/A')}  ",
+        f"> Judge method: LLM-as-judge (semantic constraint verification)  ",
+        f"> Pass threshold: {meta.get('pass_threshold_pct', 70.0)}%",
+        "",
+    ]
+
+    # ── Run metadata ─────────────────────────────────────────────────────
+    lines += [
+        "## Run Metadata",
+        "",
+        "| Parameter | Value |",
+        "|---|---|",
+        f"| Samples requested | {meta.get('num_requested', 'N/A')} |",
+        f"| Samples completed | {meta.get('num_completed', 'N/A')} |",
+        f"| Errors | {meta.get('num_errors', 0)} |",
+        f"| Plan type | {meta.get('plan_type', 'N/A')} |",
+        "",
+    ]
+
+    # ── Overall accuracy ─────────────────────────────────────────────────
+    lines += [
+        "## Overall Accuracy",
+        "",
+        f"| Metric | Value |",
+        "|---|---|",
+        f"| **Grade** | **{grade}** |",
+        f"| Average constraint score | {score:.1f}% |",
+        f"| Plans fully passed (≥70%) | {overall.get('pass_rate_pct', 0.0):.1f}% "
+        f"({overall.get('plans_passed', 0)} / {overall.get('total_plans', 0)}) |",
+        "",
+    ]
+
+    # ── Workout results ───────────────────────────────────────────────────
+    if workout_agg:
+        lines += [
+            "## Workout Plans",
+            "",
+            f"- **Samples evaluated:** {workout_agg.get('total', 0)}",
+            f"- **Pass rate:** {workout_agg.get('pass_rate_pct', 0.0):.1f}%  "
+            f"({workout_agg.get('passed', 0)} / {workout_agg.get('total', 0)} passed)",
+            f"- **Average score:** {workout_agg.get('avg_score_pct', 0.0):.1f}%",
+            f"- **Score range:** {workout_agg.get('min_score_pct', 0.0):.1f}% – "
+            f"{workout_agg.get('max_score_pct', 0.0):.1f}%",
+            "",
+            "### Per-Check Breakdown",
+            "",
+            _md_check_table(workout_agg.get("per_check", {})),
+            "",
+        ]
+
+    # ── Nutrition results ─────────────────────────────────────────────────
+    if nutrition_agg:
+        lines += [
+            "## Nutrition Plans",
+            "",
+            f"- **Samples evaluated:** {nutrition_agg.get('total', 0)}",
+            f"- **Pass rate:** {nutrition_agg.get('pass_rate_pct', 0.0):.1f}%  "
+            f"({nutrition_agg.get('passed', 0)} / {nutrition_agg.get('total', 0)} passed)",
+            f"- **Average score:** {nutrition_agg.get('avg_score_pct', 0.0):.1f}%",
+            f"- **Score range:** {nutrition_agg.get('min_score_pct', 0.0):.1f}% – "
+            f"{nutrition_agg.get('max_score_pct', 0.0):.1f}%",
+            "",
+            "### Per-Check Breakdown",
+            "",
+            _md_check_table(nutrition_agg.get("per_check", {})),
+            "",
+        ]
+
+    # ── Weakest checks ────────────────────────────────────────────────────
+    all_check_rates: Dict[str, float] = {}
+    for tag, agg in [("workout", workout_agg), ("nutrition", nutrition_agg)]:
+        for chk_name, stats in (agg.get("per_check") or {}).items():
+            all_check_rates[f"[{tag}] {chk_name}"] = stats["pass_rate_pct"]
+
+    if all_check_rates:
+        lines += ["## Weakest Checks (Bottom 3)", ""]
+        for rank, (name, pr) in enumerate(
+            sorted(all_check_rates.items(), key=lambda x: x[1])[:3], 1
+        ):
+            icon = "❌" if pr < 60 else "⚠️"
+            lines.append(f"{rank}. {icon} **{name}** — {pr:.1f}% pass rate")
+        lines.append("")
+
+    # ── Errors ────────────────────────────────────────────────────────────
+    if errors:
+        lines += [
+            f"## Errors ({len(errors)})",
+            "",
+        ]
+        for err in errors:
+            lines.append(
+                f"- **[{err.get('plan_type', '?')} case {err.get('case_index', '?')}]** "
+                f"`{err.get('error', 'unknown error')}`"
+            )
+        lines.append("")
+
+    # ── Per-plan judge fact-check ─────────────────────────────────────────
+    for section_label, plan_reports in [
+        ("Workout", (results.get("workout") or {}).get("reports") or []),
+        ("Nutrition", (results.get("nutrition") or {}).get("reports") or []),
+    ]:
+        if not plan_reports:
+            continue
+        lines += [f"## {section_label} — Per-Plan Judge Fact-Check", ""]
+        for r in plan_reports:
+            meta = r.get("_meta", {})
+            idx = meta.get("case_index", "?")
+            verdict = "✅ PASS" if r.get("passed") else "❌ FAIL"
+            score = r.get("overall_score_pct", 0.0)
+            summary_parts = []
+            if section_label == "Workout":
+                summary_parts = [
+                    f"goal={meta.get('goal', '?')}",
+                    f"equipment={meta.get('equipment', '?')}",
+                    f"condition={meta.get('medical', '—') or '—'}",
+                    f"injuries={meta.get('injuries', '—') or '—'}",
+                ]
+            else:
+                summary_parts = [
+                    f"goal={meta.get('goal', '?')}",
+                    f"diet={meta.get('dietary', '—') or '—'}",
+                    f"allergy={meta.get('allergies', '—') or '—'}",
+                    f"exclude={meta.get('exclude', '—') or '—'}",
+                ]
+
+            lines += [
+                f"### Case {idx} — {verdict} ({score:.1f}%)",
+                "",
+                "  ".join(f"`{p}`" for p in summary_parts),
+                "",
+            ]
+
+            # Check results table
+            checks = r.get("checks", [])
+            if checks:
+                lines += ["**Check Results:**", ""]
+                lines += ["| Check | Applicable | Result | Score | Violations | Reasoning |",
+                          "|---|---|---|---|---|---|"]
+                for chk in checks:
+                    if not chk.get("applicable"):
+                        continue
+                    chk_icon = "✅" if chk.get("passed") else "❌"
+                    raw_violations = chk.get("violations") or []
+                    violations = "; ".join(
+                        v if isinstance(v, str) else str(v)
+                        for v in raw_violations
+                    ) or "—"
+                    reasoning = (chk.get("reasoning") or "—").replace("\n", " ").replace("|", "\\|")
+                    lines.append(
+                        f"| {chk['name']} | ✓ | {chk_icon} | {chk.get('score', 0)*100:.0f}% "
+                        f"| {violations} | {reasoning} |"
+                    )
+                lines.append("")
+
+            # Judge prompt (collapsible)
+            judge_prompt = r.get("judge_prompt", "")
+            judge_response = r.get("judge_raw_response", "")
+            if judge_prompt:
+                lines += [
+                    "<details>",
+                    "<summary>📋 Judge Prompt (click to expand)</summary>",
+                    "",
+                    "```",
+                    judge_prompt,
+                    "```",
+                    "",
+                    "</details>",
+                    "",
+                ]
+            if judge_response:
+                lines += [
+                    "<details>",
+                    "<summary>🤖 Judge Raw Response (click to expand)</summary>",
+                    "",
+                    "```json",
+                    judge_response,
+                    "```",
+                    "",
+                    "</details>",
+                    "",
+                ]
+            lines.append("---")
+            lines.append("")
+
+    # ── Write file ────────────────────────────────────────────────────────
+    with open(output_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
+

@@ -52,6 +52,8 @@ def evaluate_workout_plan(
 
     # ── LLM judge ─────────────────────────────────────────────────────
     judge = judge_workout_plan(plan, profile, prefs, groq_client, model)
+    judge_prompt = judge.pop("_judge_prompt", "")
+    judge_raw_response = judge.pop("_judge_raw_response", "")
 
     def _add(name: str, applicable: bool, weight: float) -> None:
         chk = judge.get(name, {})
@@ -82,7 +84,7 @@ def evaluate_workout_plan(
     _add("equipment_compliance",     applicable=True,          weight=25)
     _add("goal_alignment",           applicable=True,          weight=15)
 
-    return EvalReport(checks=checks)
+    return EvalReport(checks=checks, judge_prompt=judge_prompt, judge_raw_response=judge_raw_response)
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +141,8 @@ def evaluate_nutrition_plan(
 
     # ── LLM judge ─────────────────────────────────────────────────────
     judge = judge_nutrition_plan(plan, profile, prefs, groq_client, model)
+    judge_prompt = judge.pop("_judge_prompt", "")
+    judge_raw_response = judge.pop("_judge_raw_response", "")
 
     def _add(name: str, applicable: bool, weight: float) -> None:
         chk = judge.get(name, {})
@@ -170,4 +174,4 @@ def evaluate_nutrition_plan(
     _add("exclusion_compliance",         applicable=has_exclusions,  weight=20)
     _add("goal_alignment",               applicable=True,            weight=15)
 
-    return EvalReport(checks=checks)
+    return EvalReport(checks=checks, judge_prompt=judge_prompt, judge_raw_response=judge_raw_response)

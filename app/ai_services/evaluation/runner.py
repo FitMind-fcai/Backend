@@ -22,6 +22,7 @@ from app.ai_services.evaluation.evaluators import (
 )
 from app.ai_services.evaluation.reporting import (
     aggregate_reports,
+    generate_markdown_report,
     print_accuracy_banner,
     print_check_table,
     print_section,
@@ -36,8 +37,9 @@ from app.ai_services.evaluation.test_cases import (
 def run_evaluation(
     num_samples: int = 100,
     plan_type: str = "both",
-    output_path: str = "eval_results.json",
+    output_path: str = "",
     delay_seconds: float = 1.5,
+    report_path: str = "",
 ) -> Dict[str, Any]:
     """
     Run the full evaluation pipeline.
@@ -45,8 +47,11 @@ def run_evaluation(
     Args:
         num_samples:    Total number of test cases.
         plan_type:      "workout", "nutrition", or "both".
-        output_path:    File path for the JSON results (relative to project root).
+        output_path:    File path for the JSON results. Defaults to
+                        app/ai_services/evaluation/results/eval_results.json.
         delay_seconds:  Sleep between API calls to avoid rate limiting.
+        report_path:    File path for the Markdown report. Defaults to same
+                        directory as output_path with a .md extension.
 
     Returns:
         Full results dict (also written to output_path).
@@ -200,13 +205,22 @@ def run_evaluation(
     print_accuracy_banner(overall_agg)
 
     # ── Save to JSON ──────────────────────────────────────────────────────
+    # evaluation/results/ lives next to this file (runner.py)
+    _eval_dir = os.path.dirname(os.path.abspath(__file__))
+    _results_dir = os.path.join(_eval_dir, "results")
+    os.makedirs(_results_dir, exist_ok=True)
+
     project_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     )
-    abs_output = (
-        os.path.join(project_root, output_path)
-        if not os.path.isabs(output_path) else output_path
-    )
+
+    if output_path:
+        abs_output = (
+            os.path.join(project_root, output_path)
+            if not os.path.isabs(output_path) else output_path
+        )
+    else:
+        abs_output = os.path.join(_results_dir, "eval_results.json")
 
     overall_score = overall_agg.get("avg_score_pct", 0.0)
     grade = (
@@ -241,7 +255,18 @@ def run_evaluation(
 
     with open(abs_output, "w", encoding="utf-8") as fh:
         json.dump(results, fh, indent=2, ensure_ascii=False)
-
     print(f"  💾 Full results saved → {abs_output}")
+
+    # ── Markdown report ───────────────────────────────────────────────────
+    if report_path:
+        md_output = (
+            os.path.join(project_root, report_path)
+            if not os.path.isabs(report_path) else report_path
+        )
+    else:
+        md_output = os.path.splitext(abs_output)[0] + ".md"
+    generate_markdown_report(results, md_output)
+    print(f"  📄 Markdown report saved → {md_output}")
+
     print_section("Done")
     return results

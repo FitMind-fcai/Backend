@@ -26,6 +26,8 @@ class CheckResult:
 class EvalReport:
     """Full evaluation report for one generated plan."""
     checks: List[CheckResult] = field(default_factory=list)
+    judge_prompt: str = ""
+    judge_raw_response: str = ""
 
     @property
     def applicable_checks(self) -> List[CheckResult]:
@@ -46,7 +48,7 @@ class EvalReport:
 
     @property
     def passed(self) -> bool:
-        return self.overall_score >= 70.0
+        return self.overall_score >= 70.0 # threshold for passing
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -64,4 +66,6 @@ class EvalReport:
                 }
                 for c in self.checks
             ],
+            "judge_prompt": self.judge_prompt,
+            "judge_raw_response": self.judge_raw_response,
         }
