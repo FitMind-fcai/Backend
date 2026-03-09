@@ -69,7 +69,7 @@ def run_evaluation(
 
     # ── Init service ──────────────────────────────────────────────────────
     print("\n  Initialising AI Coach Service …", end=" ", flush=True)
-    service = AICoachService()
+    service = AICoachService(model="llama-3.3-70b-versatile")
     groq_client = service.client
     model = service.model
     print("ready ✓")
