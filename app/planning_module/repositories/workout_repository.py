@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import date
@@ -46,8 +46,8 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
         return (
             self.db.query(WorkoutPlan)
             .options(
-                joinedload(WorkoutPlan.workout_days)
-                .joinedload(WorkoutDay.exercises)
+                selectinload(WorkoutPlan.workout_days)
+                .selectinload(WorkoutDay.exercises)
                 .joinedload(WorkoutDayExercise.central_exercise)
             )
             .filter(WorkoutPlan.id == plan_id)
@@ -97,7 +97,7 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
         return (
             self.db.query(WorkoutDay)
             .options(
-                joinedload(WorkoutDay.exercises)
+                selectinload(WorkoutDay.exercises)
                 .joinedload(WorkoutDayExercise.central_exercise)
             )
             .filter(WorkoutDay.id == day_id)

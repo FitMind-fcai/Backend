@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import date
@@ -44,8 +44,8 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
         return (
             self.db.query(NutritionPlan)
             .options(
-                joinedload(NutritionPlan.days)
-                .joinedload(NutritionPlanDay.meals)
+                selectinload(NutritionPlan.days)
+                .selectinload(NutritionPlanDay.meals)
                 .joinedload(NutritionPlanMeal.central_meal)
             )
             .filter(NutritionPlan.id == plan_id)
