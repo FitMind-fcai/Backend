@@ -26,6 +26,7 @@ from app.planning_module.schemas.plan import (
     WorkoutDayCreate,
     ExerciseCreate,
     NutritionPlanCreate,
+    NutritionPlanDayCreate,
     MealCreate
 )
 
@@ -170,36 +171,37 @@ def nutrition_plan_dto_to_create(
 ) -> NutritionPlanCreate:
     """
     Convert NutritionPlanDTO from AI Coach to NutritionPlanCreate schema for DB.
-    
-    Args:
-        dto: NutritionPlanDTO from AI Coach
-        duration_weeks: Plan duration in weeks
-        
-    Returns:
-        NutritionPlanCreate schema ready for DB insertion
     """
     start_date = date.today()
     end_date = start_date + timedelta(weeks=duration_weeks)
-    
-    meals = [
-        MealCreate(
-            meal_type=meal.meal_type,
-            meal_name=meal.meal_name,
-            calories=meal.calories,
-            protein_g=meal.protein_g,
-            carbs_g=meal.carbs_g,
-            fats_g=meal.fats_g,
-            ingredients=meal.ingredients,
-            instructions=meal.instructions,
-            prep_time_minutes=meal.prep_time_minutes,
-            cook_time_minutes=meal.cook_time_minutes,
-            servings=meal.servings,
-            image_url=meal.image_url,
-            order_index=meal.order_index
+
+    days = [
+        NutritionPlanDayCreate(
+            day_number=day_dto.day_number,
+            day_name=day_dto.day_name,
+            notes=day_dto.notes,
+            meals=[
+                MealCreate(
+                    meal_type=meal.meal_type,
+                    meal_name=meal.meal_name,
+                    calories=meal.calories,
+                    protein_g=meal.protein_g,
+                    carbs_g=meal.carbs_g,
+                    fats_g=meal.fats_g,
+                    ingredients=meal.ingredients,
+                    instructions=meal.instructions,
+                    prep_time_minutes=meal.prep_time_minutes,
+                    cook_time_minutes=meal.cook_time_minutes,
+                    servings=meal.servings,
+                    image_url=meal.image_url,
+                    order_index=meal.order_index
+                )
+                for meal in day_dto.meals
+            ]
         )
-        for meal in dto.meals
+        for day_dto in dto.days
     ]
-    
+
     return NutritionPlanCreate(
         plan_name=dto.plan_name,
         description=dto.description,
@@ -209,7 +211,7 @@ def nutrition_plan_dto_to_create(
         daily_protein_g=dto.daily_protein_g,
         daily_carbs_g=dto.daily_carbs_g,
         daily_fats_g=dto.daily_fats_g,
-        meals=meals
+        days=days
     )
 
 
@@ -221,34 +223,28 @@ def workout_plan_model_to_dto(plan) -> WorkoutPlanDTO:
     """
     Convert WorkoutPlan DB model to WorkoutPlanDTO for AI Coach.
     Used for passing existing plans to regeneration logic.
-    
-    Args:
-        plan: WorkoutPlan SQLAlchemy model with loaded relationships
-        
-    Returns:
-        WorkoutPlanDTO for AI Coach consumption
     """
     from app.ai_services.ai_coach.dtos import WorkoutDayDTO, ExerciseDTO
-    
+
     workout_days = []
     for day in plan.workout_days:
         exercises = [
             ExerciseDTO(
-                exercise_name=ex.exercise_name,
-                exercise_type=ex.exercise_type,
-                sets=ex.sets,
-                reps=ex.reps,
-                weight_kg=ex.weight_kg,
-                duration_seconds=ex.duration_seconds,
-                rest_seconds=ex.rest_seconds,
-                instructions=ex.instructions,
-                video_url=ex.video_url,
-                image_url=ex.image_url,
-                order_index=ex.order_index
+                exercise_name=wde.central_exercise.name,
+                exercise_type=wde.central_exercise.exercise_type,
+                sets=wde.sets,
+                reps=wde.reps,
+                weight_kg=wde.weight_kg,
+                duration_seconds=wde.duration_seconds,
+                rest_seconds=wde.rest_seconds,
+                instructions=wde.central_exercise.instructions,
+                video_url=wde.central_exercise.video_url,
+                image_url=wde.central_exercise.image_url,
+                order_index=wde.order_index
             )
-            for ex in day.exercises
+            for wde in day.exercises
         ]
-        
+
         workout_days.append(WorkoutDayDTO(
             day_name=day.day_name,
             day_number=day.day_number,
@@ -257,7 +253,7 @@ def workout_plan_model_to_dto(plan) -> WorkoutPlanDTO:
             notes=day.notes,
             exercises=exercises
         ))
-    
+
     return WorkoutPlanDTO(
         plan_name=plan.plan_name,
         description=plan.description,
@@ -272,34 +268,36 @@ def nutrition_plan_model_to_dto(plan) -> NutritionPlanDTO:
     """
     Convert NutritionPlan DB model to NutritionPlanDTO for AI Coach.
     Used for passing existing plans to regeneration logic.
-    
-    Args:
-        plan: NutritionPlan SQLAlchemy model with loaded relationships
-        
-    Returns:
-        NutritionPlanDTO for AI Coach consumption
     """
-    from app.ai_services.ai_coach.dtos import MealDTO
-    
-    meals = [
-        MealDTO(
-            meal_type=meal.meal_type,
-            meal_name=meal.meal_name,
-            calories=meal.calories,
-            protein_g=meal.protein_g,
-            carbs_g=meal.carbs_g,
-            fats_g=meal.fats_g,
-            ingredients=meal.ingredients,
-            instructions=meal.instructions,
-            prep_time_minutes=meal.prep_time_minutes,
-            cook_time_minutes=meal.cook_time_minutes,
-            servings=meal.servings,
-            image_url=meal.image_url,
-            order_index=meal.order_index
+    from app.ai_services.ai_coach.dtos import NutritionDayDTO, MealDTO
+
+    days = [
+        NutritionDayDTO(
+            day_name=day.day_name,
+            day_number=day.day_number,
+            notes=day.notes,
+            meals=[
+                MealDTO(
+                    meal_type=npm.meal_type,
+                    meal_name=npm.central_meal.meal_name,
+                    calories=int(npm.central_meal.calories_per_serving * npm.servings),
+                    protein_g=npm.central_meal.protein_g * npm.servings,
+                    carbs_g=npm.central_meal.carbs_g * npm.servings,
+                    fats_g=npm.central_meal.fats_g * npm.servings,
+                    ingredients=npm.central_meal.ingredients,
+                    instructions=npm.central_meal.instructions,
+                    prep_time_minutes=npm.central_meal.prep_time_minutes,
+                    cook_time_minutes=npm.central_meal.cook_time_minutes,
+                    servings=npm.servings,
+                    image_url=npm.central_meal.image_url,
+                    order_index=npm.order_index
+                )
+                for npm in day.meals
+            ]
         )
-        for meal in plan.meals
+        for day in plan.days
     ]
-    
+
     return NutritionPlanDTO(
         plan_name=plan.plan_name,
         description=plan.description,
@@ -307,5 +305,5 @@ def nutrition_plan_model_to_dto(plan) -> NutritionPlanDTO:
         daily_protein_g=plan.daily_protein_g,
         daily_carbs_g=plan.daily_carbs_g,
         daily_fats_g=plan.daily_fats_g,
-        meals=meals
+        days=days
     )

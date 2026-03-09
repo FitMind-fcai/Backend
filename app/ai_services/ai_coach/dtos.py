@@ -162,6 +162,14 @@ class MealDTO(BaseModel):
     order_index: int = 0
 
 
+class NutritionDayDTO(BaseModel):
+    """DTO for a single nutrition day (Mon-Sun)."""
+    day_name: str
+    day_number: int
+    notes: Optional[str] = None
+    meals: List[MealDTO] = []
+
+
 class NutritionPlanDTO(BaseModel):
     """DTO for generated nutrition plan."""
     plan_name: str
@@ -170,12 +178,16 @@ class NutritionPlanDTO(BaseModel):
     daily_protein_g: float
     daily_carbs_g: float
     daily_fats_g: float
-    meals: List[MealDTO] = []
+    days: List[NutritionDayDTO] = []
 
     def to_context_string(self) -> str:
         """Convert nutrition plan to context string for LLM prompt."""
-        meals_info = "\n".join(
-            [f"- {meal.meal_type}: {meal.meal_name} ({meal.calories} kcal)" for meal in self.meals]
+        days_info = "\n".join(
+            [
+                f"- {day.day_name} (Day {day.day_number}): "
+                + ", ".join(f"{m.meal_type}: {m.meal_name} ({m.calories} kcal)" for m in day.meals)
+                for day in self.days
+            ]
         )
         return f"""NUTRITION PLAN:
         - Plan Name: {self.plan_name}
@@ -184,7 +196,7 @@ class NutritionPlanDTO(BaseModel):
         - Daily Protein: {self.daily_protein_g} g
         - Daily Carbs: {self.daily_carbs_g} g
         - Daily Fats: {self.daily_fats_g} g
-        {meals_info}
+        {days_info}
 
         """
 

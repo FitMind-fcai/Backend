@@ -59,11 +59,56 @@ class NutritionPlanGenerationRequest(BaseModel):
 
 
 # ========================================
+# CENTRAL CATALOG SCHEMAS
+# ========================================
+
+class CentralExerciseResponse(BaseModel):
+    """Schema for central exercise catalog entry"""
+    id: int
+    name: str
+    exercise_type: str
+    primary_muscle_group: str
+    secondary_muscles: Optional[str] = None
+    equipment_required: str
+    difficulty_level: str
+    location: str
+    instructions: Optional[str] = None
+    video_url: Optional[str] = None
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CentralMealResponse(BaseModel):
+    """Schema for central meal catalog entry"""
+    id: int
+    meal_name: str
+    meal_type_suitability: Optional[list] = []
+    calories_per_serving: int
+    protein_g: float
+    carbs_g: float
+    fats_g: float
+    fiber_g: Optional[float] = None
+    serving_size: Optional[str] = None
+    ingredients: Optional[str] = None
+    instructions: Optional[str] = None
+    prep_time_minutes: Optional[int] = None
+    cook_time_minutes: Optional[int] = None
+    cuisine_type: Optional[str] = None
+    dietary_tags: Optional[list] = []
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ========================================
 # EXERCISE SCHEMAS
 # ========================================
 
-class ExerciseBase(BaseModel):
-    """Base exercise schema"""
+class ExerciseCreate(BaseModel):
+    """Internal schema for AI-generated exercise data before catalog lookup"""
     exercise_name: str = Field(..., min_length=1, max_length=255)
     exercise_type: Optional[str] = Field(None, max_length=50)
     sets: Optional[int] = Field(None, ge=1, le=20)
@@ -77,15 +122,18 @@ class ExerciseBase(BaseModel):
     order_index: int = Field(default=0, ge=0)
 
 
-class ExerciseCreate(ExerciseBase):
-    """Schema for creating an exercise"""
-    pass
-
-
-class ExerciseResponse(ExerciseBase):
-    """Schema for exercise response"""
+class WorkoutDayExerciseResponse(BaseModel):
+    """Schema for a workout day exercise slot (junction + embedded catalog entry)"""
     id: int
     workout_day_id: int
+    order_index: int
+    sets: Optional[int] = None
+    reps: Optional[int] = None
+    weight_kg: Optional[float] = None
+    duration_seconds: Optional[int] = None
+    rest_seconds: Optional[int] = None
+    notes: Optional[str] = None
+    central_exercise: CentralExerciseResponse
 
     class Config:
         from_attributes = True
@@ -113,7 +161,7 @@ class WorkoutDayResponse(WorkoutDayBase):
     """Schema for workout day response"""
     id: int
     workout_plan_id: int
-    exercises: List[ExerciseResponse] = []
+    exercises: List[WorkoutDayExerciseResponse] = []
 
     class Config:
         from_attributes = True
@@ -173,8 +221,8 @@ class WorkoutPlanSummary(BaseModel):
 # MEAL SCHEMAS
 # ========================================
 
-class MealBase(BaseModel):
-    """Base meal schema"""
+class MealCreate(BaseModel):
+    """Internal schema for AI-generated meal data before catalog lookup"""
     meal_type: str = Field(..., max_length=50)
     meal_name: str = Field(..., min_length=1, max_length=255)
     calories: float = Field(..., ge=0)
@@ -190,15 +238,40 @@ class MealBase(BaseModel):
     order_index: int = Field(default=0, ge=0)
 
 
-class MealCreate(MealBase):
-    """Schema for creating a meal"""
-    pass
+class NutritionPlanMealResponse(BaseModel):
+    """Schema for a nutrition plan meal slot (junction + embedded catalog entry)"""
+    id: int
+    nutrition_plan_day_id: int
+    meal_type: str
+    servings: float
+    order_index: int
+    notes: Optional[str] = None
+    central_meal: CentralMealResponse
+
+    class Config:
+        from_attributes = True
 
 
-class MealResponse(MealBase):
-    """Schema for meal response"""
+# ========================================
+# NUTRITION DAY SCHEMAS
+# ========================================
+
+class NutritionPlanDayCreate(BaseModel):
+    """Schema for creating a nutrition plan day"""
+    day_number: int = Field(..., ge=1, le=7)
+    day_name: str = Field(..., min_length=1, max_length=50)
+    notes: Optional[str] = None
+    meals: List[MealCreate] = []
+
+
+class NutritionPlanDayResponse(BaseModel):
+    """Schema for nutrition plan day response"""
     id: int
     nutrition_plan_id: int
+    day_number: int
+    day_name: str
+    notes: Optional[str] = None
+    meals: List[NutritionPlanMealResponse] = []
 
     class Config:
         from_attributes = True
@@ -222,7 +295,7 @@ class NutritionPlanBase(BaseModel):
 
 class NutritionPlanCreate(NutritionPlanBase):
     """Schema for creating a nutrition plan"""
-    meals: List[MealCreate] = []
+    days: List[NutritionPlanDayCreate] = []
 
 
 class NutritionPlanResponse(NutritionPlanBase):
@@ -233,7 +306,7 @@ class NutritionPlanResponse(NutritionPlanBase):
     generated_from_preferences: Optional[dict] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    meals: List[MealResponse] = []
+    days: List[NutritionPlanDayResponse] = []
 
     class Config:
         from_attributes = True

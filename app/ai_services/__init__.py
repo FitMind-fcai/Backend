@@ -21,7 +21,8 @@ from app.ai_services.ai_coach import (
     GeneratedPlansDTO,
     WorkoutDayDTO,
     ExerciseDTO,
-    MealDTO
+    MealDTO,
+    NutritionDayDTO
 )
 
 # Meal Scanner - Food Image Analysis
@@ -64,6 +65,7 @@ __all__ = [
     "WorkoutDayDTO",
     "ExerciseDTO",
     "MealDTO",
+    "NutritionDayDTO",
     # Meal Scanner
     "MealScannerService",
     "get_meal_scanner_service",
