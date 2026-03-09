@@ -1,0 +1,23 @@
+{
+  "name": "FitMind Local",
+  "variables": [
+    {
+      "name": "base_url",
+      "value": "http://localhost:8000",
+      "enabled": true,
+      "description": "Base URL of the FitMind backend server"
+    },
+    {
+      "name": "token",
+      "value": "",
+      "enabled": true,
+      "description": "JWT access token — obtained from POST /v1/auth/login. Set this after logging in."
+    },
+    {
+      "name": "email",
+      "value": "ahmadri2468@gmail.com",
+      "enabled": true,
+      "description": "User email address used across auth and password reset endpoints"
+    }
+  ]
+}
