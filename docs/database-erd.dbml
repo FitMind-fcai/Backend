@@ -85,36 +85,40 @@ Table central_exercises {
 }
 
 // ========================================
-// CATALOG MODULE - CENTRAL MEAL LIBRARY
+// CATALOG MODULE - CENTRAL FOOD LIBRARY
 // ========================================
 
-Table central_meals {
+Table central_foods {
   id integer [pk, increment]
-  meal_name varchar(255) [not null, note: 'Meal or food item name']
-  meal_type_suitability json [not null, note: 'Array of suitable meal types: [Breakfast, Lunch, Dinner, Snack]']
-  calories_per_serving integer [not null, note: 'Calories per serving']
-  protein_g float [not null, note: 'Protein per serving in grams']
-  carbs_g float [not null, note: 'Carbohydrates per serving in grams']
-  fats_g float [not null, note: 'Fats per serving in grams']
-  fiber_g float [note: 'Fiber per serving in grams']
-  serving_size varchar(100) [note: 'Serving size description (e.g., 100g, 1 cup)']
-  ingredients text [note: 'List of ingredients with quantities']
-  instructions text [note: 'Cooking or preparation instructions']
-  prep_time_minutes integer [note: 'Preparation time in minutes']
-  cook_time_minutes integer [note: 'Cooking time in minutes']
-  cuisine_type varchar(100) [note: 'Mediterranean, Asian, Arabic, American, etc.']
-  dietary_tags json [note: 'Array: [Vegan, Vegetarian, Gluten-Free, Dairy-Free, High-Protein, Low-Carb, etc.]']
-  image_url varchar(500) [note: 'Meal image URL']
-  is_active boolean [not null, default: true, note: 'Whether this meal is available in the catalog']
+  food_name varchar(255) [not null, note: 'Food item name from USDA or manual entry']
+  food_category varchar(100) [note: 'USDA category (e.g. Poultry Products, Vegetables and Vegetable Products)']
+
+  // Macros per 100g — multiply by (serving_size_g / 100) to get per-serving values
+  calories_per_100g float [not null, note: 'Calories per 100g']
+  protein_per_100g float [not null, note: 'Protein per 100g in grams']
+  carbs_per_100g float [not null, note: 'Carbohydrates per 100g in grams']
+  fats_per_100g float [not null, note: 'Fats per 100g in grams']
+  fiber_per_100g float [note: 'Fiber per 100g in grams']
+
+  // Serving info
+  serving_size_g float [note: 'Gram weight of one standard serving']
+  serving_description varchar(100) [note: "Standard serving label e.g. '1 cup (152g)', '1 medium apple'"]
+
+  // Metadata
+  dietary_tags json [note: 'Array: [vegan, vegetarian, gluten-free, high-protein, etc.]']
+  usda_fdc_id integer [note: 'USDA FoodData Central FDC ID — null for manual entries']
+  source varchar(50) [not null, default: 'USDA', note: 'Data source: USDA or Manual']
+  is_active boolean [not null, default: true, note: 'Whether this food is searchable']
   created_at timestamp [not null, default: `now()`]
   
   Indexes {
-    cuisine_type [name: 'idx_central_meals_cuisine']
-    (calories_per_serving, protein_g) [name: 'idx_central_meals_macros']
-    is_active [name: 'idx_central_meals_active']
+    food_name [name: 'idx_central_foods_name']
+    food_category [name: 'idx_central_foods_category']
+    usda_fdc_id [name: 'idx_central_foods_fdc_id']
+    is_active [name: 'idx_central_foods_active']
   }
   
-  Note: 'Central meal catalog — admin-populated, shared across all users, used by plans, scanner, and manual logs'
+  Note: 'Central food catalog — 340 USDA Foundation Foods + manual entries. Used for food logging search (MyFitnessPal-style) and AI context during plan generation.'
 }
 
 // ========================================
@@ -228,19 +232,30 @@ Table nutrition_plan_days {
 Table nutrition_plan_meals {
   id integer [pk, increment]
   nutrition_plan_day_id integer [not null, ref: > nutrition_plan_days.id, note: 'Parent nutrition day']
-  central_meal_id integer [not null, ref: > central_meals.id, note: 'Meal from central catalog']
-  meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack — placement in this day']
-  servings float [not null, default: 1, note: 'Number of servings for this plan slot']
+
+  // AI-generated meal — fully self-contained, no FK to food catalog
+  meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack']
+  meal_name varchar(255) [not null, note: 'AI-generated meal name']
+  calories integer [not null, note: 'Total calories for this meal']
+  protein_g float [not null, note: 'Protein in grams']
+  carbs_g float [not null, note: 'Carbohydrates in grams']
+  fats_g float [not null, note: 'Fats in grams']
+  fiber_g float [note: 'Fiber in grams']
+  ingredients text [note: 'Ingredients list']
+  instructions text [note: 'Preparation instructions']
+  prep_time_minutes integer [note: 'Preparation time in minutes']
+  cook_time_minutes integer [note: 'Cooking time in minutes']
+
+  servings float [not null, default: 1, note: 'Number of servings']
   order_index integer [not null, default: 0, note: 'Meal order within the day']
   notes text [note: 'AI-generated personalization notes for this meal slot']
 
   Indexes {
     nutrition_plan_day_id [name: 'idx_npm_day_id']
-    central_meal_id [name: 'idx_npm_meal_id']
     (nutrition_plan_day_id, meal_type) [name: 'idx_npm_day_type']
   }
 
-  Note: 'Junction: links a nutrition day to meals from the central catalog with user-specific servings'
+  Note: 'AI-generated meals within a nutrition plan day — fully self-contained (no FK to food catalog). AI uses central_foods as context but stores final meals inline.'
 }
 
 // ========================================
@@ -272,7 +287,7 @@ Table workout_logs {
 Table meal_logs {
   id integer [pk, increment]
   user_id integer [not null, ref: > users.id, note: 'User logging their meal']
-  central_meal_id integer [ref: > central_meals.id, note: 'Meal from central catalog if matched; null for free-text entries']
+  central_food_id integer [ref: > central_foods.id, note: 'Food from central catalog if matched; null for free-text entries']
   log_date date [not null, note: 'Date of meal']
   meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack']
   meal_name varchar(255) [not null, note: 'Display name — from catalog or user-entered']
@@ -289,10 +304,10 @@ Table meal_logs {
     user_id [name: 'idx_meal_logs_user_id']
     (user_id, log_date) [name: 'idx_meal_logs_user_date']
     (user_id, log_date, meal_type) [name: 'idx_meal_logs_user_date_type']
-    central_meal_id [name: 'idx_meal_logs_central_meal_id']
+    central_food_id [name: 'idx_meal_logs_central_food_id']
   }
   
-  Note: 'User meal logging — central_meal_id is set when scanner/search matches a catalog entry; null for free-text'
+  Note: 'User meal logging — central_food_id is set when scanner/search matches a catalog entry; null for free-text'
 }
 
 Table weight_logs {
@@ -463,9 +478,9 @@ TableGroup profile_health {
 
 TableGroup catalog {
   central_exercises
-  central_meals
+  central_foods
   
-  Note: "Central shared catalog — admin-populated, referenced by plans, logs, and meal scanner"
+  Note: "Central shared catalog — USDA food data + exercise library, used for logging and AI context"
 }
 
 TableGroup workout_planning {
@@ -478,9 +493,10 @@ TableGroup workout_planning {
 
 TableGroup nutrition_planning {
   nutrition_plans
+  nutrition_plan_days
   nutrition_plan_meals
   
-  Note: "AI-generated nutrition planning — references central meal catalog"
+  Note: "AI-generated nutrition planning — meals stored inline, central_foods used as AI context"
 }
 
 TableGroup progress_tracking {

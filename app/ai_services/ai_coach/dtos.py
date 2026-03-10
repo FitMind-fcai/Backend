@@ -153,12 +153,12 @@ class MealDTO(BaseModel):
     protein_g: float
     carbs_g: float
     fats_g: float
+    fiber_g: Optional[float] = None
     ingredients: Optional[str] = None
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = None
     cook_time_minutes: Optional[int] = None
     servings: int = 1
-    image_url: Optional[str] = None
     order_index: int = 0
 
 

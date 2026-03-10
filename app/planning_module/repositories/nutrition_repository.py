@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import date
@@ -40,13 +40,12 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
         )
 
     def get_with_full_details(self, plan_id: int) -> Optional[NutritionPlan]:
-        """Eagerly load plan -> days -> meal slots -> central meal"""
+        """Eagerly load plan -> days -> meal slots"""
         return (
             self.db.query(NutritionPlan)
             .options(
                 selectinload(NutritionPlan.days)
                 .selectinload(NutritionPlanDay.meals)
-                .joinedload(NutritionPlanMeal.central_meal)
             )
             .filter(NutritionPlan.id == plan_id)
             .first()
@@ -105,7 +104,6 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
     def get_meals_by_day_id(self, day_id: int) -> List[NutritionPlanMeal]:
         return (
             self.db.query(NutritionPlanMeal)
-            .options(joinedload(NutritionPlanMeal.central_meal))
             .filter(NutritionPlanMeal.nutrition_plan_day_id == day_id)
             .order_by(NutritionPlanMeal.order_index)
             .all()
@@ -114,7 +112,6 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
     def get_meals_by_type(self, day_id: int, meal_type: str) -> List[NutritionPlanMeal]:
         return (
             self.db.query(NutritionPlanMeal)
-            .options(joinedload(NutritionPlanMeal.central_meal))
             .filter(
                 NutritionPlanMeal.nutrition_plan_day_id == day_id,
                 NutritionPlanMeal.meal_type == meal_type
@@ -126,14 +123,8 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
     def get_meal_by_id(self, meal_id: int) -> Optional[NutritionPlanMeal]:
         return self.db.query(NutritionPlanMeal).filter(NutritionPlanMeal.id == meal_id).first()
 
-    def create_meal_slot(
-        self, day_id: int, central_meal_id: int, slot_data: dict
-    ) -> NutritionPlanMeal:
-        slot = NutritionPlanMeal(
-            nutrition_plan_day_id=day_id,
-            central_meal_id=central_meal_id,
-            **slot_data
-        )
+    def create_meal_slot(self, day_id: int, slot_data: dict) -> NutritionPlanMeal:
+        slot = NutritionPlanMeal(nutrition_plan_day_id=day_id, **slot_data)
         self.db.add(slot)
         self.db.commit()
         self.db.refresh(slot)

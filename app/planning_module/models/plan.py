@@ -40,31 +40,31 @@ class CentralExercise(Base):
     exercises = relationship("WorkoutDayExercise", back_populates="central_exercise")
 
 
-class CentralMeal(Base):
-    """Central meal catalog — admin-populated, shared across all users"""
-    __tablename__ = "central_meals"
+class CentralFood(Base):
+    """Central food catalog — USDA Foundation Foods + manual entries, shared across all modules"""
+    __tablename__ = "central_foods"
 
     id = Column(Integer, primary_key=True, index=True)
-    meal_name = Column(String(255), nullable=False, index=True)
-    meal_type_suitability = Column(JSON, nullable=False, default=list)
-    calories_per_serving = Column(Integer, nullable=False)
-    protein_g = Column(Float, nullable=False)
-    carbs_g = Column(Float, nullable=False)
-    fats_g = Column(Float, nullable=False)
-    fiber_g = Column(Float, nullable=True)
-    serving_size = Column(String(100), nullable=True)
-    ingredients = Column(Text, nullable=True)
-    instructions = Column(Text, nullable=True)
-    prep_time_minutes = Column(Integer, nullable=True)
-    cook_time_minutes = Column(Integer, nullable=True)
-    cuisine_type = Column(String(100), nullable=True, index=True)
+    food_name = Column(String(255), nullable=False, index=True)
+    food_category = Column(String(100), nullable=True, index=True)
+
+    # Macros per 100g (USDA standard) — multiply by (serving_size_g / 100) for per-serving values
+    calories_per_100g = Column(Float, nullable=False)
+    protein_per_100g = Column(Float, nullable=False)
+    carbs_per_100g = Column(Float, nullable=False)
+    fats_per_100g = Column(Float, nullable=False)
+    fiber_per_100g = Column(Float, nullable=True)
+
+    # Serving info
+    serving_size_g = Column(Float, nullable=True, comment="Gram weight of one standard serving")
+    serving_description = Column(String(100), nullable=True, comment="e.g. '1 cup', '1 medium apple'")
+
+    # Metadata
     dietary_tags = Column(JSON, nullable=True, default=list)
-    image_url = Column(String(500), nullable=True)
+    usda_fdc_id = Column(Integer, nullable=True, index=True)
+    source = Column(String(50), nullable=False, default="USDA")
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
-    meals = relationship("NutritionPlanMeal", back_populates="central_meal")
 
 
 # ========================================
@@ -182,18 +182,32 @@ class NutritionPlanDay(Base):
 
 
 class NutritionPlanMeal(Base):
-    """Junction: links a nutrition day to a central meal + plan-specific parameters"""
+    """AI-generated meal within a nutrition plan day — fully self-contained, no FK to food catalog"""
     __tablename__ = "nutrition_plan_meals"
 
     id = Column(Integer, primary_key=True, index=True)
     nutrition_plan_day_id = Column(Integer, ForeignKey("nutrition_plan_days.id"), nullable=False, index=True)
-    central_meal_id = Column(Integer, ForeignKey("central_meals.id"), nullable=False, index=True)
 
+    # Meal classification
     meal_type = Column(String(50), nullable=False)
+    meal_name = Column(String(255), nullable=False)
+
+    # Macros (AI-calculated)
+    calories = Column(Integer, nullable=False)
+    protein_g = Column(Float, nullable=False)
+    carbs_g = Column(Float, nullable=False)
+    fats_g = Column(Float, nullable=False)
+    fiber_g = Column(Float, nullable=True)
+
+    # Meal details
+    ingredients = Column(Text, nullable=True)
+    instructions = Column(Text, nullable=True)
+    prep_time_minutes = Column(Integer, nullable=True)
+    cook_time_minutes = Column(Integer, nullable=True)
+
     servings = Column(Float, nullable=False, default=1.0)
     order_index = Column(Integer, nullable=False, default=0)
     notes = Column(Text, nullable=True)
 
     # Relationships
     nutrition_plan_day = relationship("NutritionPlanDay", back_populates="meals")
-    central_meal = relationship("CentralMeal", back_populates="meals")

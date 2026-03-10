@@ -9,7 +9,6 @@ from app.planning_module.services.nutrition_plan_service import NutritionPlanSer
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
 from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
-from app.shared.repositories.central_meal_repository import CentralMealRepository
 from app.planning_module.schemas.plan import (
     WorkoutPlanResponse,
     NutritionPlanResponse,
@@ -41,7 +40,6 @@ class PlanGenerationService:
         self.workout_repo = WorkoutPlanRepository(db)
         self.central_exercise_repo = CentralExerciseRepository(db)
         self.nutrition_repo = NutritionPlanRepository(db)
-        self.central_meal_repo = CentralMealRepository(db)
     
     def generate_workout_plan(
         self,
@@ -367,29 +365,23 @@ class PlanGenerationService:
             nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
 
             for meal_create in day_create.meals:
-                catalog_data = {
+                slot_data = {
+                    "meal_type": meal_create.meal_type,
                     "meal_name": meal_create.meal_name,
-                    "meal_type_suitability": [meal_create.meal_type],
-                    "calories_per_serving": int(meal_create.calories),
+                    "calories": int(meal_create.calories),
                     "protein_g": meal_create.protein_g,
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
+                    "fiber_g": meal_create.fiber_g,
                     "ingredients": meal_create.ingredients,
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,
-                    "image_url": meal_create.image_url,
-                    "is_active": True
-                }
-                central_meal = self.central_meal_repo.find_or_create(catalog_data)
-                slot_data = {
-                    "meal_type": meal_create.meal_type,
                     "servings": float(meal_create.servings) if meal_create.servings else 1.0,
                     "order_index": meal_create.order_index
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,
-                    central_meal_id=central_meal.id,
                     slot_data=slot_data
                 )
 
@@ -503,29 +495,23 @@ class PlanGenerationService:
             nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
 
             for meal_create in day_create.meals:
-                catalog_data = {
+                slot_data = {
+                    "meal_type": meal_create.meal_type,
                     "meal_name": meal_create.meal_name,
-                    "meal_type_suitability": [meal_create.meal_type],
-                    "calories_per_serving": int(meal_create.calories),
+                    "calories": int(meal_create.calories),
                     "protein_g": meal_create.protein_g,
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
+                    "fiber_g": meal_create.fiber_g,
                     "ingredients": meal_create.ingredients,
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,
-                    "image_url": meal_create.image_url,
-                    "is_active": True
-                }
-                central_meal = self.central_meal_repo.find_or_create(catalog_data)
-                slot_data = {
-                    "meal_type": meal_create.meal_type,
                     "servings": float(meal_create.servings) if meal_create.servings else 1.0,
                     "order_index": meal_create.order_index
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,
-                    central_meal_id=central_meal.id,
                     slot_data=slot_data
                 )
 

@@ -279,17 +279,17 @@ def nutrition_plan_model_to_dto(plan) -> NutritionPlanDTO:
             meals=[
                 MealDTO(
                     meal_type=npm.meal_type,
-                    meal_name=npm.central_meal.meal_name,
-                    calories=int(npm.central_meal.calories_per_serving * npm.servings),
-                    protein_g=npm.central_meal.protein_g * npm.servings,
-                    carbs_g=npm.central_meal.carbs_g * npm.servings,
-                    fats_g=npm.central_meal.fats_g * npm.servings,
-                    ingredients=npm.central_meal.ingredients,
-                    instructions=npm.central_meal.instructions,
-                    prep_time_minutes=npm.central_meal.prep_time_minutes,
-                    cook_time_minutes=npm.central_meal.cook_time_minutes,
+                    meal_name=npm.meal_name,
+                    calories=float(npm.calories),
+                    protein_g=npm.protein_g,
+                    carbs_g=npm.carbs_g,
+                    fats_g=npm.fats_g,
+                    fiber_g=npm.fiber_g,
+                    ingredients=npm.ingredients,
+                    instructions=npm.instructions,
+                    prep_time_minutes=npm.prep_time_minutes,
+                    cook_time_minutes=npm.cook_time_minutes,
                     servings=npm.servings,
-                    image_url=npm.central_meal.image_url,
                     order_index=npm.order_index
                 )
                 for npm in day.meals
