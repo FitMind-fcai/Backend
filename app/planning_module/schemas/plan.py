@@ -80,24 +80,21 @@ class CentralExerciseResponse(BaseModel):
         from_attributes = True
 
 
-class CentralMealResponse(BaseModel):
-    """Schema for central meal catalog entry"""
+class CentralFoodResponse(BaseModel):
+    """Schema for central food catalog entry (USDA foods for logging and AI context)"""
     id: int
-    meal_name: str
-    meal_type_suitability: Optional[list] = []
-    calories_per_serving: int
-    protein_g: float
-    carbs_g: float
-    fats_g: float
-    fiber_g: Optional[float] = None
-    serving_size: Optional[str] = None
-    ingredients: Optional[str] = None
-    instructions: Optional[str] = None
-    prep_time_minutes: Optional[int] = None
-    cook_time_minutes: Optional[int] = None
-    cuisine_type: Optional[str] = None
+    food_name: str
+    food_category: Optional[str] = None
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fats_per_100g: float
+    fiber_per_100g: Optional[float] = None
+    serving_size_g: Optional[float] = None
+    serving_description: Optional[str] = None
     dietary_tags: Optional[list] = []
-    image_url: Optional[str] = None
+    usda_fdc_id: Optional[int] = None
+    source: str = "USDA"
 
     class Config:
         from_attributes = True
@@ -222,31 +219,40 @@ class WorkoutPlanSummary(BaseModel):
 # ========================================
 
 class MealCreate(BaseModel):
-    """Internal schema for AI-generated meal data before catalog lookup"""
+    """Internal schema for AI-generated meal data"""
     meal_type: str = Field(..., max_length=50)
     meal_name: str = Field(..., min_length=1, max_length=255)
     calories: float = Field(..., ge=0)
     protein_g: float = Field(..., ge=0)
     carbs_g: float = Field(..., ge=0)
     fats_g: float = Field(..., ge=0)
+    fiber_g: Optional[float] = Field(None, ge=0)
     ingredients: Optional[str] = None
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = Field(None, ge=0)
     cook_time_minutes: Optional[int] = Field(None, ge=0)
     servings: int = Field(default=1, ge=1)
-    image_url: Optional[str] = Field(None, max_length=500)
     order_index: int = Field(default=0, ge=0)
 
 
 class NutritionPlanMealResponse(BaseModel):
-    """Schema for a nutrition plan meal slot (junction + embedded catalog entry)"""
+    """Schema for a nutrition plan meal (inline, self-contained)"""
     id: int
     nutrition_plan_day_id: int
     meal_type: str
+    meal_name: str
+    calories: int
+    protein_g: float
+    carbs_g: float
+    fats_g: float
+    fiber_g: Optional[float] = None
+    ingredients: Optional[str] = None
+    instructions: Optional[str] = None
+    prep_time_minutes: Optional[int] = None
+    cook_time_minutes: Optional[int] = None
     servings: float
     order_index: int
     notes: Optional[str] = None
-    central_meal: CentralMealResponse
 
     class Config:
         from_attributes = True
@@ -339,3 +345,8 @@ class CombinedPlanResponse(BaseModel):
     workout_plan: Optional[WorkoutPlanResponse] = None
     nutrition_plan: Optional[NutritionPlanResponse] = None
     message: str = "Plan(s) generated successfully"
+
+
+# Aliases for route compatibility
+ExerciseResponse = WorkoutDayExerciseResponse
+MealResponse = NutritionPlanMealResponse

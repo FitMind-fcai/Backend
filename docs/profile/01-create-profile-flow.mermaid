@@ -1,0 +1,50 @@
+sequenceDiagram
+    actor User
+    participant API as FastAPI Route
+    participant ProfileService
+    participant ProfileRepo as ProfileRepository
+    participant DB as PostgreSQL
+
+    User->>+API: POST /profiles<br/>Header: Bearer {token}<br/>{age, gender, height, weight,<br/>fitness_goal, activity_level, etc.}
+    Note over API: JWT middleware extracts user_id
+    
+    API->>+ProfileService: create_profile(user_id, profile_data)
+    
+    rect rgb(230, 240, 255)
+        Note over ProfileService,DB: Step 1: Check for Existing Profile
+        ProfileService->>+ProfileRepo: get_profile_by_user_id(user_id)
+        ProfileRepo->>+DB: SELECT * FROM profiles<br/>WHERE user_id = ?
+        DB-->>-ProfileRepo: Profile or None
+        ProfileRepo-->>-ProfileService: Existing profile check
+        
+        alt Profile already exists
+            ProfileService-->>API: HTTPException(400,<br/>"Profile already exists")
+            API-->>User: 400 Bad Request
+        end
+    end
+    
+    rect rgb(255, 240, 230)
+        Note over ProfileService: Step 2: Validate Profile Data
+        ProfileService->>ProfileService: Validate numeric ranges:<br/>- age: 1-120<br/>- height: 1-300 cm<br/>- weight: 1-500 kg
+        
+        alt Validation fails
+            ProfileService-->>API: HTTPException(422,<br/>"Validation error")
+            API-->>User: 422 Unprocessable Entity
+        end
+        
+        ProfileService->>ProfileService: Validate enums:<br/>- Gender: male/female/other<br/>- FitnessGoal<br/>- ActivityLevel<br/>- DietaryPreference
+        
+        ProfileService->>ProfileService: Validate optional fields:<br/>- injuries (list)<br/>- medical_conditions (list)<br/>- medications (list)<br/>- allergies (list)
+    end
+    
+    rect rgb(230, 255, 230)
+        Note over ProfileService,DB: Step 3: Create Profile
+        ProfileService->>+ProfileRepo: create(user_id, validated_data)
+        ProfileRepo->>+DB: INSERT INTO profiles<br/>(user_id, age, gender, height,<br/>weight, fitness_goal, activity_level,<br/>dietary_preference, injuries,<br/>medical_conditions, created_at)
+        DB-->>-ProfileRepo: Created profile
+        ProfileRepo-->>-ProfileService: UserProfileDTO
+        
+        ProfileService-->>-API: ProfileResponse
+    end
+    
+    API-->>-User: 201 Created<br/>{id, user_id, age, gender,<br/>fitness_goal, ...}

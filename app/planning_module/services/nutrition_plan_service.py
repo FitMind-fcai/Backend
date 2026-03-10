@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
-from app.shared.repositories.central_meal_repository import CentralMealRepository
 from app.planning_module.models import NutritionPlan, NutritionPlanDay, NutritionPlanMeal
 
 
@@ -11,7 +10,6 @@ class NutritionPlanService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = NutritionPlanRepository(db)
-        self.central_meal_repo = CentralMealRepository(db)
 
     def get_user_plans(self, user_id: int, skip: int = 0, limit: int = 10) -> List[NutritionPlan]:
         return self.repo.get_by_user_id(user_id, skip, limit)

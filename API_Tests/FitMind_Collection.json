@@ -1,0 +1,1898 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "FitMind API",
+    "description": "Complete test collection for the FitMind Backend API.\n\nCovers all endpoints with happy-path and error scenarios:\n- Authentication (signup, login, email verification, OTP, password reset)\n- Profile management (create, read, update)\n- AI Plan Generation (workout, nutrition)\n- Workout Plans & Days & Exercises\n- Nutrition Plans & Meals\n\n**Setup:** Import `FitMind_Environment.json` alongside this collection and select the \"FitMind Local\" environment before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Authentication",
+      "item": [
+        {
+          "name": "Signup - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Response has user object', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('email');",
+                  "  pm.expect(body.is_verified).to.eql(false);",
+                  "  pm.environment.set('userId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/signup", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "signup"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Signup - Duplicate Email (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error message mentions email already registered', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{userName}}\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/signup", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "signup"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Signup - Invalid Email Format (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('Validation error details present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"not-an-email\",\n  \"password\": \"Test@123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/signup", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "signup"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Signup - Short Password (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('Validation error for password length', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test_short@example.com\",\n  \"password\": \"abc\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/signup", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "signup"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response confirms email resent', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message');",
+                  "  pm.expect(body.email).to.eql(pm.environment.get('userEmail'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/resend-verification", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "resend-verification"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email - Success",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Paste the token from the verification email link into the 'verificationToken' environment variable before running this request."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Email verified successfully', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.verified).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/verify-email?token={{verificationToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "verify-email"],
+              "query": [{ "key": "token", "value": "{{verificationToken}}" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email - Invalid Token (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error detail present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/verify-email?token=invalid-token-xyz",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "verify-email"],
+              "query": [{ "key": "token", "value": "invalid-token-xyz" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Response contains token and user', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('token');",
+                  "  pm.expect(body).to.have.property('user');",
+                  "  pm.expect(body.user.is_verified).to.eql(true);",
+                  "  pm.environment.set('accessToken', body.token);",
+                  "  pm.environment.set('userId', body.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Wrong Password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Error detail present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"WrongPassword99\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Non-existent Email (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([401, 404]);",
+                  "});",
+                  "pm.test('Error detail present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost_user_noreply@example.com\",\n  \"password\": \"Ahmad@123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - No Token (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "login"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password - Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('OTP sent confirmation', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message');",
+                  "  pm.expect(body.email).to.eql(pm.environment.get('userEmail'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "forgot-password"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password - Non-existent Email (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 4xx error', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ghost_user_noreply@example.com\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "forgot-password"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP - Success",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Set the 'resetOtp' environment variable to the 5-digit OTP from the email before running."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('OTP verified message present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message');",
+                  "  pm.expect(body.email).to.eql(pm.environment.get('userEmail'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"{{resetOtp}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "verify-otp"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP - Invalid OTP (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error detail present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"00000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "verify-otp"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Password reset confirmation', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"{{resetOtp}}\",\n  \"new_password\": \"{{userPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "reset-password"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password - Wrong OTP (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"99999\",\n  \"new_password\": \"NewPass@456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "reset-password"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password - Short New Password (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"{{resetOtp}}\",\n  \"new_password\": \"ab\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["v1", "auth", "reset-password"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Profile",
+      "item": [
+        {
+          "name": "Create Profile - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Profile created with all fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('user_id');",
+                  "  pm.expect(body.gender).to.eql('Male');",
+                  "  pm.environment.set('profileId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{userId}},\n  \"age\": 25,\n  \"gender\": \"Male\",\n  \"height\": 175.0,\n  \"weight\": 80.0,\n  \"fitness_goal\": \"Get Bulks\",\n  \"activity_level\": \"Moderately Active\",\n  \"dietary_preference\": \"No specific preference\",\n  \"medical_conditions\": \"None\",\n  \"allergies\": \"None\",\n  \"injuries\": \"None\",\n  \"medications\": \"None\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Profile - Duplicate Profile (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error detail present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('detail');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{userId}},\n  \"age\": 25,\n  \"gender\": \"Male\",\n  \"height\": 175.0,\n  \"weight\": 80.0,\n  \"fitness_goal\": \"Get Bulks\",\n  \"activity_level\": \"Moderately Active\",\n  \"dietary_preference\": \"No specific preference\",\n  \"medical_conditions\": \"None\",\n  \"allergies\": \"None\",\n  \"injuries\": \"None\",\n  \"medications\": \"None\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Profile - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"age\": 25,\n  \"gender\": \"Male\",\n  \"height\": 175.0,\n  \"weight\": 80.0,\n  \"fitness_goal\": \"Get Bulks\",\n  \"activity_level\": \"Moderately Active\",\n  \"dietary_preference\": \"None\",\n  \"medical_conditions\": \"None\",\n  \"allergies\": \"None\",\n  \"injuries\": \"None\",\n  \"medications\": \"None\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Profile - Invalid Enum Value (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{userId}},\n  \"age\": 25,\n  \"gender\": \"Unknown\",\n  \"height\": 175.0,\n  \"weight\": 80.0,\n  \"fitness_goal\": \"Fly to Mars\",\n  \"activity_level\": \"Super Active\",\n  \"dietary_preference\": \"None\",\n  \"medical_conditions\": \"None\",\n  \"allergies\": \"None\",\n  \"injuries\": \"None\",\n  \"medications\": \"None\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Profile - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile fields are present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('age');",
+                  "  pm.expect(body).to.have.property('gender');",
+                  "  pm.expect(body).to.have.property('fitness_goal');",
+                  "  pm.expect(body).to.have.property('activity_level');",
+                  "  pm.environment.set('profileId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/profiles/me", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Profile - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/profiles/me", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile updated with new values', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.weight).to.eql(78.5);",
+                  "  pm.expect(body.fitness_goal).to.eql('Lose Weight');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{userId}},\n  \"weight\": 78.5,\n  \"fitness_goal\": \"Lose Weight\",\n  \"activity_level\": \"Very Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/me", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - Restore Original",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Profile restored to Get Bulks goal', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.fitness_goal).to.eql('Get Bulks');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{userId}},\n  \"weight\": 80.0,\n  \"fitness_goal\": \"Get Bulks\",\n  \"activity_level\": \"Moderately Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/me", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", "me"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"weight\": 79.0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/profiles/me", "host": ["{{baseUrl}}"], "path": ["v1", "profiles", "me"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Plan Generation",
+      "item": [
+        {
+          "name": "Generate Workout Plan - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Workout plan returned with days', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('plan_name');",
+                  "  pm.expect(body).to.have.property('workout_days');",
+                  "  pm.expect(body.workout_days).to.be.an('array').that.is.not.empty;",
+                  "  pm.environment.set('workoutPlanId', body.id);",
+                  "  if (body.workout_days.length > 0) {",
+                  "    pm.environment.set('workoutDayId', body.workout_days[0].id);",
+                  "    if (body.workout_days[0].exercises && body.workout_days[0].exercises.length > 0) {",
+                  "      pm.environment.set('exerciseId', body.workout_days[0].exercises[0].id);",
+                  "    }",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"workout_preferences\": {\n    \"workout_days_per_week\": 4,\n    \"workout_location\": \"Gym\",\n    \"equipment_availability\": \"Full Gym Equipment\",\n    \"workout_focus\": \"Strength Training\",\n    \"workout_difficulty\": \"Intermediate\",\n    \"session_duration_minutes\": 60,\n    \"focus_areas\": [\"Chest\", \"Back\", \"Legs\"]\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/workout", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "workout"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Workout Plan - Home Bodyweight",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Home workout plan generated', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body.workout_days).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"workout_preferences\": {\n    \"workout_days_per_week\": 3,\n    \"workout_location\": \"Home\",\n    \"equipment_availability\": \"No Equipment\",\n    \"workout_focus\": \"Cardiovascular\",\n    \"workout_difficulty\": \"Beginner\",\n    \"session_duration_minutes\": 30,\n    \"focus_areas\": []\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/workout", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "workout"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Workout Plan - Duration Out of Range (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 100,\n  \"workout_preferences\": {\n    \"workout_days_per_week\": 4,\n    \"workout_location\": \"Gym\",\n    \"equipment_availability\": \"Full Gym Equipment\",\n    \"workout_focus\": \"Strength Training\",\n    \"workout_difficulty\": \"Intermediate\",\n    \"session_duration_minutes\": 60\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/workout", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "workout"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Workout Plan - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"workout_preferences\": {\n    \"workout_days_per_week\": 4,\n    \"workout_location\": \"Gym\",\n    \"equipment_availability\": \"Full Gym Equipment\",\n    \"workout_focus\": \"Strength Training\",\n    \"workout_difficulty\": \"Intermediate\",\n    \"session_duration_minutes\": 60\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/workout", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "workout"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Nutrition Plan - Success (Auto Calories)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Nutrition plan returned with days and meals', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('plan_name');",
+                  "  pm.expect(body).to.have.property('days');",
+                  "  pm.expect(body.days).to.be.an('array').that.is.not.empty;",
+                  "  pm.environment.set('nutritionPlanId', body.id);",
+                  "  if (body.days.length > 0) {",
+                  "    pm.environment.set('nutritionDayId', body.days[0].id);",
+                  "    const allMeals = body.days.flatMap(d => d.meals || []);",
+                  "    if (allMeals.length > 0) {",
+                  "      pm.environment.set('mealId', allMeals[0].id);",
+                  "    }",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"nutrition_preferences\": {\n    \"calorie_preference\": \"Auto\",\n    \"meals_per_day\": 4,\n    \"meal_complexity\": \"Moderate\",\n    \"cuisine_preference\": \"Mediterranean\",\n    \"exclude_ingredients\": []\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/nutrition", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "nutrition"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Nutrition Plan - Custom Calories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Nutrition plan returned', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"nutrition_preferences\": {\n    \"calorie_preference\": \"Custom\",\n    \"custom_calorie_target\": 2200,\n    \"meals_per_day\": 3,\n    \"meal_complexity\": \"Quick\",\n    \"cuisine_preference\": \"Mixed\",\n    \"exclude_ingredients\": [\"pork\", \"shellfish\"]\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/nutrition", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "nutrition"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Nutrition Plan - Custom Without Target (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"nutrition_preferences\": {\n    \"calorie_preference\": \"Custom\",\n    \"meals_per_day\": 3,\n    \"meal_complexity\": \"Quick\",\n    \"cuisine_preference\": \"Mixed\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/nutrition", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "nutrition"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Nutrition Plan - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duration_weeks\": 4,\n  \"nutrition_preferences\": {\n    \"calorie_preference\": \"Auto\",\n    \"meals_per_day\": 3,\n    \"meal_complexity\": \"Quick\",\n    \"cuisine_preference\": \"Mixed\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/v1/plans/generate/nutrition", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "generate", "nutrition"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Plans - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Combined active plans response', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.any.keys(['workout_plan', 'nutrition_plan', 'message']);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/plans/active", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "active"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Plans - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/plans/active", "host": ["{{baseUrl}}"], "path": ["v1", "plans", "active"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Workout Plans",
+      "item": [
+        {
+          "name": "Get All Workout Plans - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of plan summaries', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('plan_name');",
+                  "    pm.expect(body[0]).to.have.property('start_date');",
+                  "    pm.environment.set('workoutPlanId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/workout-plans/?skip=0&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "workout-plans", ""],
+              "query": [
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Workout Plans - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Workout Plan - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Active workout plan has full details', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('workout_days');",
+                  "  pm.environment.set('workoutPlanId', body.id);",
+                  "  if (body.workout_days.length > 0) {",
+                  "    pm.environment.set('workoutDayId', body.workout_days[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/active", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "active"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Workout Plan - Not Found (404)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// This test is only meaningful if the user has no active plan (plans deleted or outside date range)."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/active", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "active"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Plan by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Workout plan has expected fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.eql(parseInt(pm.environment.get('workoutPlanId')));",
+                  "  pm.expect(body).to.have.property('workout_days');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Plan by ID - Not Found (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/999999", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Plan by ID - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Days - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of workout days', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('day_name');",
+                  "    pm.environment.set('workoutDayId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}/days", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}", "days"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Days - Plan Not Found (403/404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/999999/days", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "999999", "days"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Day by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Workout day has exercise list', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('day_name');",
+                  "  pm.expect(body).to.have.property('exercises');",
+                  "  if (body.exercises.length > 0) {",
+                  "    pm.environment.set('exerciseId', body.exercises[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}/days/{{workoutDayId}}", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}", "days", "{{workoutDayId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Day by ID - Wrong Day for Plan (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}/days/999999", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}", "days", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Exercises for Day - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of exercises', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('central_exercise');",
+                  "    pm.environment.set('exerciseId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}/days/{{workoutDayId}}/exercises", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}", "days", "{{workoutDayId}}", "exercises"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Exercises for Day - Day Not in Plan (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}/days/999999/exercises", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}", "days", "999999", "exercises"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Workout Plan - Forbidden (plan from other user)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 Forbidden or 404 Not Found', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/999999", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Workout Plan - Success (204)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Run 'Generate Workout Plan - Home Bodyweight' first and set workoutPlanId to the returned id if you want to delete a non-primary plan."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('Response body is empty', () => {",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/workout-plans/{{workoutPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "workout-plans", "{{workoutPlanId}}"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Nutrition Plans",
+      "item": [
+        {
+          "name": "Get All Nutrition Plans - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of nutrition plan summaries', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('plan_name');",
+                  "    pm.environment.set('nutritionPlanId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/nutrition-plans/?skip=0&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "nutrition-plans", ""],
+              "query": [
+                { "key": "skip", "value": "0" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Nutrition Plans - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", ""] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Nutrition Plan - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Active nutrition plan has days and meals', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('days');",
+                  "  pm.environment.set('nutritionPlanId', body.id);",
+                  "  const allMeals = body.days.flatMap(d => d.meals || []);",
+                  "  if (allMeals.length > 0) {",
+                  "    pm.environment.set('mealId', allMeals[0].id);",
+                  "    pm.environment.set('nutritionDayId', body.days[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/active", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "active"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nutrition Plan by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Nutrition plan has days with meals', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.eql(parseInt(pm.environment.get('nutritionPlanId')));",
+                  "  pm.expect(body).to.have.property('days');",
+                  "  body.days.forEach(day => {",
+                  "    pm.expect(day).to.have.property('meals');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nutrition Plan by ID - Not Found (403/404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/999999", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nutrition Plan by ID - Unauthorized (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meals for Plan - Success (All)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of meals', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('meal_name');",
+                  "    pm.expect(body[0]).to.have.property('calories');",
+                  "    pm.expect(body[0]).to.have.property('meal_type');",
+                  "    pm.environment.set('mealId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meals for Plan - Filter by Breakfast",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All returned meals are Breakfast', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  body.forEach(meal => {",
+                  "    pm.expect(meal.meal_type).to.eql('Breakfast');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals?meal_type=Breakfast",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals"],
+              "query": [{ "key": "meal_type", "value": "Breakfast" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meals for Plan - Filter by Lunch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All returned meals are Lunch', () => {",
+                  "  const body = pm.response.json();",
+                  "  body.forEach(meal => {",
+                  "    pm.expect(meal.meal_type).to.eql('Lunch');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals?meal_type=Lunch",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals"],
+              "query": [{ "key": "meal_type", "value": "Lunch" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meals for Plan - Filter by Dinner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('All returned meals are Dinner', () => {",
+                  "  const body = pm.response.json();",
+                  "  body.forEach(meal => {",
+                  "    pm.expect(meal.meal_type).to.eql('Dinner');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals?meal_type=Dinner",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals"],
+              "query": [{ "key": "meal_type", "value": "Dinner" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meals for Plan - Plan Not Found (403/404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/999999/meals", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "999999", "meals"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Meal has all nutrition fields', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('meal_name');",
+                  "  pm.expect(body).to.have.property('meal_type');",
+                  "  pm.expect(body).to.have.property('calories');",
+                  "  pm.expect(body).to.have.property('protein_g');",
+                  "  pm.expect(body).to.have.property('carbs_g');",
+                  "  pm.expect(body).to.have.property('fats_g');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals/{{mealId}}", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals", "{{mealId}}"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal by ID - Meal Not in Plan (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 404 Not Found', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}/meals/999999", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}", "meals", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Nutrition Plan - Forbidden (403/404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 403 or 404', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/999999", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "999999"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Nutrition Plan - Success (204)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Run 'Generate Nutrition Plan - Custom Calories' first and update nutritionPlanId to the returned id if you want to delete a non-primary plan."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('Response body is empty', () => {",
+                  "  pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/v1/nutrition-plans/{{nutritionPlanId}}", "host": ["{{baseUrl}}"], "path": ["v1", "nutrition-plans", "{{nutritionPlanId}}"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ]
+}

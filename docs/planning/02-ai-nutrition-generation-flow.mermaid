@@ -1,0 +1,86 @@
+sequenceDiagram
+    actor User
+    participant API as FastAPI Route
+    participant PlanService as PlanGenerationService
+    participant ProfileService
+    participant AICoach as AICoachService
+    participant VectorDB as VectorDBService
+    participant ChromaDB
+    participant LLM as Groq LLM
+    participant NutritionRepo as NutritionPlanRepository
+    participant DB as PostgreSQL
+
+    User->>+API: POST /plans/generate/nutrition<br/>(nutrition_preferences, duration_weeks)
+    
+    API->>+PlanService: generate_nutrition_plan(profile, preferences)
+    
+    rect rgb(230, 240, 255)
+        Note over PlanService,ProfileService: Step 1: Get User Profile
+        PlanService->>+ProfileService: get_profile_by_user_id(user_id)
+        ProfileService->>DB: SELECT * FROM profiles
+        DB-->>ProfileService: Profile data
+        ProfileService-->>-PlanService: UserProfileDTO
+    end
+    
+    rect rgb(255, 240, 230)
+        Note over PlanService,NutritionRepo: Step 2: Check Existing Plan
+        PlanService->>+NutritionRepo: get_active_nutrition_plan(user_id, profile_id)
+        NutritionRepo->>+DB: SELECT * FROM nutrition_plans<br/>WHERE user_id = ? AND profile_id = ?<br/>AND end_date >= NOW()
+        DB-->>-NutritionRepo: Existing plan or None
+        NutritionRepo-->>-PlanService: Optional[NutritionPlanDTO]
+    end
+    
+    rect rgb(230, 255, 240)
+        Note over PlanService,LLM: Step 3: AI Generation with RAG
+        PlanService->>+AICoach: generate_nutrition_plan(profile, preferences, existing_plan)
+        
+        par Build Enhanced RAG Query
+            Note over AICoach: Construct context-aware query
+            AICoach->>AICoach: query = "nutrition meal plan {cuisine}<br/>activity level: {activity_level}<br/>allergies: {allergies}<br/>medical: {conditions}<br/>goal: {fitness_goal}<br/>diet: {dietary_preference}"
+        end
+        
+        AICoach->>+VectorDB: get_context(query, k=5)
+        
+        rect rgb(200, 220, 255)
+            Note over VectorDB,ChromaDB: Semantic Search
+            VectorDB->>VectorDB: Embed query → 384-dim vector
+            
+            VectorDB->>+ChromaDB: similarity_search(query_embedding, k=5)
+            Note over ChromaDB: Search nutrition documents:<br/>WHO, USDA, ISSN guidelines
+            ChromaDB-->>-VectorDB: Top 5 relevant nutrition chunks
+        end
+        
+        VectorDB-->>-AICoach: Nutrition knowledge context
+        
+        AICoach->>AICoach: Calculate target calories:<br/>- Base: 2000 cal<br/>- Goal adjustment<br/>- Custom target override
+        
+        AICoach->>AICoach: Build nutrition prompt:<br/>- User profile & allergies<br/>- Calorie target<br/>- RAG nutrition knowledge<br/>- Existing meals (if updating)<br/>- Dietary restrictions
+        
+        AICoach->>+LLM: chat.completions.create()<br/>Model: llama-3.3-70b
+        Note over LLM: Generate JSON meal plan:<br/>- Plan metadata<br/>- Daily macros<br/>- {N} meals with recipes
+        LLM-->>-AICoach: JSON response
+        
+        AICoach->>AICoach: Parse JSON → NutritionPlanDTO
+        AICoach-->>-PlanService: NutritionPlanDTO
+    end
+    
+    rect rgb(255, 230, 230)
+        Note over PlanService,DB: Step 4: Persist to Database
+        
+        alt Updating existing plan
+            PlanService->>+NutritionRepo: update_nutrition_plan(plan_id, new_data)
+            NutritionRepo->>DB: DELETE FROM meals WHERE plan_id = ?
+            NutritionRepo->>DB: UPDATE nutrition_plans<br/>INSERT INTO meals
+        else Creating new plan
+            PlanService->>+NutritionRepo: create_nutrition_plan(plan_data)
+            NutritionRepo->>+DB: BEGIN TRANSACTION
+            NutritionRepo->>DB: INSERT INTO nutrition_plans
+            NutritionRepo->>DB: INSERT INTO meals (batch)
+            DB-->>-NutritionRepo: COMMIT TRANSACTION
+        end
+        
+        NutritionRepo-->>-PlanService: Persisted NutritionPlan
+    end
+    
+    PlanService-->>-API: NutritionPlanResponse
+    API-->>-User: 201 Created<br/>{plan_id, daily_calories,<br/>daily_macros, meals[]}

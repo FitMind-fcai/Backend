@@ -20,7 +20,7 @@ classDiagram
         class UserRepository {
             <<Repository>>
             -Session db
-            +create_user(name, email, age, hashed_password) User
+            +create_user(name, email, hashed_password) User
             +get_by_id(user_id) User
             +get_by_email(email) User
             +email_exists(email) bool

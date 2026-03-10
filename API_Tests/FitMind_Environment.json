@@ -1,23 +1,101 @@
 {
+  "id": "fitmind-local-env-2026",
   "name": "FitMind Local",
-  "variables": [
+  "_postman_variable_scope": "environment",
+  "values": [
     {
-      "name": "base_url",
+      "key": "baseUrl",
       "value": "http://localhost:8000",
-      "enabled": true,
-      "description": "Base URL of the FitMind backend server"
+      "type": "default",
+      "enabled": true
     },
     {
-      "name": "token",
+      "key": "userName",
+      "value": "Ahmed Mohammed",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "userEmail",
+      "value": "ahmadmohmad200020@gmail.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "userPassword",
+      "value": "Ahmad@123",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "accessToken",
       "value": "",
-      "enabled": true,
-      "description": "JWT access token — obtained from POST /v1/auth/login. Set this after logging in."
+      "type": "default",
+      "enabled": true
     },
     {
-      "name": "email",
-      "value": "ahmadri2468@gmail.com",
+      "key": "userId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "profileId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "workoutPlanId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "workoutDayId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "exerciseId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "nutritionPlanId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "nutritionDayId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "mealId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "verificationToken",
+      "value": "",
+      "type": "default",
       "enabled": true,
-      "description": "User email address used across auth and password reset endpoints"
+      "description": "Paste token from verification email link (e.g. ?token=abc123)"
+    },
+    {
+      "key": "resetOtp",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Paste 5-digit OTP received in password-reset email"
     }
-  ]
+  ],
+  "_postman_exported_at": "2026-03-10T00:00:00.000Z",
+  "_postman_exported_using": "Postman/11.0.0"
 }

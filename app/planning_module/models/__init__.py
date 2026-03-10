@@ -1,6 +1,6 @@
 from app.planning_module.models.plan import (
     CentralExercise,
-    CentralMeal,
+    CentralFood,
     WorkoutPlan,
     WorkoutDay,
     WorkoutDayExercise,
@@ -22,7 +22,7 @@ from app.planning_module.models.enums import (
 __all__ = [
     # Models
     "CentralExercise",
-    "CentralMeal",
+    "CentralFood",
     "WorkoutPlan",
     "WorkoutDay",
     "WorkoutDayExercise",
