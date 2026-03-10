@@ -345,3 +345,8 @@ class CombinedPlanResponse(BaseModel):
     workout_plan: Optional[WorkoutPlanResponse] = None
     nutrition_plan: Optional[NutritionPlanResponse] = None
     message: str = "Plan(s) generated successfully"
+
+
+# Aliases for route compatibility
+ExerciseResponse = WorkoutDayExerciseResponse
+MealResponse = NutritionPlanMealResponse

@@ -159,6 +159,7 @@ class MealDTO(BaseModel):
     prep_time_minutes: Optional[int] = None
     cook_time_minutes: Optional[int] = None
     servings: int = 1
+    image_url: Optional[str] = None
     order_index: int = 0
 
 

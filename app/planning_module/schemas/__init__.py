@@ -6,7 +6,6 @@ from app.planning_module.schemas.plan import (
     NutritionPreferences,
     
     # Exercise schemas
-    ExerciseBase,
     ExerciseCreate,
     ExerciseResponse,
     
@@ -22,7 +21,6 @@ from app.planning_module.schemas.plan import (
     WorkoutPlanSummary,
     
     # Meal schemas
-    MealBase,
     MealCreate,
     MealResponse,
     
@@ -44,7 +42,6 @@ __all__ = [
     "NutritionPreferences",
     
     # Exercise schemas
-    "ExerciseBase",
     "ExerciseCreate",
     "ExerciseResponse",
     
@@ -60,7 +57,6 @@ __all__ = [
     "WorkoutPlanSummary",
     
     # Meal schemas
-    "MealBase",
     "MealCreate",
     "MealResponse",
     
