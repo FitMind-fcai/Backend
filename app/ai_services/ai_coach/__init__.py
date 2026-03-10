@@ -23,6 +23,7 @@ from app.ai_services.ai_coach.dtos import (
     WorkoutDayDTO,
     WorkoutPlanDTO,
     MealDTO,
+    NutritionDayDTO,
     NutritionPlanDTO,
     GeneratedPlansDTO
 )
@@ -44,6 +45,7 @@ __all__ = [
     "WorkoutDayDTO",
     "WorkoutPlanDTO",
     "MealDTO",
+    "NutritionDayDTO",
     "NutritionPlanDTO",
     "GeneratedPlansDTO"
 ]

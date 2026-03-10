@@ -33,7 +33,7 @@ def get_my_nutrition_plans(
     summaries = []
     for plan in plans:
         summary = NutritionPlanSummary.model_validate(plan)
-        summary.total_meals = len(plan.meals)
+        summary.total_meals = sum(len(day.meals) for day in plan.days) if hasattr(plan, 'days') else 0
         summaries.append(summary)
     
     return summaries
@@ -58,7 +58,7 @@ def get_active_nutrition_plan(
         )
     
     # Load full details
-    plan = service.get_plan_with_meals(plan.id)
+    plan = service.get_plan_with_full_details(plan.id)
     return NutritionPlanResponse.model_validate(plan)
 
 
@@ -81,7 +81,7 @@ def get_nutrition_plan(
             detail="Nutrition plan not found or you do not have permission to access it"
         )
     
-    plan = service.get_plan_with_meals(plan_id)
+    plan = service.get_plan_with_full_details(plan_id)
     
     if not plan:
         raise HTTPException(

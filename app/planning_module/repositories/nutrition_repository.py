@@ -1,19 +1,22 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import desc
 from typing import List, Optional
 from datetime import date
 from app.shared.repositories.base_repository import BaseRepository
-from app.planning_module.models import NutritionPlan, Meal
+from app.planning_module.models import NutritionPlan, NutritionPlanDay, NutritionPlanMeal
 
 
 class NutritionPlanRepository(BaseRepository[NutritionPlan]):
-    """Repository for nutrition plan operations"""
-    
+    """Single repository for all nutrition plan operations (plan, days, meal slots)"""
+
     def __init__(self, db: Session):
         super().__init__(NutritionPlan, db)
-    
+
+    # ------------------------------------------------------------------
+    # Plan queries
+    # ------------------------------------------------------------------
+
     def get_by_user_id(self, user_id: int, skip: int = 0, limit: int = 10) -> List[NutritionPlan]:
-        """Get all nutrition plans for a user"""
         return (
             self.db.query(NutritionPlan)
             .filter(NutritionPlan.user_id == user_id)
@@ -22,9 +25,8 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
             .limit(limit)
             .all()
         )
-    
+
     def get_active_plan(self, user_id: int) -> Optional[NutritionPlan]:
-        """Get user's active nutrition plan (current date within plan dates)"""
         today = date.today()
         return (
             self.db.query(NutritionPlan)
@@ -36,30 +38,28 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
             .order_by(desc(NutritionPlan.created_at))
             .first()
         )
-    
-    def get_with_meals(self, plan_id: int) -> Optional[NutritionPlan]:
-        """Get nutrition plan with all meals loaded"""
+
+    def get_with_full_details(self, plan_id: int) -> Optional[NutritionPlan]:
+        """Eagerly load plan -> days -> meal slots -> central meal"""
         return (
             self.db.query(NutritionPlan)
-            .options(joinedload(NutritionPlan.meals))
+            .options(
+                selectinload(NutritionPlan.days)
+                .selectinload(NutritionPlanDay.meals)
+                .joinedload(NutritionPlanMeal.central_meal)
+            )
             .filter(NutritionPlan.id == plan_id)
             .first()
         )
-    
+
     def create_plan(self, user_id: int, profile_id: int, plan_data: dict) -> NutritionPlan:
-        """Create a new nutrition plan"""
-        plan = NutritionPlan(
-            user_id=user_id,
-            profile_id=profile_id,
-            **plan_data
-        )
+        plan = NutritionPlan(user_id=user_id, profile_id=profile_id, **plan_data)
         self.db.add(plan)
         self.db.commit()
         self.db.refresh(plan)
         return plan
-    
+
     def update_plan(self, plan_id: int, plan_data: dict) -> Optional[NutritionPlan]:
-        """Update nutrition plan"""
         plan = self.get_by_id(plan_id)
         if plan:
             for key, value in plan_data.items():
@@ -67,9 +67,8 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
             self.db.commit()
             self.db.refresh(plan)
         return plan
-    
+
     def delete_plan(self, plan_id: int) -> bool:
-        """Delete nutrition plan (cascade deletes meals)"""
         plan = self.get_by_id(plan_id)
         if plan:
             self.db.delete(plan)
@@ -77,57 +76,73 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
             return True
         return False
 
+    # ------------------------------------------------------------------
+    # Day queries
+    # ------------------------------------------------------------------
 
-class MealRepository(BaseRepository[Meal]):
-    """Repository for meal operations"""
-    
-    def __init__(self, db: Session):
-        super().__init__(Meal, db)
-    
-    def get_by_plan_id(self, plan_id: int) -> List[Meal]:
-        """Get all meals for a nutrition plan"""
+    def get_days_by_plan_id(self, plan_id: int) -> List[NutritionPlanDay]:
         return (
-            self.db.query(Meal)
-            .filter(Meal.nutrition_plan_id == plan_id)
-            .order_by(Meal.order_index)
+            self.db.query(NutritionPlanDay)
+            .filter(NutritionPlanDay.nutrition_plan_id == plan_id)
+            .order_by(NutritionPlanDay.day_number)
             .all()
         )
-    
-    def get_by_meal_type(self, plan_id: int, meal_type: str) -> List[Meal]:
-        """Get meals by type (Breakfast, Lunch, etc.)"""
-        return (
-            self.db.query(Meal)
-            .filter(
-                Meal.nutrition_plan_id == plan_id,
-                Meal.meal_type == meal_type
-            )
-            .order_by(Meal.order_index)
-            .all()
-        )
-    
-    def create_meal(self, plan_id: int, meal_data: dict) -> Meal:
-        """Create a new meal"""
-        meal = Meal(nutrition_plan_id=plan_id, **meal_data)
-        self.db.add(meal)
+
+    def get_day_by_id(self, day_id: int) -> Optional[NutritionPlanDay]:
+        return self.db.query(NutritionPlanDay).filter(NutritionPlanDay.id == day_id).first()
+
+    def create_day(self, plan_id: int, day_data: dict) -> NutritionPlanDay:
+        day = NutritionPlanDay(nutrition_plan_id=plan_id, **day_data)
+        self.db.add(day)
         self.db.commit()
-        self.db.refresh(meal)
-        return meal
-    
-    def update_meal(self, meal_id: int, meal_data: dict) -> Optional[Meal]:
-        """Update meal"""
-        meal = self.get_by_id(meal_id)
-        if meal:
-            for key, value in meal_data.items():
-                setattr(meal, key, value)
-            self.db.commit()
-            self.db.refresh(meal)
-        return meal
-    
-    def delete_meal(self, meal_id: int) -> bool:
-        """Delete meal"""
-        meal = self.get_by_id(meal_id)
-        if meal:
-            self.db.delete(meal)
-            self.db.commit()
-            return True
-        return False
+        self.db.refresh(day)
+        return day
+
+    # ------------------------------------------------------------------
+    # Meal slot queries
+    # ------------------------------------------------------------------
+
+    def get_meals_by_day_id(self, day_id: int) -> List[NutritionPlanMeal]:
+        return (
+            self.db.query(NutritionPlanMeal)
+            .options(joinedload(NutritionPlanMeal.central_meal))
+            .filter(NutritionPlanMeal.nutrition_plan_day_id == day_id)
+            .order_by(NutritionPlanMeal.order_index)
+            .all()
+        )
+
+    def get_meals_by_type(self, day_id: int, meal_type: str) -> List[NutritionPlanMeal]:
+        return (
+            self.db.query(NutritionPlanMeal)
+            .options(joinedload(NutritionPlanMeal.central_meal))
+            .filter(
+                NutritionPlanMeal.nutrition_plan_day_id == day_id,
+                NutritionPlanMeal.meal_type == meal_type
+            )
+            .order_by(NutritionPlanMeal.order_index)
+            .all()
+        )
+
+    def get_meal_by_id(self, meal_id: int) -> Optional[NutritionPlanMeal]:
+        return self.db.query(NutritionPlanMeal).filter(NutritionPlanMeal.id == meal_id).first()
+
+    def create_meal_slot(
+        self, day_id: int, central_meal_id: int, slot_data: dict
+    ) -> NutritionPlanMeal:
+        slot = NutritionPlanMeal(
+            nutrition_plan_day_id=day_id,
+            central_meal_id=central_meal_id,
+            **slot_data
+        )
+        self.db.add(slot)
+        self.db.commit()
+        self.db.refresh(slot)
+        return slot
+
+    def delete_meal_slots_by_day_id(self, day_id: int):
+        self.db.query(NutritionPlanMeal).filter(
+            NutritionPlanMeal.nutrition_plan_day_id == day_id
+        ).delete()
+        self.db.commit()
+
+

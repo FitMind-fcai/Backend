@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
@@ -33,7 +33,7 @@ app = FastAPI(
     
     ## Authentication
     Most endpoints require a JWT Bearer token. To authenticate:
-    1. Use `/auth/login` to get your token
+    1. Use `/v1/auth/login` to get your token
     2. Click the **🔓 Authorize** button (top right)
     3. Enter: `Bearer YOUR_TOKEN` or just `YOUR_TOKEN`
     4. All protected endpoints will now include your token automatically
@@ -77,11 +77,14 @@ def startup_event():
     create_tables()
     print("✅ Database tables created successfully!")
 
-app.include_router(authRouter,tags=["Authentication"])
-app.include_router(profileRouter, tags=["Profiles"])
-app.include_router(plan_generation_router, tags=["Plan Generation"])
-app.include_router(workout_router, tags=["Workout Plans"])
-app.include_router(nutrition_router, tags=["Nutrition Plans"])
+# ── API v1 Router ────────────────────────────────────────────────────────────
+v1_router = APIRouter(prefix="/v1")
 
+v1_router.include_router(authRouter, tags=["Authentication"])
+v1_router.include_router(profileRouter, tags=["Profiles"])
+v1_router.include_router(plan_generation_router, tags=["Plan Generation"])
+v1_router.include_router(workout_router, tags=["Workout Plans"])
+v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
 
+app.include_router(v1_router)
 

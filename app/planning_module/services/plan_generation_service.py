@@ -6,15 +6,10 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from app.planning_module.services.workout_plan_service import WorkoutPlanService
 from app.planning_module.services.nutrition_plan_service import NutritionPlanService
-from app.planning_module.repositories.workout_repository import (
-    WorkoutPlanRepository,
-    WorkoutDayRepository,
-    ExerciseRepository
-)
-from app.planning_module.repositories.nutrition_repository import (
-    NutritionPlanRepository,
-    MealRepository
-)
+from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
+from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
+from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.shared.repositories.central_meal_repository import CentralMealRepository
 from app.planning_module.schemas.plan import (
     WorkoutPlanResponse,
     NutritionPlanResponse,
@@ -43,11 +38,10 @@ class PlanGenerationService:
         self.workout_service = WorkoutPlanService(db)
         self.nutrition_service = NutritionPlanService(db)
         # Repositories for creating plans
-        self.workout_plan_repo = WorkoutPlanRepository(db)
-        self.workout_day_repo = WorkoutDayRepository(db)
-        self.exercise_repo = ExerciseRepository(db)
-        self.nutrition_plan_repo = NutritionPlanRepository(db)
-        self.meal_repo = MealRepository(db)
+        self.workout_repo = WorkoutPlanRepository(db)
+        self.central_exercise_repo = CentralExerciseRepository(db)
+        self.nutrition_repo = NutritionPlanRepository(db)
+        self.central_meal_repo = CentralMealRepository(db)
     
     def generate_workout_plan(
         self,
@@ -118,7 +112,7 @@ class PlanGenerationService:
         
         if existing_plan:
             # Load full details and convert to DTO for AI context
-            existing_plan_full = self.nutrition_service.get_plan_with_meals(existing_plan.id)
+            existing_plan_full = self.nutrition_service.get_plan_with_full_details(existing_plan.id)
             existing_plan_dto = nutrition_plan_model_to_dto(existing_plan_full)
             existing_plan_id = existing_plan.id
             # Delete old meals for update
@@ -150,7 +144,7 @@ class PlanGenerationService:
         if workout_plan:
             workout_plan = self.workout_service.get_plan_with_details(workout_plan.id)
         if nutrition_plan:
-            nutrition_plan = self.nutrition_service.get_plan_with_meals(nutrition_plan.id)
+            nutrition_plan = self.nutrition_service.get_plan_with_full_details(nutrition_plan.id)
         
         message = "Active plans retrieved"
         if not workout_plan and not nutrition_plan:
@@ -290,12 +284,12 @@ class PlanGenerationService:
             "generated_from_preferences": generated_from_preferences
         }
         
-        plan = self.workout_plan_repo.create_plan(
+        plan = self.workout_repo.create_plan(
             user_id=user_id,
             profile_id=profile_id,
             plan_data=plan_data
         )
-        
+
         # Create workout days and exercises
         for day_create in plan_create.workout_days:
             day_data = {
@@ -305,34 +299,36 @@ class PlanGenerationService:
                 "estimated_duration": day_create.estimated_duration,
                 "notes": day_create.notes
             }
-            
-            workout_day = self.workout_day_repo.create_workout_day(
-                plan_id=plan.id,
-                day_data=day_data
-            )
-            
-            # Create exercises for this day
+            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data)
+
             for exercise_create in day_create.exercises:
-                exercise_data = {
-                    "exercise_name": exercise_create.exercise_name,
-                    "exercise_type": exercise_create.exercise_type,
+                catalog_data = {
+                    "name": exercise_create.exercise_name,
+                    "exercise_type": exercise_create.exercise_type or "Strength",
+                    "primary_muscle_group": day_create.focus_area or "Full Body",
+                    "equipment_required": "Bodyweight",
+                    "difficulty_level": plan_create.difficulty_level or "Beginner",
+                    "location": "Any",
+                    "instructions": exercise_create.instructions,
+                    "video_url": exercise_create.video_url,
+                    "image_url": exercise_create.image_url,
+                    "is_active": True
+                }
+                central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
+                slot_data = {
                     "sets": exercise_create.sets,
                     "reps": exercise_create.reps,
                     "weight_kg": exercise_create.weight_kg,
                     "duration_seconds": exercise_create.duration_seconds,
                     "rest_seconds": exercise_create.rest_seconds,
-                    "instructions": exercise_create.instructions,
-                    "video_url": exercise_create.video_url,
-                    "image_url": exercise_create.image_url,
                     "order_index": exercise_create.order_index
                 }
-                
-                self.exercise_repo.create_exercise(
+                self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
-                    exercise_data=exercise_data
+                    central_exercise_id=central_exercise.id,
+                    slot_data=slot_data
                 )
-        
-        # Return plan with full details loaded
+
         return self.workout_service.get_plan_with_details(plan.id)
     
     def _create_nutrition_plan_with_meals(
@@ -342,7 +338,7 @@ class PlanGenerationService:
         plan_create,
         generated_from_preferences: dict
     ) -> NutritionPlan:
-        """Create nutrition plan with all meals."""
+        """Create nutrition plan with 7 days and their meals."""
         # Create the plan
         plan_data = {
             "plan_name": plan_create.plan_name,
@@ -355,68 +351,64 @@ class PlanGenerationService:
             "daily_fats_g": plan_create.daily_fats_g,
             "generated_from_preferences": generated_from_preferences
         }
-        
-        plan = self.nutrition_plan_repo.create_plan(
+
+        plan = self.nutrition_repo.create_plan(
             user_id=user_id,
             profile_id=profile_id,
             plan_data=plan_data
         )
-        
-        # Create meals
-        for meal_create in plan_create.meals:
-            meal_data = {
-                "meal_type": meal_create.meal_type,
-                "meal_name": meal_create.meal_name,
-                "calories": meal_create.calories,
-                "protein_g": meal_create.protein_g,
-                "carbs_g": meal_create.carbs_g,
-                "fats_g": meal_create.fats_g,
-                "ingredients": meal_create.ingredients,
-                "instructions": meal_create.instructions,
-                "prep_time_minutes": meal_create.prep_time_minutes,
-                "cook_time_minutes": meal_create.cook_time_minutes,
-                "servings": meal_create.servings,
-                "image_url": meal_create.image_url,
-                "order_index": meal_create.order_index
+
+        for day_create in plan_create.days:
+            day_data = {
+                "day_number": day_create.day_number,
+                "day_name": day_create.day_name,
+                "notes": day_create.notes
             }
-            
-            self.meal_repo.create_meal(
-                plan_id=plan.id,
-                meal_data=meal_data
-            )
-        
-        # Return plan with meals loaded
-        return self.nutrition_service.get_plan_with_meals(plan.id)
+            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
+
+            for meal_create in day_create.meals:
+                catalog_data = {
+                    "meal_name": meal_create.meal_name,
+                    "meal_type_suitability": [meal_create.meal_type],
+                    "calories_per_serving": int(meal_create.calories),
+                    "protein_g": meal_create.protein_g,
+                    "carbs_g": meal_create.carbs_g,
+                    "fats_g": meal_create.fats_g,
+                    "ingredients": meal_create.ingredients,
+                    "instructions": meal_create.instructions,
+                    "prep_time_minutes": meal_create.prep_time_minutes,
+                    "cook_time_minutes": meal_create.cook_time_minutes,
+                    "image_url": meal_create.image_url,
+                    "is_active": True
+                }
+                central_meal = self.central_meal_repo.find_or_create(catalog_data)
+                slot_data = {
+                    "meal_type": meal_create.meal_type,
+                    "servings": float(meal_create.servings) if meal_create.servings else 1.0,
+                    "order_index": meal_create.order_index
+                }
+                self.nutrition_repo.create_meal_slot(
+                    day_id=nutrition_day.id,
+                    central_meal_id=central_meal.id,
+                    slot_data=slot_data
+                )
+
+        return self.nutrition_service.get_plan_with_full_details(plan.id)
     
 
     
     def _delete_workout_plan_details(self, plan_id: int):
-        """Delete all workout days and exercises for a plan (for update)"""
-        # Get all workout days for this plan
-        workout_days = (
-            self.db.query(self.workout_day_repo.model)
-            .filter(self.workout_day_repo.model.workout_plan_id == plan_id)
-            .all()
-        )
-        
-        # Delete exercises for each day, then delete the day
-        for day in workout_days:
-            # Delete exercises
-            self.db.query(self.exercise_repo.model).filter(
-                self.exercise_repo.model.workout_day_id == day.id
-            ).delete()
-            # Delete day
-            self.db.query(self.workout_day_repo.model).filter(
-                self.workout_day_repo.model.id == day.id
-            ).delete()
-        
+        """Delete all workout days and their junction rows for a plan (for update)"""
+        for day in self.workout_repo.get_days_by_plan_id(plan_id):
+            self.workout_repo.delete_exercise_slots_by_day_id(day.id)
+            self.db.delete(day)
         self.db.commit()
-    
+
     def _delete_nutrition_plan_details(self, plan_id: int):
-        """Delete all meals for a plan (for update)"""
-        self.db.query(self.meal_repo.model).filter(
-            self.meal_repo.model.nutrition_plan_id == plan_id
-        ).delete()
+        """Delete all nutrition days and their meal junction rows for a plan (for update)"""
+        for day in self.nutrition_repo.get_days_by_plan_id(plan_id):
+            self.nutrition_repo.delete_meal_slots_by_day_id(day.id)
+            self.db.delete(day)
         self.db.commit()
     
     def _update_workout_plan_with_details(
@@ -438,9 +430,8 @@ class PlanGenerationService:
             "generated_from_preferences": generated_from_preferences
         }
         
-        plan = self.workout_plan_repo.update_plan(plan_id, plan_data)
-        
-        # Create new workout days and exercises
+        plan = self.workout_repo.update_plan(plan_id, plan_data)
+
         for day_create in plan_create.workout_days:
             day_data = {
                 "day_name": day_create.day_name,
@@ -449,36 +440,38 @@ class PlanGenerationService:
                 "estimated_duration": day_create.estimated_duration,
                 "notes": day_create.notes
             }
-            
-            workout_day = self.workout_day_repo.create_workout_day(
-                plan_id=plan.id,
-                day_data=day_data
-            )
-            
-            # Create exercises for this day
+            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data)
+
             for exercise_create in day_create.exercises:
-                exercise_data = {
-                    "exercise_name": exercise_create.exercise_name,
-                    "exercise_type": exercise_create.exercise_type,
+                catalog_data = {
+                    "name": exercise_create.exercise_name,
+                    "exercise_type": exercise_create.exercise_type or "Strength",
+                    "primary_muscle_group": day_create.focus_area or "Full Body",
+                    "equipment_required": "Bodyweight",
+                    "difficulty_level": plan_create.difficulty_level or "Beginner",
+                    "location": "Any",
+                    "instructions": exercise_create.instructions,
+                    "video_url": exercise_create.video_url,
+                    "image_url": exercise_create.image_url,
+                    "is_active": True
+                }
+                central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
+                slot_data = {
                     "sets": exercise_create.sets,
                     "reps": exercise_create.reps,
                     "weight_kg": exercise_create.weight_kg,
                     "duration_seconds": exercise_create.duration_seconds,
                     "rest_seconds": exercise_create.rest_seconds,
-                    "instructions": exercise_create.instructions,
-                    "video_url": exercise_create.video_url,
-                    "image_url": exercise_create.image_url,
                     "order_index": exercise_create.order_index
                 }
-                
-                self.exercise_repo.create_exercise(
+                self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
-                    exercise_data=exercise_data
+                    central_exercise_id=central_exercise.id,
+                    slot_data=slot_data
                 )
-        
-        # Return plan with full details loaded
+
         return self.workout_service.get_plan_with_details(plan.id)
-    
+
     def _update_nutrition_plan_with_meals(
         self,
         plan_id: int,
@@ -498,31 +491,42 @@ class PlanGenerationService:
             "daily_fats_g": plan_create.daily_fats_g,
             "generated_from_preferences": generated_from_preferences
         }
-        
-        plan = self.nutrition_plan_repo.update_plan(plan_id, plan_data)
-        
-        # Create new meals
-        for meal_create in plan_create.meals:
-            meal_data = {
-                "meal_type": meal_create.meal_type,
-                "meal_name": meal_create.meal_name,
-                "calories": meal_create.calories,
-                "protein_g": meal_create.protein_g,
-                "carbs_g": meal_create.carbs_g,
-                "fats_g": meal_create.fats_g,
-                "ingredients": meal_create.ingredients,
-                "instructions": meal_create.instructions,
-                "prep_time_minutes": meal_create.prep_time_minutes,
-                "cook_time_minutes": meal_create.cook_time_minutes,
-                "servings": meal_create.servings,
-                "image_url": meal_create.image_url,
-                "order_index": meal_create.order_index
+
+        plan = self.nutrition_repo.update_plan(plan_id, plan_data)
+
+        for day_create in plan_create.days:
+            day_data = {
+                "day_number": day_create.day_number,
+                "day_name": day_create.day_name,
+                "notes": day_create.notes
             }
-            
-            self.meal_repo.create_meal(
-                plan_id=plan.id,
-                meal_data=meal_data
-            )
-        
-        # Return plan with meals loaded
-        return self.nutrition_service.get_plan_with_meals(plan.id)
+            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
+
+            for meal_create in day_create.meals:
+                catalog_data = {
+                    "meal_name": meal_create.meal_name,
+                    "meal_type_suitability": [meal_create.meal_type],
+                    "calories_per_serving": int(meal_create.calories),
+                    "protein_g": meal_create.protein_g,
+                    "carbs_g": meal_create.carbs_g,
+                    "fats_g": meal_create.fats_g,
+                    "ingredients": meal_create.ingredients,
+                    "instructions": meal_create.instructions,
+                    "prep_time_minutes": meal_create.prep_time_minutes,
+                    "cook_time_minutes": meal_create.cook_time_minutes,
+                    "image_url": meal_create.image_url,
+                    "is_active": True
+                }
+                central_meal = self.central_meal_repo.find_or_create(catalog_data)
+                slot_data = {
+                    "meal_type": meal_create.meal_type,
+                    "servings": float(meal_create.servings) if meal_create.servings else 1.0,
+                    "order_index": meal_create.order_index
+                }
+                self.nutrition_repo.create_meal_slot(
+                    day_id=nutrition_day.id,
+                    central_meal_id=central_meal.id,
+                    slot_data=slot_data
+                )
+
+        return self.nutrition_service.get_plan_with_full_details(plan.id)

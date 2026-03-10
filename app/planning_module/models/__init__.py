@@ -1,9 +1,12 @@
 from app.planning_module.models.plan import (
+    CentralExercise,
+    CentralMeal,
     WorkoutPlan,
     WorkoutDay,
-    Exercise,
+    WorkoutDayExercise,
     NutritionPlan,
-    Meal
+    NutritionPlanDay,
+    NutritionPlanMeal
 )
 from app.planning_module.models.enums import (
     PlanType,
@@ -18,11 +21,13 @@ from app.planning_module.models.enums import (
 
 __all__ = [
     # Models
+    "CentralExercise",
+    "CentralMeal",
     "WorkoutPlan",
     "WorkoutDay",
-    "Exercise",
+    "WorkoutDayExercise",
     "NutritionPlan",
-    "Meal",
+    "NutritionPlanMeal",
     # Enums
     "PlanType",
     "WorkoutLocation",

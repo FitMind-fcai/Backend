@@ -8,7 +8,7 @@ from typing import Optional
 # ========== Database Configuration ==========
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://postgres:ahmad123@localhost:5432/fitmind"
+    "postgresql+psycopg://postgres:postgres@localhost:5432/fitmind"
 )
 
 # ========== Redis Configuration ==========
@@ -29,15 +29,15 @@ REDIS_OTP_BLOCKED_PREFIX = "otp_blocked:"  # otp_blocked:user@email.com
 REDIS_VERIFICATION_PREFIX = "verify:"  # verify:token_string
 
 # ========== JWT Configuration ==========
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this")  # TODO: Move to environment variable
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")  # Required — must be set in environment
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 # ========== Email SMTP Configuration ==========
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SENDER_EMAIL = "fitmind.dev.fcai@gmail.com"
-SENDER_PASSWORD = "reiislglpgbmoafr"  # Use app password for Gmail
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")  # Set in environment
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")  # Set in environment
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")  # Change in production
 
 # ========== Password Configuration ==========

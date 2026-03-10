@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 from typing import Optional, Dict, Any
 from groq import Groq
 
@@ -9,10 +10,9 @@ from app.ai_services.ai_coach.dtos import (
     UserProfileDTO,
     WorkoutPreferencesDTO,
     NutritionPreferencesDTO,
-    PlanGenerationRequestDTO,
     WorkoutPlanDTO,
     NutritionPlanDTO,
-    GeneratedPlansDTO,
+    NutritionDayDTO,
     WorkoutDayDTO,
     ExerciseDTO,
     MealDTO
@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 class AICoachService:    
     # LLM Configuration
-    DEFAULT_MODEL = "gpt-oss-120b"
+    DEFAULT_MODEL = "openai/gpt-oss-120b"
     DEFAULT_TEMPERATURE = 0.0
-    DEFAULT_MAX_TOKENS = 4000
+    DEFAULT_MAX_TOKENS = 8000
     
     def __init__(
         self,
@@ -166,7 +166,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
 - If the new preferences are very similar, make minimal changes
 """
         
-        return f"""You are an expert nutritionist creating a personalized meal plan.
+        return f"""You are an expert nutritionist creating a personalized 7-day meal plan.
 
 {user_context}
 {prefs_context}{existing_plan_context}
@@ -178,13 +178,16 @@ REFERENCE NUTRITION KNOWLEDGE:
 {rag_context}{regeneration_instruction}
 
 IMPORTANT INSTRUCTIONS:
-1. Consider the user's dietary preferences and allergies
-2. Exclude any ingredients the user wants to avoid
-3. Match meal complexity to the user's preference
-4. Ensure meals align with the user's fitness goals
-5. Balance macronutrients appropriately for the fitness goal
+1. Generate a FULL 7-day plan (Monday through Sunday)
+2. Each day must have exactly {preferences.meals_per_day} meals
+3. Vary the meals across days — do not repeat the same meal every day
+4. Consider the user\'s dietary preferences and allergies
+5. Exclude any ingredients the user wants to avoid
+6. Match meal complexity to the user\'s preference
+7. Ensure meals align with the user\'s fitness goals
+8. Balance macronutrients appropriately for the fitness goal
 
-Generate a complete daily meal plan with {preferences.meals_per_day} meals in the following JSON format:
+Generate a complete 7-day meal plan in the following JSON format:
 {{
     "plan_name": "Descriptive plan name",
     "description": "Brief description of the nutrition plan",
@@ -192,21 +195,29 @@ Generate a complete daily meal plan with {preferences.meals_per_day} meals in th
     "daily_protein_g": calculated_protein,
     "daily_carbs_g": calculated_carbs,
     "daily_fats_g": calculated_fats,
-    "meals": [
+    "days": [
         {{
-            "meal_type": "Breakfast/Lunch/Dinner/Snack",
-            "meal_name": "Meal Name",
-            "calories": meal_calories,
-            "protein_g": protein_amount,
-            "carbs_g": carbs_amount,
-            "fats_g": fats_amount,
-            "ingredients": "List of ingredients with quantities",
-            "instructions": "Step by step cooking instructions",
-            "prep_time_minutes": 10,
-            "cook_time_minutes": 20,
-            "servings": 1,
-            "order_index": 0
-        }}
+            "day_name": "Monday",
+            "day_number": 1,
+            "notes": "Optional note (e.g., high-carb day, rest day)",
+            "meals": [
+                {{
+                    "meal_type": "Breakfast",
+                    "meal_name": "Meal Name",
+                    "calories": meal_calories,
+                    "protein_g": protein_amount,
+                    "carbs_g": carbs_amount,
+                    "fats_g": fats_amount,
+                    "ingredients": "List of ingredients with quantities",
+                    "instructions": "Step by step cooking instructions",
+                    "prep_time_minutes": 10,
+                    "cook_time_minutes": 20,
+                    "servings": 1,
+                    "order_index": 0
+                }}
+            ]
+        }},
+        ... (repeat for Tuesday through Sunday)
     ]
 }}
 
@@ -238,30 +249,46 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
         """
         Parse JSON response from LLM, handling potential formatting issues.
-        
+
         Args:
             response: Raw LLM response
-            
+
         Returns:
             Parsed JSON dictionary
         """
-        # Clean up response - remove markdown code blocks if present
-        cleaned = response.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        
-        return json.loads(cleaned.strip())
+        cleaned = (response or "").strip()
+        # Strip markdown code fences
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+        cleaned = cleaned.strip()
+
+        # Direct parse
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: extract the first {...} block (handles leading/trailing prose
+        # and partially-truncated responses where the outermost object is intact)
+        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError(
+            f"Could not parse LLM response as JSON "
+            f"(response length: {len(cleaned)} chars). "
+            f"Preview: {cleaned[:300]!r}"
+        )
     
     def generate_workout_plan(
         self,
         user_profile: UserProfileDTO,
         preferences: WorkoutPreferencesDTO,
         duration_weeks: int = 4,
-        existing_plan: Optional[WorkoutPlanDTO] = None
+        existing_plan: Optional[WorkoutPlanDTO] = None,
     ) -> WorkoutPlanDTO:
         """
         Generate a personalized workout plan.
@@ -330,7 +357,7 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
                 exercises=exercises
             ))
         
-        return WorkoutPlanDTO(
+        plan = WorkoutPlanDTO(
             plan_name=plan_data.get("plan_name", "AI Generated Workout Plan"),
             description=plan_data.get("description"),
             frequency=plan_data.get("frequency"),
@@ -338,13 +365,15 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
             estimated_duration_per_session=plan_data.get("estimated_duration_per_session"),
             workout_days=workout_days
         )
-    
+
+        return plan
+
     def generate_nutrition_plan(
         self,
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
         duration_weeks: int = 4,
-        existing_plan: Optional[NutritionPlanDTO] = None
+        existing_plan: Optional[NutritionPlanDTO] = None,
     ) -> NutritionPlanDTO:
         """
         Generate a personalized nutrition plan.
@@ -367,8 +396,6 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
             profile_context.append(f"medical conditions: {user_profile.medical_conditions}")
         if user_profile.fitness_goal:
             profile_context.append(f"goal: {user_profile.fitness_goal}")
-        if preferences.dietary_preference:
-            profile_context.append(f"diet: {preferences.dietary_preference}")
         
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference} {profile_str}"
@@ -387,34 +414,44 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
         plan_data = self._parse_json_response(response)
         
         # Convert to NutritionPlanDTO
-        meals = [
-            MealDTO(
-                meal_type=meal.get("meal_type"),
-                meal_name=meal.get("meal_name"),
-                calories=meal.get("calories", 0),
-                protein_g=meal.get("protein_g", 0),
-                carbs_g=meal.get("carbs_g", 0),
-                fats_g=meal.get("fats_g", 0),
-                ingredients=meal.get("ingredients"),
-                instructions=meal.get("instructions"),
-                prep_time_minutes=meal.get("prep_time_minutes"),
-                cook_time_minutes=meal.get("cook_time_minutes"),
-                servings=meal.get("servings", 1),
-                image_url=meal.get("image_url"),
-                order_index=meal.get("order_index", idx)
+        days = [
+            NutritionDayDTO(
+                day_name=day.get("day_name", f"Day {day.get('day_number', idx + 1)}"),
+                day_number=day.get("day_number", idx + 1),
+                notes=day.get("notes"),
+                meals=[
+                    MealDTO(
+                        meal_type=meal.get("meal_type"),
+                        meal_name=meal.get("meal_name"),
+                        calories=meal.get("calories", 0),
+                        protein_g=meal.get("protein_g", 0),
+                        carbs_g=meal.get("carbs_g", 0),
+                        fats_g=meal.get("fats_g", 0),
+                        ingredients=meal.get("ingredients"),
+                        instructions=meal.get("instructions"),
+                        prep_time_minutes=meal.get("prep_time_minutes"),
+                        cook_time_minutes=meal.get("cook_time_minutes"),
+                        servings=meal.get("servings", 1),
+                        image_url=meal.get("image_url"),
+                        order_index=meal.get("order_index", meal_idx)
+                    )
+                    for meal_idx, meal in enumerate(day.get("meals", []))
+                ]
             )
-            for idx, meal in enumerate(plan_data.get("meals", []))
+            for idx, day in enumerate(plan_data.get("days", []))
         ]
-        
-        return NutritionPlanDTO(
+
+        plan = NutritionPlanDTO(
             plan_name=plan_data.get("plan_name", "AI Generated Nutrition Plan"),
             description=plan_data.get("description"),
             daily_calories=plan_data.get("daily_calories", 2000),
             daily_protein_g=plan_data.get("daily_protein_g", 150),
             daily_carbs_g=plan_data.get("daily_carbs_g", 200),
             daily_fats_g=plan_data.get("daily_fats_g", 65),
-            meals=meals
+            days=days
         )
+
+        return plan
     
     def ask_coach(
         self,

@@ -149,10 +149,10 @@ class MealDTO(BaseModel):
     """DTO for a single meal."""
     meal_type: str
     meal_name: str
-    calories: int
-    protein_g: int
-    carbs_g: int
-    fats_g: int
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fats_g: float
     ingredients: Optional[str] = None
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = None
@@ -162,20 +162,32 @@ class MealDTO(BaseModel):
     order_index: int = 0
 
 
+class NutritionDayDTO(BaseModel):
+    """DTO for a single nutrition day (Mon-Sun)."""
+    day_name: str
+    day_number: int
+    notes: Optional[str] = None
+    meals: List[MealDTO] = []
+
+
 class NutritionPlanDTO(BaseModel):
     """DTO for generated nutrition plan."""
     plan_name: str
     description: Optional[str] = None
-    daily_calories: int
-    daily_protein_g: int
-    daily_carbs_g: int
-    daily_fats_g: int
-    meals: List[MealDTO] = []
+    daily_calories: float
+    daily_protein_g: float
+    daily_carbs_g: float
+    daily_fats_g: float
+    days: List[NutritionDayDTO] = []
 
     def to_context_string(self) -> str:
         """Convert nutrition plan to context string for LLM prompt."""
-        meals_info = "\n".join(
-            [f"- {meal.meal_type}: {meal.meal_name} ({meal.calories} kcal)" for meal in self.meals]
+        days_info = "\n".join(
+            [
+                f"- {day.day_name} (Day {day.day_number}): "
+                + ", ".join(f"{m.meal_type}: {m.meal_name} ({m.calories} kcal)" for m in day.meals)
+                for day in self.days
+            ]
         )
         return f"""NUTRITION PLAN:
         - Plan Name: {self.plan_name}
@@ -184,7 +196,7 @@ class NutritionPlanDTO(BaseModel):
         - Daily Protein: {self.daily_protein_g} g
         - Daily Carbs: {self.daily_carbs_g} g
         - Daily Fats: {self.daily_fats_g} g
-        {meals_info}
+        {days_info}
 
         """
 

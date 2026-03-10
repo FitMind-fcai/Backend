@@ -1,18 +1,75 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, Enum as SQLEnum, ForeignKey, Float, Text, JSON
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Float, Text, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.planning_module.models.enums import (
-    PlanType, 
-    WorkoutLocation, 
-    EquipmentAvailability, 
-    WorkoutFocus, 
+    PlanType,
+    WorkoutLocation,
+    EquipmentAvailability,
+    WorkoutFocus,
     WorkoutDifficulty,
     CaloriePreference,
     MealComplexity,
     CuisineType
 )
 
+
+# ========================================
+# CATALOG TABLES
+# ========================================
+
+class CentralExercise(Base):
+    """Central exercise catalog — admin-populated, shared across all users"""
+    __tablename__ = "central_exercises"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    exercise_type = Column(String(50), nullable=False, default="Strength")
+    primary_muscle_group = Column(String(100), nullable=False, default="Full Body")
+    secondary_muscles = Column(String(255), nullable=True)
+    equipment_required = Column(String(100), nullable=False, default="Bodyweight")
+    difficulty_level = Column(String(50), nullable=False, default="Beginner")
+    location = Column(String(50), nullable=False, default="Any")
+    instructions = Column(Text, nullable=True)
+    video_url = Column(String(500), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    exercises = relationship("WorkoutDayExercise", back_populates="central_exercise")
+
+
+class CentralMeal(Base):
+    """Central meal catalog — admin-populated, shared across all users"""
+    __tablename__ = "central_meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    meal_name = Column(String(255), nullable=False, index=True)
+    meal_type_suitability = Column(JSON, nullable=False, default=list)
+    calories_per_serving = Column(Integer, nullable=False)
+    protein_g = Column(Float, nullable=False)
+    carbs_g = Column(Float, nullable=False)
+    fats_g = Column(Float, nullable=False)
+    fiber_g = Column(Float, nullable=True)
+    serving_size = Column(String(100), nullable=True)
+    ingredients = Column(Text, nullable=True)
+    instructions = Column(Text, nullable=True)
+    prep_time_minutes = Column(Integer, nullable=True)
+    cook_time_minutes = Column(Integer, nullable=True)
+    cuisine_type = Column(String(100), nullable=True, index=True)
+    dietary_tags = Column(JSON, nullable=True, default=list)
+    image_url = Column(String(500), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    meals = relationship("NutritionPlanMeal", back_populates="central_meal")
+
+
+# ========================================
+# PLANNING TABLES
+# ========================================
 
 class WorkoutPlan(Base):
     __tablename__ = "workout_plans"
@@ -44,48 +101,40 @@ class WorkoutPlan(Base):
 class WorkoutDay(Base):
     """Individual workout day/session within a plan"""
     __tablename__ = "workout_days"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     workout_plan_id = Column(Integer, ForeignKey("workout_plans.id"), nullable=False, index=True)
-    
-    day_name = Column(String(100), nullable=False, comment="e.g., 'Monday', 'Day 1', 'Upper Body'")
-    day_number = Column(Integer, nullable=False, comment="Sequential day in plan")
-    focus_area = Column(String(100), nullable=True, comment="e.g., 'Chest & Triceps', 'Legs'")
-    estimated_duration = Column(Integer, nullable=True, comment="Session duration in minutes")
-    notes = Column(Text, nullable=True, comment="Additional instructions for the day")
-    
+
+    day_name = Column(String(100), nullable=False)
+    day_number = Column(Integer, nullable=False)
+    focus_area = Column(String(100), nullable=True)
+    estimated_duration = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+
     # Relationships
     workout_plan = relationship("WorkoutPlan", back_populates="workout_days")
-    exercises = relationship("Exercise", back_populates="workout_day", cascade="all, delete-orphan")
+    exercises = relationship("WorkoutDayExercise", back_populates="workout_day", cascade="all, delete-orphan")
 
 
-class Exercise(Base):
-    """Individual exercise within a workout day"""
-    __tablename__ = "exercises"
-    
+class WorkoutDayExercise(Base):
+    """Junction: links a workout day to a central exercise + plan-specific parameters"""
+    __tablename__ = "workout_day_exercises"
+
     id = Column(Integer, primary_key=True, index=True)
     workout_day_id = Column(Integer, ForeignKey("workout_days.id"), nullable=False, index=True)
-    
-    exercise_name = Column(String(255), nullable=False)
-    exercise_type = Column(String(50), nullable=True, comment="Strength, Cardio, Flexibility, etc.")
-    
-    # Exercise parameters
+    central_exercise_id = Column(Integer, ForeignKey("central_exercises.id"), nullable=False, index=True)
+
     sets = Column(Integer, nullable=True)
-    reps = Column(Integer, nullable=True, comment="Reps per set or total reps")
-    weight_kg = Column(Float, nullable=True, comment="Recommended weight")
-    duration_seconds = Column(Integer, nullable=True, comment="For time-based exercises")
-    rest_seconds = Column(Integer, nullable=True, comment="Rest between sets")
-    
-    # Instructions & Media
-    instructions = Column(Text, nullable=True)
-    video_url = Column(String(500), nullable=True)
-    image_url = Column(String(500), nullable=True)
-    
-    # Order
-    order_index = Column(Integer, nullable=False, default=0, comment="Exercise order in the day")
-    
+    reps = Column(Integer, nullable=True)
+    weight_kg = Column(Float, nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+    rest_seconds = Column(Integer, nullable=True)
+    order_index = Column(Integer, nullable=False, default=0)
+    notes = Column(Text, nullable=True)
+
     # Relationships
     workout_day = relationship("WorkoutDay", back_populates="exercises")
+    central_exercise = relationship("CentralExercise", back_populates="exercises")
 
 
 class NutritionPlan(Base):
@@ -114,37 +163,37 @@ class NutritionPlan(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    meals = relationship("Meal", back_populates="nutrition_plan", cascade="all, delete-orphan")
+    days = relationship("NutritionPlanDay", back_populates="nutrition_plan", cascade="all, delete-orphan", order_by="NutritionPlanDay.day_number")
 
 
-class Meal(Base):
-    """Recommended meal within a nutrition plan"""
-    __tablename__ = "meals"
-    
+class NutritionPlanDay(Base):
+    """Individual day (Mon-Sun) within a nutrition plan"""
+    __tablename__ = "nutrition_plan_days"
+
     id = Column(Integer, primary_key=True, index=True)
     nutrition_plan_id = Column(Integer, ForeignKey("nutrition_plans.id"), nullable=False, index=True)
-    
-    meal_type = Column(String(50), nullable=False, comment="Breakfast, Lunch, Dinner, Snack")
-    meal_name = Column(String(255), nullable=False)
-    
-    # Nutritional info
-    calories = Column(Integer, nullable=False)
-    protein_g = Column(Integer, nullable=False)
-    carbs_g = Column(Integer, nullable=False)
-    fats_g = Column(Integer, nullable=False)
-    
-    # Recipe details
-    ingredients = Column(Text, nullable=True, comment="List of ingredients")
-    instructions = Column(Text, nullable=True, comment="Cooking instructions")
-    prep_time_minutes = Column(Integer, nullable=True)
-    cook_time_minutes = Column(Integer, nullable=True)
-    servings = Column(Integer, nullable=True, default=1)
-    
-    # Media
-    image_url = Column(String(500), nullable=True)
-    
-    # Order
-    order_index = Column(Integer, nullable=False, default=0, comment="Meal order in the day")
-    
+    day_number = Column(Integer, nullable=False)
+    day_name = Column(String(50), nullable=False)
+    notes = Column(Text, nullable=True)
+
     # Relationships
-    nutrition_plan = relationship("NutritionPlan", back_populates="meals")
+    nutrition_plan = relationship("NutritionPlan", back_populates="days")
+    meals = relationship("NutritionPlanMeal", back_populates="nutrition_plan_day", cascade="all, delete-orphan", order_by="NutritionPlanMeal.order_index")
+
+
+class NutritionPlanMeal(Base):
+    """Junction: links a nutrition day to a central meal + plan-specific parameters"""
+    __tablename__ = "nutrition_plan_meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nutrition_plan_day_id = Column(Integer, ForeignKey("nutrition_plan_days.id"), nullable=False, index=True)
+    central_meal_id = Column(Integer, ForeignKey("central_meals.id"), nullable=False, index=True)
+
+    meal_type = Column(String(50), nullable=False)
+    servings = Column(Float, nullable=False, default=1.0)
+    order_index = Column(Integer, nullable=False, default=0)
+    notes = Column(Text, nullable=True)
+
+    # Relationships
+    nutrition_plan_day = relationship("NutritionPlanDay", back_populates="meals")
+    central_meal = relationship("CentralMeal", back_populates="meals")

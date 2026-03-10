@@ -1,0 +1,1223 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FitMind API",
+    "description": "FitMind Backend API — Authentication, Profile Management, and AI-Powered Fitness Planning.\n\n## How to use\n1. Set the `base_url` environment variable (e.g. `http://localhost:8000`)\n2. Call **POST /v1/auth/login** and copy the returned `token`\n3. Set the `token` environment variable\n4. All protected endpoints will use `Bearer {{token}}` automatically",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "{{base_url}}",
+      "description": "FitMind Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token obtained from POST /v1/auth/login"
+      }
+    },
+    "schemas": {
+      "UserCreate": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100, "example": "Ahmed Ali" },
+          "email": { "type": "string", "format": "email", "example": "{{email}}" },
+          "password": { "type": "string", "minLength": 6, "example": "mypassword123" }
+        }
+      },
+      "UserLogin": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "{{email}}" },
+          "password": { "type": "string", "minLength": 6, "example": "mypassword123" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "name": { "type": "string", "example": "Ahmed Ali" },
+          "email": { "type": "string", "example": "{{email}}" },
+          "is_verified": { "type": "boolean", "example": false }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+          "user": { "$ref": "#/components/schemas/UserResponse" }
+        }
+      },
+      "EmailVerificationRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "{{email}}" }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "{{email}}" }
+        }
+      },
+      "VerifyOTPRequest": {
+        "type": "object",
+        "required": ["email", "otp"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "{{email}}" },
+          "otp": { "type": "string", "minLength": 5, "maxLength": 5, "example": "48291" }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["email", "otp", "new_password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "{{email}}" },
+          "otp": { "type": "string", "minLength": 5, "maxLength": 5, "example": "48291" },
+          "new_password": { "type": "string", "minLength": 6, "example": "newpassword123" }
+        }
+      },
+      "ProfileBase": {
+        "type": "object",
+        "required": ["user_id", "age", "gender", "height", "weight", "fitness_goal", "activity_level", "dietary_preference", "medical_conditions", "allergies", "injuries", "medications"],
+        "properties": {
+          "user_id": { "type": "integer", "example": 1 },
+          "age": { "type": "integer", "example": 25 },
+          "gender": {
+            "type": "string",
+            "enum": ["Male", "Female"],
+            "example": "Male"
+          },
+          "height": { "type": "number", "format": "float", "example": 175.0, "description": "Height in cm" },
+          "weight": { "type": "number", "format": "float", "example": 75.0, "description": "Weight in kg" },
+          "fitness_goal": {
+            "type": "string",
+            "enum": ["Lose Weight", "Try AI Coach", "Get Bulks", "Improve Endurance"],
+            "example": "Lose Weight"
+          },
+          "activity_level": {
+            "type": "string",
+            "enum": ["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active"],
+            "example": "Moderately Active"
+          },
+          "dietary_preference": { "type": "string", "example": "No restrictions" },
+          "medical_conditions": { "type": "string", "example": "None" },
+          "allergies": { "type": "string", "example": "None" },
+          "injuries": { "type": "string", "example": "None" },
+          "medications": { "type": "string", "example": "None" }
+        }
+      },
+      "ProfileUpdate": {
+        "type": "object",
+        "required": ["user_id"],
+        "properties": {
+          "user_id": { "type": "integer", "example": 1 },
+          "age": { "type": "integer", "nullable": true, "example": 26 },
+          "gender": {
+            "type": "string",
+            "enum": ["Male", "Female"],
+            "nullable": true,
+            "example": "Male"
+          },
+          "height": { "type": "number", "nullable": true, "example": 175.0 },
+          "weight": { "type": "number", "nullable": true, "example": 72.0 },
+          "fitness_goal": {
+            "type": "string",
+            "enum": ["Lose Weight", "Try AI Coach", "Get Bulks", "Improve Endurance"],
+            "nullable": true,
+            "example": "Get Bulks"
+          },
+          "activity_level": {
+            "type": "string",
+            "enum": ["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extra Active"],
+            "nullable": true,
+            "example": "Very Active"
+          },
+          "dietary_preference": { "type": "string", "nullable": true, "example": "Vegetarian" },
+          "medical_conditions": { "type": "string", "nullable": true },
+          "allergies": { "type": "string", "nullable": true },
+          "injuries": { "type": "string", "nullable": true },
+          "medications": { "type": "string", "nullable": true }
+        }
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "user_id": { "type": "integer", "example": 1 },
+          "age": { "type": "integer", "example": 25 },
+          "gender": { "type": "string", "example": "Male" },
+          "height": { "type": "number", "example": 175.0 },
+          "weight": { "type": "number", "example": 75.0 },
+          "fitness_goal": { "type": "string", "example": "Lose Weight" },
+          "activity_level": { "type": "string", "example": "Moderately Active" },
+          "dietary_preference": { "type": "string", "example": "No restrictions" },
+          "medical_conditions": { "type": "string", "example": "None" },
+          "allergies": { "type": "string", "example": "None" },
+          "injuries": { "type": "string", "example": "None" },
+          "medications": { "type": "string", "example": "None" },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "WorkoutPreferences": {
+        "type": "object",
+        "required": ["workout_days_per_week", "workout_location", "equipment_availability", "workout_focus", "workout_difficulty", "session_duration_minutes"],
+        "properties": {
+          "workout_days_per_week": { "type": "integer", "minimum": 1, "maximum": 7, "example": 4 },
+          "workout_location": {
+            "type": "string",
+            "enum": ["Gym", "Home", "Outdoor", "Hybrid"],
+            "example": "Gym"
+          },
+          "equipment_availability": {
+            "type": "string",
+            "enum": ["Full Gym Equipment", "Basic Equipment", "No Equipment"],
+            "example": "Full Gym Equipment"
+          },
+          "workout_focus": {
+            "type": "string",
+            "enum": ["Strength Training", "Cardiovascular", "Flexibility", "Hybrid", "Sport Specific"],
+            "example": "Strength Training"
+          },
+          "workout_difficulty": {
+            "type": "string",
+            "enum": ["Beginner", "Intermediate", "Advanced"],
+            "example": "Intermediate"
+          },
+          "session_duration_minutes": { "type": "integer", "minimum": 15, "maximum": 180, "example": 60 },
+          "focus_areas": {
+            "type": "array",
+            "items": { "type": "string" },
+            "nullable": true,
+            "example": ["chest", "back", "shoulders"]
+          }
+        }
+      },
+      "NutritionPreferences": {
+        "type": "object",
+        "required": ["calorie_preference", "meals_per_day", "meal_complexity", "cuisine_preference"],
+        "properties": {
+          "calorie_preference": {
+            "type": "string",
+            "enum": ["Auto", "Custom"],
+            "example": "Auto"
+          },
+          "custom_calorie_target": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 5000,
+            "nullable": true,
+            "example": null,
+            "description": "Required only when calorie_preference is Custom"
+          },
+          "meals_per_day": { "type": "integer", "minimum": 3, "maximum": 6, "example": 3 },
+          "meal_complexity": {
+            "type": "string",
+            "enum": ["Quick", "Moderate", "Elaborate", "Mixed"],
+            "example": "Moderate"
+          },
+          "cuisine_preference": {
+            "type": "string",
+            "enum": ["Mediterranean", "Asian", "Western", "Middle Eastern", "Latin American", "Vegetarian", "Vegan", "Mixed"],
+            "example": "Mixed"
+          },
+          "exclude_ingredients": {
+            "type": "array",
+            "items": { "type": "string" },
+            "nullable": true,
+            "example": ["pork", "shellfish"]
+          }
+        }
+      },
+      "WorkoutPlanGenerationRequest": {
+        "type": "object",
+        "required": ["duration_weeks", "workout_preferences"],
+        "properties": {
+          "duration_weeks": { "type": "integer", "minimum": 1, "maximum": 52, "example": 8 },
+          "workout_preferences": { "$ref": "#/components/schemas/WorkoutPreferences" }
+        }
+      },
+      "NutritionPlanGenerationRequest": {
+        "type": "object",
+        "required": ["duration_weeks", "nutrition_preferences"],
+        "properties": {
+          "duration_weeks": { "type": "integer", "minimum": 1, "maximum": 52, "example": 8 },
+          "nutrition_preferences": { "$ref": "#/components/schemas/NutritionPreferences" }
+        }
+      },
+      "ExerciseResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "workout_day_id": { "type": "integer", "example": 1 },
+          "exercise_name": { "type": "string", "example": "Bench Press" },
+          "exercise_type": { "type": "string", "nullable": true, "example": "Compound" },
+          "sets": { "type": "integer", "nullable": true, "example": 4 },
+          "reps": { "type": "integer", "nullable": true, "example": 10 },
+          "weight_kg": { "type": "number", "nullable": true, "example": 80.0 },
+          "duration_seconds": { "type": "integer", "nullable": true },
+          "rest_seconds": { "type": "integer", "nullable": true, "example": 90 },
+          "instructions": { "type": "string", "nullable": true },
+          "video_url": { "type": "string", "nullable": true },
+          "image_url": { "type": "string", "nullable": true },
+          "order_index": { "type": "integer", "example": 0 }
+        }
+      },
+      "WorkoutDayResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "workout_plan_id": { "type": "integer", "example": 1 },
+          "day_name": { "type": "string", "example": "Push Day" },
+          "day_number": { "type": "integer", "example": 1 },
+          "focus_area": { "type": "string", "nullable": true, "example": "Chest, Shoulders, Triceps" },
+          "estimated_duration": { "type": "integer", "nullable": true, "example": 60 },
+          "notes": { "type": "string", "nullable": true },
+          "exercises": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ExerciseResponse" }
+          }
+        }
+      },
+      "WorkoutPlanResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "user_id": { "type": "integer", "example": 1 },
+          "profile_id": { "type": "integer", "example": 1 },
+          "plan_name": { "type": "string", "example": "8-Week Strength Program" },
+          "description": { "type": "string", "nullable": true },
+          "start_date": { "type": "string", "format": "date", "example": "2026-03-09" },
+          "end_date": { "type": "string", "format": "date", "nullable": true },
+          "frequency": { "type": "string", "nullable": true, "example": "4 days/week" },
+          "difficulty_level": { "type": "string", "nullable": true, "example": "Intermediate" },
+          "estimated_duration_per_session": { "type": "integer", "nullable": true, "example": 60 },
+          "generated_from_preferences": { "type": "object", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true },
+          "workout_days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WorkoutDayResponse" }
+          }
+        }
+      },
+      "WorkoutPlanSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "user_id": { "type": "integer", "example": 1 },
+          "plan_name": { "type": "string", "example": "8-Week Strength Program" },
+          "start_date": { "type": "string", "format": "date", "example": "2026-03-09" },
+          "end_date": { "type": "string", "format": "date", "nullable": true },
+          "frequency": { "type": "string", "nullable": true },
+          "difficulty_level": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "total_workout_days": { "type": "integer", "example": 4 }
+        }
+      },
+      "MealResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "nutrition_plan_id": { "type": "integer", "example": 1 },
+          "meal_type": { "type": "string", "example": "Breakfast" },
+          "meal_name": { "type": "string", "example": "Oatmeal with Berries" },
+          "calories": { "type": "number", "example": 350.0 },
+          "protein_g": { "type": "number", "example": 12.0 },
+          "carbs_g": { "type": "number", "example": 55.0 },
+          "fats_g": { "type": "number", "example": 8.0 },
+          "ingredients": { "type": "string", "nullable": true },
+          "instructions": { "type": "string", "nullable": true },
+          "prep_time_minutes": { "type": "integer", "nullable": true, "example": 5 },
+          "cook_time_minutes": { "type": "integer", "nullable": true, "example": 10 },
+          "servings": { "type": "integer", "example": 1 },
+          "image_url": { "type": "string", "nullable": true },
+          "order_index": { "type": "integer", "example": 0 }
+        }
+      },
+      "NutritionPlanResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "user_id": { "type": "integer", "example": 1 },
+          "profile_id": { "type": "integer", "example": 1 },
+          "plan_name": { "type": "string", "example": "8-Week Weight Loss Plan" },
+          "description": { "type": "string", "nullable": true },
+          "start_date": { "type": "string", "format": "date", "example": "2026-03-09" },
+          "end_date": { "type": "string", "format": "date", "nullable": true },
+          "daily_calories": { "type": "number", "example": 1800.0 },
+          "daily_protein_g": { "type": "number", "example": 150.0 },
+          "daily_carbs_g": { "type": "number", "example": 200.0 },
+          "daily_fats_g": { "type": "number", "example": 55.0 },
+          "generated_from_preferences": { "type": "object", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true },
+          "meals": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MealResponse" }
+          }
+        }
+      },
+      "NutritionPlanSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "user_id": { "type": "integer", "example": 1 },
+          "plan_name": { "type": "string", "example": "8-Week Weight Loss Plan" },
+          "start_date": { "type": "string", "format": "date", "example": "2026-03-09" },
+          "end_date": { "type": "string", "format": "date", "nullable": true },
+          "daily_calories": { "type": "number", "example": 1800.0 },
+          "daily_protein_g": { "type": "number", "example": 150.0 },
+          "daily_carbs_g": { "type": "number", "example": 200.0 },
+          "daily_fats_g": { "type": "number", "example": 55.0 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "total_meals": { "type": "integer", "example": 3 }
+        }
+      },
+      "CombinedPlanResponse": {
+        "type": "object",
+        "properties": {
+          "workout_plan": { "$ref": "#/components/schemas/WorkoutPlanResponse", "nullable": true },
+          "nutrition_plan": { "$ref": "#/components/schemas/NutritionPlanResponse", "nullable": true },
+          "message": { "type": "string", "example": "Plan(s) generated successfully" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "detail": { "type": "string", "example": "Error message" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/auth/signup": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Sign Up",
+        "description": "Register a new user account. A verification email will be sent automatically.",
+        "operationId": "auth_signup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserCreate" },
+              "example": {
+                "name": "Ahmed Ali",
+                "email": "{{email}}",
+                "password": "mypassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          },
+          "400": { "description": "Email already registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login",
+        "description": "Authenticate and receive a JWT access token. Copy the returned `token` value and set it as the `token` environment variable.",
+        "operationId": "auth_login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserLogin" },
+              "example": {
+                "email": "{{email}}",
+                "password": "mypassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful — copy the token value",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials or unverified account", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/v1/auth/verify-email": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Verify Email",
+        "description": "Verify user email via the token sent in the verification email.",
+        "operationId": "auth_verify_email",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Email verification token from the email link",
+            "example": "abc123verificationtoken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Email verified successfully! You can now login." },
+                    "verified": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid or expired token", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/v1/auth/resend-verification": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Resend Verification Email",
+        "description": "Resend the email verification link to the user's email address.",
+        "operationId": "auth_resend_verification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmailVerificationRequest" },
+              "example": { "email": "{{email}}" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification email sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Verification email has been resent. Please check your inbox." },
+                    "email": { "type": "string", "example": "{{email}}" }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Failed to send email" }
+        }
+      }
+    },
+    "/v1/auth/forgot-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Forgot Password — Request OTP",
+        "description": "Request a 5-digit OTP sent to your email for password reset. OTP expires in 10 minutes.",
+        "operationId": "auth_forgot_password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ForgotPasswordRequest" },
+              "example": { "email": "{{email}}" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "OTP has been sent to your email. It will expire in 10 minutes." },
+                    "email": { "type": "string", "example": "{{email}}" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "User not found" },
+          "500": { "description": "Failed to send OTP email" }
+        }
+      }
+    },
+    "/v1/auth/verify-otp": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Verify OTP",
+        "description": "Verify the 5-digit OTP sent to the user's email. Must be done before resetting password.",
+        "operationId": "auth_verify_otp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyOTPRequest" },
+              "example": {
+                "email": "{{email}}",
+                "otp": "48291"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "OTP verified successfully. You can now reset your password." },
+                    "email": { "type": "string", "example": "{{email}}" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid or expired OTP" }
+        }
+      }
+    },
+    "/v1/auth/reset-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Reset Password",
+        "description": "Reset user password after verifying the OTP. OTP is validated again for security.",
+        "operationId": "auth_reset_password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResetPasswordRequest" },
+              "example": {
+                "email": "{{email}}",
+                "otp": "48291",
+                "new_password": "newpassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "Password has been reset successfully. You can now login with your new password." },
+                    "email": { "type": "string", "example": "{{email}}" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid OTP" }
+        }
+      }
+    },
+    "/v1/auth/otp-status/{email}": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Check OTP Rate Limit Status",
+        "description": "Check if a user can request a new OTP and get remaining cooldown/block times. Useful for frontend countdown timers.",
+        "operationId": "auth_otp_status",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "email" },
+            "example": "{{email}}"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OTP rate limit status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Rate limit status object with remaining seconds"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get Current User",
+        "description": "Get the authenticated user's account information. Requires a valid JWT token.",
+        "operationId": "auth_me",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user info",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized — missing or invalid token" }
+        }
+      }
+    },
+    "/v1/profiles/": {
+      "post": {
+        "tags": ["Profiles"],
+        "summary": "Create Profile",
+        "description": "Create a fitness profile for the authenticated user. Required before generating plans.",
+        "operationId": "profile_create",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileBase" },
+              "example": {
+                "user_id": 1,
+                "age": 25,
+                "gender": "Male",
+                "height": 175.0,
+                "weight": 75.0,
+                "fitness_goal": "Lose Weight",
+                "activity_level": "Moderately Active",
+                "dietary_preference": "No restrictions",
+                "medical_conditions": "None",
+                "allergies": "None",
+                "injuries": "None",
+                "medications": "None"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Profile created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProfileResponse" }
+              }
+            }
+          },
+          "400": { "description": "Profile already exists or invalid data" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/profiles/me": {
+      "get": {
+        "tags": ["Profiles"],
+        "summary": "Get My Profile",
+        "description": "Get the authenticated user's fitness profile.",
+        "operationId": "profile_get_me",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProfileResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Profile not found" }
+        }
+      },
+      "put": {
+        "tags": ["Profiles"],
+        "summary": "Update My Profile",
+        "description": "Update the authenticated user's fitness profile. All fields are optional — only send what you want to change.",
+        "operationId": "profile_update_me",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdate" },
+              "example": {
+                "user_id": 1,
+                "weight": 72.0,
+                "fitness_goal": "Get Bulks",
+                "activity_level": "Very Active"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProfileResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Profile not found" }
+        }
+      }
+    },
+    "/v1/plans/generate/workout": {
+      "post": {
+        "tags": ["Plan Generation"],
+        "summary": "Generate Workout Plan",
+        "description": "Generate or update an AI-powered workout plan based on your profile and preferences.\n\n**Smart update:** If a plan already exists, the AI keeps exercises that still match your requirements and only changes what conflicts with the new preferences.",
+        "operationId": "plan_generate_workout",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WorkoutPlanGenerationRequest" },
+              "example": {
+                "duration_weeks": 8,
+                "workout_preferences": {
+                  "workout_days_per_week": 4,
+                  "workout_location": "Gym",
+                  "equipment_availability": "Full Gym Equipment",
+                  "workout_focus": "Strength Training",
+                  "workout_difficulty": "Intermediate",
+                  "session_duration_minutes": 60,
+                  "focus_areas": ["chest", "back", "shoulders", "legs"]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workout plan generated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkoutPlanResponse" }
+              }
+            }
+          },
+          "400": { "description": "Profile not found or incomplete" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/plans/generate/nutrition": {
+      "post": {
+        "tags": ["Plan Generation"],
+        "summary": "Generate Nutrition Plan",
+        "description": "Generate or update an AI-powered nutrition plan based on your profile and preferences.\n\n**Smart update:** If a plan already exists, the AI keeps meals that still match your requirements and only changes what conflicts with the new preferences.",
+        "operationId": "plan_generate_nutrition",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NutritionPlanGenerationRequest" },
+              "example": {
+                "duration_weeks": 8,
+                "nutrition_preferences": {
+                  "calorie_preference": "Auto",
+                  "custom_calorie_target": null,
+                  "meals_per_day": 3,
+                  "meal_complexity": "Moderate",
+                  "cuisine_preference": "Mixed",
+                  "exclude_ingredients": []
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nutrition plan generated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NutritionPlanResponse" }
+              }
+            }
+          },
+          "400": { "description": "Profile not found or incomplete" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/plans/active": {
+      "get": {
+        "tags": ["Plan Generation"],
+        "summary": "Get Active Plans (Combined)",
+        "description": "Get both the active workout plan and the active nutrition plan in a single response.",
+        "operationId": "plan_get_active",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Active plans (fields may be null if no plan exists)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CombinedPlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/workout-plans/": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "List All Workout Plans",
+        "description": "Get a paginated list of all workout plans for the authenticated user (summaries only).",
+        "operationId": "workout_list",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "skip", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Number of records to skip" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 }, "description": "Maximum number of records to return" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of workout plan summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/WorkoutPlanSummary" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/workout-plans/active": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "Get Active Workout Plan",
+        "description": "Get the currently active workout plan with all days and exercises.",
+        "operationId": "workout_get_active",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Active workout plan with full details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkoutPlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "No active workout plan found" }
+        }
+      }
+    },
+    "/v1/workout-plans/{plan_id}": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "Get Workout Plan by ID",
+        "description": "Get a specific workout plan with full details. Only accessible by the plan owner.",
+        "operationId": "workout_get_by_id",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workout plan details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkoutPlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden — not your plan" },
+          "404": { "description": "Plan not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Workout Plans"],
+        "summary": "Delete Workout Plan",
+        "description": "Delete a workout plan and all its associated days and exercises.",
+        "operationId": "workout_delete",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "204": { "description": "Plan deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden — not your plan" }
+        }
+      }
+    },
+    "/v1/workout-plans/{plan_id}/days": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "Get Workout Days",
+        "description": "Get all workout days for a specific plan.",
+        "operationId": "workout_get_days",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of workout days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/WorkoutDayResponse" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/v1/workout-plans/{plan_id}/days/{day_id}": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "Get Workout Day by ID",
+        "description": "Get a specific workout day with all its exercises.",
+        "operationId": "workout_get_day_by_id",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 },
+          { "name": "day_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workout day with exercises",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkoutDayResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Day not found in this plan" }
+        }
+      }
+    },
+    "/v1/workout-plans/{plan_id}/days/{day_id}/exercises": {
+      "get": {
+        "tags": ["Workout Plans"],
+        "summary": "Get Exercises for a Day",
+        "description": "Get all exercises for a specific workout day.",
+        "operationId": "workout_get_exercises",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 },
+          { "name": "day_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of exercises",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ExerciseResponse" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Day not found in this plan" }
+        }
+      }
+    },
+    "/v1/nutrition-plans/": {
+      "get": {
+        "tags": ["Nutrition Plans"],
+        "summary": "List All Nutrition Plans",
+        "description": "Get a paginated list of all nutrition plans for the authenticated user (summaries only).",
+        "operationId": "nutrition_list",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "skip", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Number of records to skip" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 }, "description": "Maximum number of records to return" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of nutrition plan summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/NutritionPlanSummary" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/v1/nutrition-plans/active": {
+      "get": {
+        "tags": ["Nutrition Plans"],
+        "summary": "Get Active Nutrition Plan",
+        "description": "Get the currently active nutrition plan with all meals.",
+        "operationId": "nutrition_get_active",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Active nutrition plan with full details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NutritionPlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "No active nutrition plan found" }
+        }
+      }
+    },
+    "/v1/nutrition-plans/{plan_id}": {
+      "get": {
+        "tags": ["Nutrition Plans"],
+        "summary": "Get Nutrition Plan by ID",
+        "description": "Get a specific nutrition plan with all meals. Only accessible by the plan owner.",
+        "operationId": "nutrition_get_by_id",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nutrition plan details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NutritionPlanResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden — not your plan" },
+          "404": { "description": "Plan not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Nutrition Plans"],
+        "summary": "Delete Nutrition Plan",
+        "description": "Delete a nutrition plan and all its associated meals.",
+        "operationId": "nutrition_delete",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "204": { "description": "Plan deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden — not your plan" }
+        }
+      }
+    },
+    "/v1/nutrition-plans/{plan_id}/meals": {
+      "get": {
+        "tags": ["Nutrition Plans"],
+        "summary": "Get Meals for a Plan",
+        "description": "Get all meals for a specific nutrition plan. Optionally filter by meal type.",
+        "operationId": "nutrition_get_meals",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 },
+          {
+            "name": "meal_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["Breakfast", "Lunch", "Dinner", "Snack"]
+            },
+            "description": "Filter meals by type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of meals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/MealResponse" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/v1/nutrition-plans/{plan_id}/meals/{meal_id}": {
+      "get": {
+        "tags": ["Nutrition Plans"],
+        "summary": "Get Meal by ID",
+        "description": "Get a specific meal by ID from a nutrition plan.",
+        "operationId": "nutrition_get_meal_by_id",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "plan_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 },
+          { "name": "meal_id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Meal details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MealResponse" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Meal not found in this plan" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Authentication", "description": "User registration, login, email verification, and password reset flows" },
+    { "name": "Profiles", "description": "User fitness profile management — required before generating plans" },
+    { "name": "Plan Generation", "description": "AI-powered workout and nutrition plan generation" },
+    { "name": "Workout Plans", "description": "CRUD operations and browsing for workout plans, days, and exercises" },
+    { "name": "Nutrition Plans", "description": "CRUD operations and browsing for nutrition plans and meals" }
+  ]
+}
