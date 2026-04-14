@@ -3,7 +3,8 @@ import json
 import logging
 import re
 from typing import Optional, Dict, Any
-from groq import Groq
+from openai import OpenAI
+from pydantic import ValidationError
 
 from app.ai_services.ai_coach.vector_db_service import get_vector_db_service, VectorDBService
 from app.ai_services.ai_coach.dtos import (
@@ -15,8 +16,9 @@ from app.ai_services.ai_coach.dtos import (
     NutritionDayDTO,
     WorkoutDayDTO,
     ExerciseDTO,
-    MealDTO
+    MealDTO,
 )
+from app.core import config
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -24,13 +26,25 @@ logger = logging.getLogger(__name__)
 
 class AICoachService:    
     # LLM Configuration
+    DEFAULT_PROVIDER = "groq"
     DEFAULT_MODEL = "openai/gpt-oss-120b"
     DEFAULT_TEMPERATURE = 0.0
-    DEFAULT_MAX_TOKENS = 8000
+    DEFAULT_MAX_TOKENS = 6000
+
+    PROVIDER_BASE_URLS = {
+        "groq": "https://api.groq.com/openai/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
+        "openai": "https://api.openai.com/v1",
+        "together": "https://api.together.xyz/v1",
+        "deepinfra": "https://api.deepinfra.com/v1/openai",
+        "fireworks": "https://api.fireworks.ai/inference/v1",
+    }
     
     def __init__(
         self,
+        provider: Optional[str] = None,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         model: Optional[str] = None,
         vector_db_service: Optional[VectorDBService] = None
     ):
@@ -38,20 +52,108 @@ class AICoachService:
         Initialize the AI Coach Service.
         
         Args:
-            api_key: Groq API key (falls back to GROQ_API_KEY env variable)
+            provider: LLM provider (groq/openrouter/openai/together/deepinfra/fireworks)
+            api_key: LLM API key (falls back to env based on selected provider)
+            base_url: Optional custom OpenAI-compatible endpoint URL
             model: LLM model to use
             vector_db_service: Optional VectorDBService instance
         """
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        self.provider = (provider or os.getenv("AI_PROVIDER") or config.AI_PROVIDER or self.DEFAULT_PROVIDER).lower()
+
+        self.api_key = (
+            api_key
+            or os.getenv("AI_API_KEY")
+            or config.AI_API_KEY
+            or self._get_provider_api_key(self.provider)
+        )
         if not self.api_key:
             raise ValueError(
-                "Groq API key not provided. Set GROQ_API_KEY environment variable "
-                "or pass api_key parameter."
+                f"No API key found for provider '{self.provider}'. "
+                "Set AI_API_KEY or provider-specific key in environment, or pass api_key parameter."
             )
-        
-        self.model = model or self.DEFAULT_MODEL
-        self.client = Groq(api_key=self.api_key)
+
+        self.base_url = (
+            base_url
+            or os.getenv("AI_BASE_URL")
+            or config.AI_BASE_URL
+            or self.PROVIDER_BASE_URLS.get(self.provider)
+        )
+        if not self.base_url:
+            raise ValueError(
+                f"No base URL configured for provider '{self.provider}'. "
+                "Set AI_BASE_URL or use a supported provider."
+            )
+
+        self.model = model or os.getenv("AI_MODEL") or config.AI_MODEL or self.DEFAULT_MODEL
+        self.temperature = float(
+            os.getenv("AI_COACH_TEMPERATURE") or str(config.AI_COACH_TEMPERATURE or self.DEFAULT_TEMPERATURE)
+        )
+        self.max_tokens = int(
+            os.getenv("AI_COACH_MAX_TOKENS") or str(config.AI_COACH_MAX_TOKENS or self.DEFAULT_MAX_TOKENS)
+        )
+        self.rag_top_k = int(os.getenv("AI_RAG_TOP_K", "3"))
+        self.rag_max_context_chars = int(os.getenv("AI_RAG_MAX_CONTEXT_CHARS", "1800"))
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            default_headers=self._build_provider_headers(self.provider),
+        )
         self.vector_db = vector_db_service or get_vector_db_service()
+
+        logger.info(
+            "AI Coach initialized with provider=%s model=%s base_url=%s max_tokens=%s",
+            self.provider,
+            self.model,
+            self.base_url,
+            self.max_tokens,
+        )
+
+    def _trim_rag_context(self, rag_context: str, context_name: str) -> str:
+        """Trim long RAG context to keep total prompt size under control."""
+        context = rag_context or ""
+        if len(context) <= self.rag_max_context_chars:
+            return context
+
+        trimmed = context[:self.rag_max_context_chars].rstrip()
+        logger.info(
+            "Trimmed %s context from %s to %s chars",
+            context_name,
+            len(context),
+            len(trimmed),
+        )
+        return trimmed
+
+    def _get_provider_api_key(self, provider: str) -> str:
+        """Resolve provider-specific API key fallback."""
+        if provider == "groq":
+            return os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY
+        if provider == "openrouter":
+            return os.getenv("OPENROUTER_API_KEY") or config.OPENROUTER_API_KEY
+        if provider == "openai":
+            return os.getenv("OPENAI_API_KEY") or config.OPENAI_API_KEY
+        if provider == "together":
+            return os.getenv("TOGETHER_API_KEY") or config.TOGETHER_API_KEY
+        if provider == "deepinfra":
+            return os.getenv("DEEPINFRA_API_KEY") or config.DEEPINFRA_API_KEY
+        if provider == "fireworks":
+            return os.getenv("FIREWORKS_API_KEY") or config.FIREWORKS_API_KEY
+        return ""
+
+    def _build_provider_headers(self, provider: str) -> Optional[Dict[str, str]]:
+        """Build optional provider-specific headers."""
+        if provider != "openrouter":
+            return None
+
+        headers: Dict[str, str] = {}
+        site_url = os.getenv("OPENROUTER_SITE_URL") or config.OPENROUTER_SITE_URL
+        app_name = os.getenv("OPENROUTER_APP_NAME") or config.OPENROUTER_APP_NAME
+
+        if site_url:
+            headers["HTTP-Referer"] = site_url
+        if app_name:
+            headers["X-Title"] = app_name
+
+        return headers or None
     
     def _build_workout_prompt(
         self,
@@ -240,8 +342,26 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
                 {"role": "user", "content": user_prompt}
             ],
             model=self.model,
-            temperature=self.DEFAULT_TEMPERATURE,
-            max_tokens=self.DEFAULT_MAX_TOKENS
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            response_format={"type": "json_object"}
+        )
+
+        finish_reason = None
+        if chat_completion.choices:
+            finish_reason = chat_completion.choices[0].finish_reason
+
+        usage = getattr(chat_completion, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", None) if usage else None
+        completion_tokens = getattr(usage, "completion_tokens", None) if usage else None
+        total_tokens = getattr(usage, "total_tokens", None) if usage else None
+
+        logger.info(
+            "LLM usage finish_reason=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s",
+            finish_reason,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens,
         )
         
         return chat_completion.choices[0].message.content
@@ -268,21 +388,85 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         except json.JSONDecodeError:
             pass
 
-        # Fallback: extract the first {...} block (handles leading/trailing prose
-        # and partially-truncated responses where the outermost object is intact)
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                pass
+        # Fallback: extract the first balanced top-level JSON object.
+        # This is more reliable than a greedy regex when the model adds stray
+        # text before/after the JSON payload.
+        start = cleaned.find("{")
+        if start != -1:
+            in_string = False
+            escape = False
+            depth = 0
+            end = -1
+
+            for idx in range(start, len(cleaned)):
+                char = cleaned[idx]
+
+                if escape:
+                    escape = False
+                    continue
+
+                if char == "\\":
+                    escape = True
+                    continue
+
+                if char == '"':
+                    in_string = not in_string
+                    continue
+
+                if in_string:
+                    continue
+
+                if char == "{":
+                    depth += 1
+                elif char == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = idx + 1
+                        candidate = cleaned[start:end]
+                        try:
+                            return json.loads(candidate)
+                        except json.JSONDecodeError:
+                            break
 
         raise ValueError(
             f"Could not parse LLM response as JSON "
             f"(response length: {len(cleaned)} chars). "
             f"Preview: {cleaned[:300]!r}"
         )
-    
+
+    def _format_validation_error(self, error: ValidationError) -> str:
+        """Create a compact validation error summary for API error responses."""
+        details = []
+        for item in error.errors():
+            loc = ".".join(str(part) for part in item.get("loc", []))
+            msg = item.get("msg", "invalid value")
+            details.append(f"{loc}: {msg}" if loc else msg)
+        return "; ".join(details)
+
+    def _validate_workout_plan_response(self, plan_data: Dict[str, Any]) -> WorkoutPlanDTO:
+        """Validate workout response strictly against DTO schema."""
+        if not isinstance(plan_data, dict):
+            raise ValueError("Workout plan response must be a JSON object")
+
+        try:
+            return WorkoutPlanDTO.model_validate(plan_data)
+        except ValidationError as error:
+            raise ValueError(
+                f"Workout plan schema validation failed: {self._format_validation_error(error)}"
+            ) from error
+
+    def _validate_nutrition_plan_response(self, plan_data: Dict[str, Any]) -> NutritionPlanDTO:
+        """Validate nutrition response strictly against DTO schema."""
+        if not isinstance(plan_data, dict):
+            raise ValueError("Nutrition plan response must be a JSON object")
+
+        try:
+            return NutritionPlanDTO.model_validate(plan_data)
+        except ValidationError as error:
+            raise ValueError(
+                f"Nutrition plan schema validation failed: {self._format_validation_error(error)}"
+            ) from error
+
     def generate_workout_plan(
         self,
         user_profile: UserProfileDTO,
@@ -315,58 +499,28 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} {preferences.workout_location} {profile_str}"
         logger.info(f"🏋️ Generating workout plan - RAG query: {query}")
-        rag_context = self.vector_db.get_context(query, k=5)
+        rag_context = self.vector_db.get_context(query, k=self.rag_top_k)
+        rag_context = self._trim_rag_context(rag_context, "workout")
         
         # Build and send prompt
         prompt = self._build_workout_prompt(
             user_profile, preferences, duration_weeks, rag_context, existing_plan
         )
         
-        system_prompt = """You are an expert fitness coach. Generate workout plans in valid JSON format only.
-Consider user safety, limitations, and goals. Never suggest exercises that could harm the user."""
+        system_prompt = """You are an expert fitness coach. Generate workout plans as a single valid JSON object only.
+    Consider user safety, limitations, and goals. Never suggest exercises that could harm the user.
+    Do not wrap the output in markdown or add any extra text."""
         
         response = self._call_llm(system_prompt, prompt)
-        plan_data = self._parse_json_response(response)
-        
-        # Convert to WorkoutPlanDTO
-        workout_days = []
-        for day_data in plan_data.get("workout_days", []):
-            exercises = [
-                ExerciseDTO(
-                    exercise_name=ex.get("exercise_name"),
-                    exercise_type=ex.get("exercise_type"),
-                    sets=ex.get("sets"),
-                    reps=ex.get("reps"),
-                    weight_kg=ex.get("weight_kg"),
-                    duration_seconds=ex.get("duration_seconds"),
-                    rest_seconds=ex.get("rest_seconds"),
-                    instructions=ex.get("instructions"),
-                    video_url=ex.get("video_url"),
-                    image_url=ex.get("image_url"),
-                    order_index=ex.get("order_index", idx)
-                )
-                for idx, ex in enumerate(day_data.get("exercises", []))
-            ]
-            
-            workout_days.append(WorkoutDayDTO(
-                day_name=day_data.get("day_name"),
-                day_number=day_data.get("day_number"),
-                focus_area=day_data.get("focus_area"),
-                estimated_duration=day_data.get("estimated_duration"),
-                notes=day_data.get("notes"),
-                exercises=exercises
-            ))
-        
-        plan = WorkoutPlanDTO(
-            plan_name=plan_data.get("plan_name", "AI Generated Workout Plan"),
-            description=plan_data.get("description"),
-            frequency=plan_data.get("frequency"),
-            difficulty_level=plan_data.get("difficulty_level"),
-            estimated_duration_per_session=plan_data.get("estimated_duration_per_session"),
-            workout_days=workout_days
-        )
-
-        return plan
+        logger.info("Raw workout LLM output (first 3000 chars): %s", response[:3000])
+        try:
+            plan_data = self._parse_json_response(response)
+        except ValueError as error:
+            raise ValueError(
+                "Workout plan generation failed: model output was not valid JSON. "
+                f"Raw output preview: {response[:1500]!r}"
+            ) from error
+        return self._validate_workout_plan_response(plan_data)
 
     def generate_nutrition_plan(
         self,
@@ -400,58 +554,28 @@ Consider user safety, limitations, and goals. Never suggest exercises that could
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference} {profile_str}"
         logger.info(f"🍽️ Generating nutrition plan - RAG query: {query}")
-        rag_context = self.vector_db.get_context(query, k=5)
+        rag_context = self.vector_db.get_context(query, k=self.rag_top_k)
+        rag_context = self._trim_rag_context(rag_context, "nutrition")
         
         # Build and send prompt
         prompt = self._build_nutrition_prompt(
             user_profile, preferences, duration_weeks, rag_context, existing_plan
         )
         
-        system_prompt = """You are an expert nutritionist. Generate meal plans in valid JSON format only.
-Consider user allergies, dietary restrictions, and fitness goals. Ensure balanced macronutrients."""
+        system_prompt = """You are an expert nutritionist. Generate meal plans as a single valid JSON object only.
+    Consider user allergies, dietary restrictions, and fitness goals. Ensure balanced macronutrients.
+    Do not wrap the output in markdown or add any extra text."""
         
         response = self._call_llm(system_prompt, prompt)
-        plan_data = self._parse_json_response(response)
-        
-        # Convert to NutritionPlanDTO
-        days = [
-            NutritionDayDTO(
-                day_name=day.get("day_name", f"Day {day.get('day_number', idx + 1)}"),
-                day_number=day.get("day_number", idx + 1),
-                notes=day.get("notes"),
-                meals=[
-                    MealDTO(
-                        meal_type=meal.get("meal_type"),
-                        meal_name=meal.get("meal_name"),
-                        calories=meal.get("calories", 0),
-                        protein_g=meal.get("protein_g", 0),
-                        carbs_g=meal.get("carbs_g", 0),
-                        fats_g=meal.get("fats_g", 0),
-                        ingredients=meal.get("ingredients"),
-                        instructions=meal.get("instructions"),
-                        prep_time_minutes=meal.get("prep_time_minutes"),
-                        cook_time_minutes=meal.get("cook_time_minutes"),
-                        servings=meal.get("servings", 1),
-                        image_url=meal.get("image_url"),
-                        order_index=meal.get("order_index", meal_idx)
-                    )
-                    for meal_idx, meal in enumerate(day.get("meals", []))
-                ]
-            )
-            for idx, day in enumerate(plan_data.get("days", []))
-        ]
-
-        plan = NutritionPlanDTO(
-            plan_name=plan_data.get("plan_name", "AI Generated Nutrition Plan"),
-            description=plan_data.get("description"),
-            daily_calories=plan_data.get("daily_calories", 2000),
-            daily_protein_g=plan_data.get("daily_protein_g", 150),
-            daily_carbs_g=plan_data.get("daily_carbs_g", 200),
-            daily_fats_g=plan_data.get("daily_fats_g", 65),
-            days=days
-        )
-
-        return plan
+        logger.info("Raw nutrition LLM output (first 3000 chars): %s", response[:3000])
+        try:
+            plan_data = self._parse_json_response(response)
+        except ValueError as error:
+            raise ValueError(
+                "Nutrition plan generation failed: model output was not valid JSON. "
+                f"Raw output preview: {response[:1500]!r}"
+            ) from error
+        return self._validate_nutrition_plan_response(plan_data)
     
     def ask_coach(
         self,
@@ -491,7 +615,8 @@ Consider user allergies, dietary restrictions, and fitness goals. Ensure balance
         
         logger.info(f"💬 Ask Coach - Question: {question}")
         logger.info(f"💬 Enhanced query with profile: {query}")
-        rag_context = self.vector_db.get_context(query, k=3)
+        rag_context = self.vector_db.get_context(query, k=min(self.rag_top_k, 3))
+        rag_context = self._trim_rag_context(rag_context, "ask_coach")
         
         # Build user context if available
         user_context = ""

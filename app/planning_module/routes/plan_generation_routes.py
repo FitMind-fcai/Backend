@@ -80,11 +80,17 @@ def generate_workout_plan(
     
     # Generate workout plan
     plan_service = PlanGenerationService(db)
-    workout_plan = plan_service.generate_workout_plan(
-        profile=profile,
-        preferences=request.workout_preferences,
-        duration_weeks=request.duration_weeks
-    )
+    try:
+        workout_plan = plan_service.generate_workout_plan(
+            profile=profile,
+            preferences=request.workout_preferences,
+            duration_weeks=request.duration_weeks
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error)
+        ) from error
     
     return WorkoutPlanResponse.model_validate(workout_plan)
 
@@ -146,11 +152,17 @@ def generate_nutrition_plan(
     
     # Generate nutrition plan
     plan_service = PlanGenerationService(db)
-    nutrition_plan = plan_service.generate_nutrition_plan(
-        profile=profile,
-        preferences=request.nutrition_preferences,
-        duration_weeks=request.duration_weeks
-    )
+    try:
+        nutrition_plan = plan_service.generate_nutrition_plan(
+            profile=profile,
+            preferences=request.nutrition_preferences,
+            duration_weeks=request.duration_weeks
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error)
+        ) from error
     
     return NutritionPlanResponse.model_validate(nutrition_plan)
 

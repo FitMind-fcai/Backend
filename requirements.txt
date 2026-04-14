@@ -91,6 +91,7 @@ aiofiles==25.1.0
 langchain==1.1.0
 langchain_community==0.4.1
 groq==0.36.0
+openai==2.6.1
 chromadb==0.5.23
 pypdf==5.1.0
 # Use CPU-only PyTorch to reduce image size (100MB vs 900MB)
