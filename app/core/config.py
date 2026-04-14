@@ -49,3 +49,21 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # Set in environment
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 AI_COACH_TEMPERATURE = float(os.getenv("AI_COACH_TEMPERATURE", "0.3"))
 AI_COACH_MAX_TOKENS = int(os.getenv("AI_COACH_MAX_TOKENS", "4000"))
+
+# Provider-agnostic LLM settings (used by AI Coach)
+# Supported providers include: groq, openrouter, openai, together, deepinfra, fireworks.
+AI_PROVIDER = os.getenv("AI_PROVIDER", "groq").lower()
+AI_API_KEY = os.getenv("AI_API_KEY", "")
+AI_BASE_URL = os.getenv("AI_BASE_URL", "")
+AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
+
+# Optional provider-specific keys (fallback when AI_API_KEY is not set)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
+DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY", "")
+FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY", "")
+
+# Optional OpenRouter headers
+OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")
+OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "FitMind")
