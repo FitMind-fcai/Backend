@@ -3,8 +3,8 @@ DTOs (Data Transfer Objects) for AI Coach Service.
 These are used to pass data to the AI Coach without coupling to any other module.
 The AI Coach is completely modular and independent.
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, model_validator, ConfigDict
+from typing import Optional, List, Any
 
 
 # ========================================
@@ -145,6 +145,23 @@ class WorkoutPlanDTO(BaseModel):
         """
 
 
+class IngredientDTO(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    central_food_id: int = Field(alias="id")
+    amount_g: float
+
+    # Pydantic v2 support
+    @model_validator(mode='before')
+    @classmethod
+    def handle_id_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "id" in data and "central_food_id" not in data:
+                data["central_food_id"] = data["id"]
+            if "central_food_id" in data and "id" not in data:
+                data["id"] = data["central_food_id"]
+        return data
+
 class MealDTO(BaseModel):
     """DTO for a single meal."""
     meal_type: str
@@ -154,7 +171,7 @@ class MealDTO(BaseModel):
     carbs_g: float
     fats_g: float
     fiber_g: Optional[float] = None
-    ingredients: Optional[str] = None
+    ingredients: Optional[List[IngredientDTO]] = []
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = None
     cook_time_minutes: Optional[int] = None

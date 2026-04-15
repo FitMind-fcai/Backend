@@ -40,16 +40,31 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
         )
 
     def get_with_full_details(self, plan_id: int) -> Optional[NutritionPlan]:
-        """Eagerly load plan -> days -> meal slots"""
+        """Eagerly load plan -> days -> meals -> ingredients (+ joined food details).
+        
+        A single SQL round-trip chain:
+          1. SELECT nutrition_plan WHERE id = plan_id
+          2. SELECT nutrition_plan_days WHERE nutrition_plan_id IN (...)
+          3. SELECT nutrition_plan_meals WHERE nutrition_plan_day_id IN (...)
+          4. SELECT nutrition_plan_meal_ingredients
+               JOIN central_foods ON ...
+               WHERE nutrition_plan_meal_id IN (...)
+        
+        No N+1 queries. The JOIN on central_foods is free because the
+        NutritionPlanMealIngredient.food relationship uses lazy='joined'.
+        """
+        from app.planning_module.models.plan import NutritionPlanMeal, NutritionPlanMealIngredient
         return (
             self.db.query(NutritionPlan)
             .options(
                 selectinload(NutritionPlan.days)
                 .selectinload(NutritionPlanDay.meals)
+                .selectinload(NutritionPlanMeal.ingredients)   # ingredients JOIN food is automatic
             )
             .filter(NutritionPlan.id == plan_id)
             .first()
         )
+
 
     def create_plan(self, user_id: int, profile_id: int, plan_data: dict) -> NutritionPlan:
         plan = NutritionPlan(user_id=user_id, profile_id=profile_id, **plan_data)
@@ -124,7 +139,15 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
         return self.db.query(NutritionPlanMeal).filter(NutritionPlanMeal.id == meal_id).first()
 
     def create_meal_slot(self, day_id: int, slot_data: dict) -> NutritionPlanMeal:
+        from app.planning_module.models.plan import NutritionPlanMealIngredient
+        ingredients_data = slot_data.pop("ingredients", [])
+        
         slot = NutritionPlanMeal(nutrition_plan_day_id=day_id, **slot_data)
+        
+        for ing_data in ingredients_data:
+            # We assume ing_data is a dict with central_food_id and amount_g
+            slot.ingredients.append(NutritionPlanMealIngredient(**ing_data))
+            
         self.db.add(slot)
         self.db.commit()
         self.db.refresh(slot)

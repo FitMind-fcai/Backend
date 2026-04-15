@@ -27,7 +27,8 @@ from app.planning_module.schemas.plan import (
     ExerciseCreate,
     NutritionPlanCreate,
     NutritionPlanDayCreate,
-    MealCreate
+    MealCreate,
+    NutritionPlanMealIngredientCreate
 )
 
 
@@ -188,7 +189,13 @@ def nutrition_plan_dto_to_create(
                     protein_g=meal.protein_g,
                     carbs_g=meal.carbs_g,
                     fats_g=meal.fats_g,
-                    ingredients=meal.ingredients,
+                    ingredients=[
+                        NutritionPlanMealIngredientCreate(
+                            central_food_id=ing.central_food_id,
+                            amount_g=ing.amount_g
+                        )
+                        for ing in (meal.ingredients or [])
+                    ],
                     instructions=meal.instructions,
                     prep_time_minutes=meal.prep_time_minutes,
                     cook_time_minutes=meal.cook_time_minutes,
@@ -285,7 +292,17 @@ def nutrition_plan_model_to_dto(plan) -> NutritionPlanDTO:
                     carbs_g=npm.carbs_g,
                     fats_g=npm.fats_g,
                     fiber_g=npm.fiber_g,
-                    ingredients=npm.ingredients,
+                    ingredients=[
+                        {
+                            "central_food_id": (
+                                ing["central_food_id"] if isinstance(ing, dict) else ing.central_food_id
+                            ),
+                            "amount_g": (
+                                ing["amount_g"] if isinstance(ing, dict) else ing.amount_g
+                            ),
+                        }
+                        for ing in (npm.ingredients or [])
+                    ],
                     instructions=npm.instructions,
                     prep_time_minutes=npm.prep_time_minutes,
                     cook_time_minutes=npm.cook_time_minutes,

@@ -111,12 +111,16 @@ class AICoachService:
     def _trim_rag_context(self, rag_context: str, context_name: str) -> str:
         """Trim long RAG context to keep total prompt size under control."""
         context = rag_context or ""
+        
+        # Log the full retrieved context (or a preview if desired)
+        logger.info(f"📚 Full retrieved {context_name} context:\n{context}\n{'-'*50}")
+
         if len(context) <= self.rag_max_context_chars:
             return context
 
         trimmed = context[:self.rag_max_context_chars].rstrip()
         logger.info(
-            "Trimmed %s context from %s to %s chars",
+            "✂️ Trimmed %s context from %s to %s chars",
             context_name,
             len(context),
             len(trimmed),
@@ -237,7 +241,8 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         preferences: NutritionPreferencesDTO,
         duration_weeks: int,
         rag_context: str,
-        existing_plan: Optional[NutritionPlanDTO] = None
+        existing_plan: Optional[NutritionPlanDTO] = None,
+        allowed_foods_str: str = ""
     ) -> str:
         """Build the prompt for nutrition plan generation."""
         user_context = user_profile.to_context_string()
@@ -276,6 +281,8 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
 PLAN DURATION: {duration_weeks} week(s)
 TARGET DAILY CALORIES: {target_calories}
 
+{allowed_foods_str}
+
 REFERENCE NUTRITION KNOWLEDGE:
 {rag_context}{regeneration_instruction}
 
@@ -310,7 +317,12 @@ Generate a complete 7-day meal plan in the following JSON format:
                     "protein_g": protein_amount,
                     "carbs_g": carbs_amount,
                     "fats_g": fats_amount,
-                    "ingredients": "List of ingredients with quantities",
+                    "ingredients": [
+                        {{
+                            "central_food_id": 123,
+                            "amount_g": 100.5
+                        }}
+                    ],
                     "instructions": "Step by step cooking instructions",
                     "prep_time_minutes": 10,
                     "cook_time_minutes": 20,
@@ -325,27 +337,32 @@ Generate a complete 7-day meal plan in the following JSON format:
 
 CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
     
-    def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
+    def _call_llm(self, system_prompt: str, user_prompt: str, json_mode: bool = True) -> str:
         """
-        Call the Groq LLM with the given prompts.
+        Call the LLM with the given prompts.
         
         Args:
             system_prompt: System instruction for the LLM
             user_prompt: User prompt/query
+            json_mode: If True, instructs the model to respond with a JSON object.
+                       Set to False for free-text endpoints like ask_coach.
             
         Returns:
             LLM response content
         """
-        chat_completion = self.client.chat.completions.create(
+        call_kwargs: Dict[str, Any] = dict(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
             model=self.model,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
-            response_format={"type": "json_object"}
         )
+        if json_mode:
+            call_kwargs["response_format"] = {"type": "json_object"}
+
+        chat_completion = self.client.chat.completions.create(**call_kwargs)
 
         finish_reason = None
         if chat_completion.choices:
@@ -499,7 +516,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} {preferences.workout_location} {profile_str}"
         logger.info(f"🏋️ Generating workout plan - RAG query: {query}")
-        rag_context = self.vector_db.get_context(query, k=self.rag_top_k)
+        rag_context = self.vector_db.get_context(query, k=self.rag_top_k, domain="workout")
         rag_context = self._trim_rag_context(rag_context, "workout")
         
         # Build and send prompt
@@ -528,6 +545,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         preferences: NutritionPreferencesDTO,
         duration_weeks: int = 4,
         existing_plan: Optional[NutritionPlanDTO] = None,
+        allowed_foods_str: str = ""
     ) -> NutritionPlanDTO:
         """
         Generate a personalized nutrition plan.
@@ -537,6 +555,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
             preferences: NutritionPreferencesDTO with nutrition preferences
             duration_weeks: Plan duration in weeks
             existing_plan: Optional existing plan to update/regenerate from
+            allowed_foods_str: Strict constraint payload of allowed central_foods
             
         Returns:
             NutritionPlanDTO with the generated plan
@@ -554,12 +573,17 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         profile_str = " ".join(profile_context) if profile_context else ""
         query = f"nutrition meal plan {preferences.cuisine_preference} {preferences.calorie_preference} {profile_str}"
         logger.info(f"🍽️ Generating nutrition plan - RAG query: {query}")
-        rag_context = self.vector_db.get_context(query, k=self.rag_top_k)
+        rag_context = self.vector_db.get_context(query, k=self.rag_top_k, domain="nutrition")
         rag_context = self._trim_rag_context(rag_context, "nutrition")
+        
+        logger.info("===================================")
+        logger.info("🥗 INJECTED DB FOODS STRING:")
+        logger.info(allowed_foods_str)
+        logger.info("===================================")
         
         # Build and send prompt
         prompt = self._build_nutrition_prompt(
-            user_profile, preferences, duration_weeks, rag_context, existing_plan
+            user_profile, preferences, duration_weeks, rag_context, existing_plan, allowed_foods_str
         )
         
         system_prompt = """You are an expert nutritionist. Generate meal plans as a single valid JSON object only.
@@ -656,7 +680,7 @@ Question: {question}
 
 Give me your professional advice as my coach. Be practical and specific."""
         
-        return self._call_llm(system_prompt, user_prompt)
+        return self._call_llm(system_prompt, user_prompt, json_mode=False)
 
 
 # Singleton instance

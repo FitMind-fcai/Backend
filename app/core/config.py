@@ -50,6 +50,10 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 AI_COACH_TEMPERATURE = float(os.getenv("AI_COACH_TEMPERATURE", "0.3"))
 AI_COACH_MAX_TOKENS = int(os.getenv("AI_COACH_MAX_TOKENS", "4000"))
 
+# Evaluation-specific Groq settings (keeps evaluation independent from coach provider)
+EVAL_GROQ_API_KEY = os.getenv("EVAL_GROQ_API_KEY", GROQ_API_KEY)
+EVAL_GROQ_MODEL = os.getenv("EVAL_GROQ_MODEL", GROQ_MODEL)
+
 # Provider-agnostic LLM settings (used by AI Coach)
 # Supported providers include: groq, openrouter, openai, together, deepinfra, fireworks.
 AI_PROVIDER = os.getenv("AI_PROVIDER", "groq").lower()

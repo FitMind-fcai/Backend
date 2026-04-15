@@ -15,6 +15,8 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, List
 
+from groq import Groq
+
 from app.ai_services.ai_coach.ai_coach_service import AICoachService
 from app.ai_services.evaluation.evaluators import (
     evaluate_nutrition_plan,
@@ -32,6 +34,7 @@ from app.ai_services.evaluation.test_cases import (
     make_nutrition_test_cases,
     make_workout_test_cases,
 )
+from app.core import config
 
 
 def run_evaluation(
@@ -69,10 +72,19 @@ def run_evaluation(
 
     # ── Init service ──────────────────────────────────────────────────────
     print("\n  Initialising AI Coach Service …", end=" ", flush=True)
-    service = AICoachService(model="llama-3.3-70b-versatile")
-    groq_client = service.client
-    model = service.model
+    service = AICoachService()
+    if not config.EVAL_GROQ_API_KEY:
+        raise ValueError(
+            "EVAL_GROQ_API_KEY is not set. Add a Groq key for evaluation so the judge can run independently."
+        )
+
+    groq_client = Groq(api_key=config.EVAL_GROQ_API_KEY)
+    model = config.EVAL_GROQ_MODEL
     print("ready ✓")
+    print(f"  Coach provider  : {service.provider}")
+    print(f"  Coach model     : {service.model}")
+    print(f"  Judge provider  : Groq")
+    print(f"  Judge model     : {model}")
 
     # ── Build test cases ──────────────────────────────────────────────────
     if plan_type == "both":

@@ -1,0 +1,98 @@
+food_name,food_category,calories_per_100g,protein_per_100g,carbs_per_100g,fats_per_100g,fiber_per_100g,serving_size_g,serving_description,dietary_tags,usda_fdc_id,source,is_active
+Hummus (commercial),Legumes and Legume Products,229.0,7.35,14.9,17.1,5.4,33.9,2 tbsp (34g),"vegan, vegetarian, high-fiber",321358,USDA,True
+"Tomatoes (grape, raw)",Vegetables and Vegetable Products,27.0,0.83,5.51,0.63,2.1,49.7,5 tomatoes (50g),"vegan, vegetarian, gluten-free",321360,USDA,True
+"Beans (snap, green, canned, regular pack, drained solids)",Vegetables and Vegetable Products,21.0,1.04,4.11,0.39,,129.0,cup drained (129g),"vegan, vegetarian, gluten-free",321611,USDA,True
+"Frankfurter (beef, unheated)",Sausages and Luncheon Meats,314.0,11.7,2.89,28.0,,48.6,piece (49g),high-protein,323121,USDA,True
+"Nuts (almonds, dry roasted, with salt added)",Nut and Seed Products,620.0,20.4,16.2,57.8,11.0,135.0,cup whole (135g),"vegan, vegetarian, gluten-free, high-fat",323294,USDA,True
+Kale (raw),Vegetables and Vegetable Products,35.0,2.92,4.42,1.49,4.1,20.6,"cup pieces of ~1"" (21g)","vegan, vegetarian, gluten-free",323505,USDA,True
+"Egg (whole, raw, frozen, pasteurized)",Dairy and Egg Products,150.0,12.3,0.91,10.3,,28.4,oz (28g),"vegetarian, high-protein",323604,USDA,True
+"Egg (white, raw, frozen, pasteurized)",Dairy and Egg Products,48.0,10.1,0.74,0.16,,28.4,oz (28g),"vegetarian, high-protein",323697,USDA,True
+"Egg (white, dried)",Dairy and Egg Products,376.0,79.9,6.02,0.65,,7.0,tbsp (7g),"vegetarian, high-protein",323793,USDA,True
+"Onion rings (breaded, par fried, frozen, prepared, heated in oven)",Vegetables and Vegetable Products,288.0,4.52,36.3,14.4,2.4,20.2,piece (20g),"vegan, vegetarian, gluten-free",324317,USDA,True
+"Pickles (cucumber, dill or kosher dill)",Vegetables and Vegetable Products,12.0,0.48,1.99,0.43,1.0,40.4,spear (40g),"vegan, vegetarian, gluten-free",324653,USDA,True
+"Cheese (parmesan, grated)",Dairy and Egg Products,421.0,29.6,12.4,28.0,,7.6,tbsp (8g),"vegetarian, high-protein",325036,USDA,True
+"Cheese (pasteurized process, American, vitamin D fortified)",Dairy and Egg Products,366.0,18.0,5.27,30.6,,20.6,slice (21g),"vegetarian, high-protein",325198,USDA,True
+"Grapefruit juice (white, canned or bottled, unsweetened)",Fruits and Fruit Juices,37.0,0.55,7.59,0.7,0.2,257.0,cup (257g),"vegan, vegetarian, gluten-free",325287,USDA,True
+"Peaches (yellow, raw)",Fruits and Fruit Juices,42.0,0.91,10.1,0.27,1.5,147.0,"fruit small (2-1/2"" dia) (147g)","vegan, vegetarian, gluten-free",325430,USDA,True
+"Seeds (sunflower seed kernels, dry roasted, with salt added)",Nut and Seed Products,612.0,21.0,17.1,56.1,10.3,127.0,cup (127g),"vegan, vegetarian, gluten-free, high-fat",325524,USDA,True
+"Bread (white, commercially prepared)",Baked Products,270.0,9.43,49.2,3.59,2.3,27.3,slice (27g),vegetarian,325871,USDA,True
+"Kale (frozen, cooked, boiled, drained, without salt)",Vegetables and Vegetable Products,36.0,2.94,5.3,1.21,,118.0,cup cooked (118g),"vegan, vegetarian, gluten-free",326196,USDA,True
+"Mustard (prepared, yellow)",Spices and Herbs,61.0,4.25,5.3,3.38,4.3,249.0,cup (249g),"vegan, vegetarian, gluten-free",326698,USDA,True
+"Kiwifruit (green, raw)",Fruits and Fruit Juices,58.0,1.06,14.0,0.44,3.0,100.0,100g,"vegan, vegetarian, gluten-free",327046,USDA,True
+Nectarines (raw),Fruits and Fruit Juices,39.0,1.06,9.18,0.28,1.5,129.0,"each 2-1/3"" dia (129g)","vegan, vegetarian, gluten-free",327357,USDA,True
+Cheese (cheddar),Dairy and Egg Products,408.0,23.3,2.44,34.0,,100.0,100g,"vegetarian, high-protein",328637,USDA,True
+"Cheese (cottage, lowfat, 2% milkfat)",Dairy and Egg Products,84.0,11.0,4.31,2.3,,220.0,cup (220g),"vegetarian, high-protein",328841,USDA,True
+"Cheese (mozzarella, low moisture, part-skim)",Dairy and Egg Products,298.0,23.7,4.44,20.4,,86.2,cup (86g),"vegetarian, high-protein",329370,USDA,True
+"Egg (whole, dried)",Dairy and Egg Products,575.0,48.1,1.87,39.8,,85.0,cup sifted (85g),"vegetarian, high-protein",329490,USDA,True
+"Egg (yolk, raw, frozen, pasteurized)",Dairy and Egg Products,296.0,15.6,0.59,25.1,,28.4,oz (28g),"vegetarian, high-protein",329596,USDA,True
+"Egg (yolk, dried)",Dairy and Egg Products,654.0,34.2,1.07,55.5,,4.0,tbsp (4g),"vegetarian, high-protein",329716,USDA,True
+"Yogurt (Greek, plain, nonfat)",Dairy and Egg Products,61.0,10.3,3.64,0.37,,156.0,container (156g),"vegetarian, high-protein",330137,USDA,True
+"Yogurt (Greek, strawberry, nonfat)",Dairy and Egg Products,83.0,8.06,12.2,0.15,0.6,150.0,container 5.3 oz (150g),"vegetarian, high-protein",330415,USDA,True
+Oil (coconut),Fats and Oils,833.0,0.0,0.84,99.1,,11.6,tbsp liquid oil (12g),"vegan, gluten-free",330458,USDA,True
+"Chicken (broilers or fryers, drumstick, meat only, cooked, braised)",Poultry Products,156.0,23.9,0.0,5.95,,104.0,drumstick with skin (104g),"high-protein, gluten-free, low-fat",331897,USDA,True
+"Chicken (broiler or fryers, breast, skinless, boneless, meat only, cooked, braised)",Poultry Products,166.0,32.1,0.0,3.24,,174.0,piece (174g),"high-protein, gluten-free, low-fat",331960,USDA,True
+"Sauce (pasta, spaghetti/marinara, ready-to-serve)","Soups, Sauces, and Gravies",45.0,1.41,8.05,1.48,1.8,135.0,serving 1/2 cup (135g),,332282,USDA,True
+"Ham (sliced, pre-packaged, deli meat (96%fat free, water added))",Sausages and Luncheon Meats,106.0,16.7,0.27,3.73,,13.5,slice (14g),high-protein,332397,USDA,True
+"Olives (green, Manzanilla, stuffed with pimiento)",Fruits and Fruit Juices,130.0,1.15,4.96,12.9,4.0,3.2,olive (3g),"vegan, vegetarian, gluten-free",332791,USDA,True
+"Cookies (oatmeal, soft, with raisins)",Baked Products,430.0,5.79,69.6,14.3,3.3,27.0,cookie (27g),vegetarian,333008,USDA,True
+"Tomatoes (canned, red, ripe, diced)",Vegetables and Vegetable Products,18.0,0.84,3.32,0.5,,245.0,cup (245g),"vegan, vegetarian, gluten-free",333281,USDA,True
+"Fish (haddock, raw)",Finfish and Shellfish Products,74.0,16.3,0.0,0.45,,176.0,fillet (176g),"high-protein, gluten-free, low-fat",333374,USDA,True
+"Fish (pollock, raw)",Finfish and Shellfish Products,56.0,12.3,0.0,0.41,,177.0,fillet (177g),"high-protein, gluten-free, low-fat",333476,USDA,True
+"Fish (tuna, light, canned in water, drained solids)",Finfish and Shellfish Products,90.0,19.0,0.08,0.94,,100.0,100g,"high-protein, gluten-free, low-fat",334194,USDA,True
+"Restaurant (Chinese, fried rice, without meat)",Restaurant Foods,174.0,3.84,32.5,3.19,,133.0,cup (133g),,334536,USDA,True
+"Restaurant (Latino, tamale, pork)",Restaurant Foods,174.0,7.38,15.8,9.04,2.4,142.0,piece (142g),,334628,USDA,True
+"Restaurant (Latino, pupusas con frijoles (pupusas, bean))",Restaurant Foods,229.0,5.59,31.5,9.01,5.8,126.0,piece (126g),,334720,USDA,True
+"Bread (whole-wheat, commercially prepared)",Baked Products,254.0,12.3,43.1,3.55,6.0,32.1,slice (32g),vegetarian,335240,USDA,True
+"Beef (loin, tenderloin roast, separable lean only, boneless, trimmed to 0"" fat, select, cooked, roasted)",Beef Products,176.0,27.7,0.0,6.36,,462.0,roast cooked (462g),"high-protein, gluten-free",746758,USDA,True
+"Beef (loin, top loin steak, boneless, lip-on, separable lean only, trimmed to 1/8"" fat, choice, raw)",Beef Products,155.0,22.8,0.0,6.39,,284.0,steak raw (284g),"high-protein, gluten-free",746759,USDA,True
+"Beef (round, eye of round roast, boneless, separable lean only, trimmed to 0"" fat, select, raw)",Beef Products,122.0,23.4,0.0,2.48,,690.0,roast raw (690g),"high-protein, gluten-free",746760,USDA,True
+"Beef (round, top round roast, boneless, separable lean only, trimmed to 0"" fat, select, raw)",Beef Products,123.0,23.7,0.0,2.41,,788.0,roast raw (788g),"high-protein, gluten-free",746761,USDA,True
+"Beef (short loin, porterhouse steak, separable lean only, trimmed to 1/8"" fat, select, raw)",Beef Products,145.0,22.7,0.0,5.32,,525.0,steak raw (525g),"high-protein, gluten-free",746762,USDA,True
+"Beef (short loin, t-bone steak, bone-in, separable lean only, trimmed to 1/8"" fat, choice, cooked, grilled)",Beef Products,219.0,27.3,0.0,11.4,,360.0,steak cooked (360g),"high-protein, gluten-free",746763,USDA,True
+"Carrots (frozen, unprepared)",Vegetables and Vegetable Products,37.0,0.81,7.92,0.47,3.2,100.0,100g,"vegan, vegetarian, gluten-free",746764,USDA,True
+"Cheese (dry white, queso seco)",Dairy and Egg Products,326.0,24.5,2.07,24.3,,97.3,cup grated (97g),"vegetarian, high-protein",746765,USDA,True
+"Cheese (ricotta, whole milk)",Dairy and Egg Products,157.0,7.81,6.86,11.0,,64.6,0.2 cup (65g),"vegetarian, high-protein",746766,USDA,True
+Cheese (swiss),Dairy and Egg Products,393.0,27.0,1.44,31.0,,21.9,slice regular (22g),"vegetarian, high-protein",746767,USDA,True
+"Figs (dried, uncooked)",Fruits and Fruit Juices,249.0,3.3,63.9,0.92,9.8,8.4,each (8g),"vegan, vegetarian, gluten-free",746768,USDA,True
+"Lettuce (cos or romaine, raw)",Vegetables and Vegetable Products,17.0,1.24,3.24,0.26,1.8,581.0,bunch (581g),"vegan, vegetarian, gluten-free",746769,USDA,True
+"Melons (cantaloupe, raw)",Fruits and Fruit Juices,34.0,0.82,8.16,0.18,0.8,69.0,wedge medium (1/8 of medium melon) (69g),"vegan, vegetarian, gluten-free",746770,USDA,True
+"Oranges (raw, navels)",Fruits and Fruit Juices,47.0,0.91,11.8,0.15,2.0,165.0,cup sections no membranes (165g),"vegan, vegetarian, gluten-free",746771,USDA,True
+"Milk (lowfat, fluid, 1% milkfat, with added vitamin A and vitamin D)",Dairy and Egg Products,43.0,3.38,5.18,0.95,,246.0,cup (246g),"vegetarian, high-protein",746772,USDA,True
+"Pears (raw, bartlett)",Fruits and Fruit Juices,57.0,0.38,15.1,0.16,3.1,140.0,cup slices (140g),"vegan, vegetarian, gluten-free",746773,USDA,True
+"Restaurant (Chinese, sweet and sour pork)",Restaurant Foods,260.0,8.88,25.5,13.6,1.0,611.0,order (611g),,746774,USDA,True
+"Milk (nonfat, fluid, with added vitamin A and vitamin D (fat free or skim))",Dairy and Egg Products,34.0,3.43,4.92,0.08,,246.0,cup (246g),"vegetarian, high-protein",746776,USDA,True
+"Sauce (salsa, ready-to-serve)","Soups, Sauces, and Gravies",29.0,1.44,6.74,0.19,1.8,35.7,2 tbsp (36g),,746777,USDA,True
+"Milk (reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D)",Dairy and Egg Products,50.0,3.36,4.9,1.9,,245.0,cup (245g),"vegetarian, high-protein",746778,USDA,True
+"Sausage (breakfast sausage, beef, pre-cooked, unprepared)",Sausages and Luncheon Meats,328.0,13.3,3.37,28.7,,18.6,link (19g),high-protein,746779,USDA,True
+"Sausage (Italian, pork, mild, cooked, pan-fried)",Sausages and Luncheon Meats,322.0,18.2,2.15,26.2,,86.6,link medium (87g),high-protein,746780,USDA,True
+"Sausage (pork, chorizo, link or ground, cooked, pan-fried)",Sausages and Luncheon Meats,346.0,19.3,2.63,28.1,,186.0,link long (186g),high-protein,746781,USDA,True
+"Milk (whole, 3.25% milkfat, with added vitamin D)",Dairy and Egg Products,60.0,3.27,4.63,3.2,,249.0,cup (249g),"vegetarian, high-protein",746782,USDA,True
+"Sausage (turkey, breakfast links, mild, raw)",Sausages and Luncheon Meats,169.0,16.7,0.93,10.4,,450.0,package (450g),high-protein,746783,USDA,True
+Sugars (granulated),Sweets,385.0,0.0,99.6,0.32,,4.0,tsp (4g),vegetarian,746784,USDA,True
+"Turkey (ground, 93% lean, 7% fat, pan-broiled crumbles)",Poultry Products,220.0,27.1,0.0,11.6,,155.0,ckd pr g crumbles (155g),"high-protein, gluten-free, low-fat",746785,USDA,True
+"Ham (sliced, restaurant)",Pork Products,121.0,19.6,2.36,3.68,,16.2,slice (16g),"high-protein, gluten-free",746952,USDA,True
+"Cheese (American, restaurant)",Dairy and Egg Products,375.0,17.5,6.35,31.1,,16.0,slice (16g),"vegetarian, high-protein",747429,USDA,True
+Broccoli (raw),Vegetables and Vegetable Products,31.0,2.57,6.27,0.34,2.4,76.0,cup chopped (76g),"vegan, vegetarian, gluten-free",747447,USDA,True
+Ketchup (restaurant),Vegetables and Vegetable Products,117.0,1.11,26.8,0.55,,100.0,100g,"vegan, vegetarian, gluten-free",747693,USDA,True
+"Eggs (Grade A, Large, egg white)",Dairy and Egg Products,55.0,10.7,2.36,0.0,,34.0,egg white (34g),"vegetarian, high-protein",747997,USDA,True
+"Eggs (Grade A, Large, egg yolk)",Dairy and Egg Products,334.0,16.2,1.02,28.8,,17.0,egg yolk (17g),"vegetarian, high-protein",748236,USDA,True
+"Eggs (Grade A, Large, egg whole)",Dairy and Egg Products,148.0,12.4,0.96,9.96,0.0,50.3,egg whole without shell (50g),"vegetarian, high-protein",748967,USDA,True
+"Pork (cured, bacon, cooked, restaurant)",Pork Products,500.0,40.9,2.1,36.5,,6.3,slice (6g),"high-protein, gluten-free",749420,USDA,True
+"Flour (wheat, all-purpose, enriched, bleached)",Cereal Grains and Pasta,366.0,10.9,77.3,1.48,,100.0,100g,"vegetarian, high-carb",789890,USDA,True
+"Flour (wheat, all-purpose, enriched, unbleached)",Cereal Grains and Pasta,358.0,13.1,73.2,1.48,,100.0,100g,"vegetarian, high-carb",789951,USDA,True
+"Flour (wheat, all-purpose, unenriched, unbleached)",Cereal Grains and Pasta,362.0,12.0,74.6,1.7,3.0,100.0,100g,"vegetarian, high-carb",790018,USDA,True
+"Flour (whole wheat, unenriched)",Cereal Grains and Pasta,370.0,15.1,71.2,2.73,10.6,100.0,100g,"vegetarian, high-carb",790085,USDA,True
+"Flour (bread, white, enriched, unbleached)",Cereal Grains and Pasta,363.0,14.3,72.8,1.65,,100.0,100g,"vegetarian, high-carb",790146,USDA,True
+"Flour (rice, white, unenriched)",Cereal Grains and Pasta,359.0,6.94,79.8,1.3,0.5,100.0,100g,"vegetarian, high-carb",790214,USDA,True
+"Flour (corn, yellow, fine meal, enriched)",Cereal Grains and Pasta,364.0,6.2,80.8,1.74,4.3,100.0,100g,"vegetarian, high-carb",790276,USDA,True
+"Onions (red, raw)",Vegetables and Vegetable Products,44.0,0.94,9.93,0.1,2.2,197.0,Onion Edible (197g),"vegan, vegetarian, gluten-free",790577,USDA,True
+"Onions (yellow, raw)",Vegetables and Vegetable Products,38.0,0.83,8.61,0.05,1.9,143.0,Onion Edible (143g),"vegan, vegetarian, gluten-free",790646,USDA,True
+Garlic (raw),Vegetables and Vegetable Products,143.0,6.62,28.2,0.38,2.7,100.0,100g,"vegan, vegetarian, gluten-free",1104647,USDA,True
+"Flour (soy, defatted)",Legumes and Legume Products,366.0,51.1,32.9,3.33,,100.0,100g,"vegan, vegetarian, high-fiber",1104705,USDA,True
+"Flour (soy, full-fat)",Legumes and Legume Products,452.0,38.6,27.9,20.7,,100.0,100g,"vegan, vegetarian, high-fiber",1104766,USDA,True
+"Flour (rice, brown)",Cereal Grains and Pasta,365.0,7.19,75.5,3.85,,100.0,100g,"vegetarian, high-carb",1104812,USDA,True
+"Flour (rice, glutinous)",Cereal Grains and Pasta,358.0,6.69,80.1,1.16,,100.0,100g,"vegetarian, high-carb",1104867,USDA,True
+"Flour (pastry, unenriched, unbleached)",Cereal Grains and Pasta,358.0,8.75,77.2,1.64,,100.0,100g,"vegetarian, high-carb",1104913,USDA,True
+"Onions (white, raw)",Vegetables and Vegetable Products,35.0,0.89,7.68,0.13,1.2,100.0,100g,"vegan, vegetarian, gluten-free",1104962,USDA,True
+"Bananas (overripe, raw)",Fruits and Fruit Juices,85.0,0.73,20.1,0.22,1.7,110.0,Banana Peeled (110g),"vegan, vegetarian, gluten-free",1105073,USDA,True
+"Bananas (ripe and slightly ripe, raw)",Fruits and Fruit Juices,97.0,0.74,23.0,0.29,1.7,115.0,Banana Peeled (115g),"vegan, vegetarian, gluten-free",1105314,USDA,True

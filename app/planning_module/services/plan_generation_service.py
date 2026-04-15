@@ -9,6 +9,7 @@ from app.planning_module.services.nutrition_plan_service import NutritionPlanSer
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
 from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.shared.repositories.central_food_repository import CentralFoodRepository
 from app.planning_module.schemas.plan import (
     WorkoutPlanResponse,
     NutritionPlanResponse,
@@ -40,83 +41,68 @@ class PlanGenerationService:
         self.workout_repo = WorkoutPlanRepository(db)
         self.central_exercise_repo = CentralExerciseRepository(db)
         self.nutrition_repo = NutritionPlanRepository(db)
+        self.central_food_repo = CentralFoodRepository(db)
     
     def generate_workout_plan(
         self,
         profile: Profile,
         preferences: WorkoutPreferences,
         duration_weeks: int = 4
-    ) -> WorkoutPlan:
+    ) -> dict:
         """
-        Generate or update workout plan.
-        Smart method that:
-        - If no plan exists: Creates new plan
-        - If plan exists: Updates it using existing plan as AI reference
-        
-        Args:
-            profile: User's profile model (contains user_id)
-            preferences: Workout preferences
-            duration_weeks: Plan duration in weeks
-            
-        Returns:
-            WorkoutPlan model (created or updated)
+        Generate an AI workout plan DRAFT without saving it to the database.
+
+        Returns a dict with:
+          - draft_plan: WorkoutPlanCreate (the full generated structure)
+          - generated_from_preferences: dict
+          - update_plan_id: int | None (existing plan ID to replace, or None for new)
+
+        The caller must explicitly call save_workout_plan() to persist.
         """
-        # Check if user already has an active workout plan
         existing_plan = self.workout_service.get_active_plan(profile.user_id)
         existing_plan_dto = None
         existing_plan_id = None
-        
+
         if existing_plan:
-            # Load full details and convert to DTO for AI context
+            # Load full details as AI context — do NOT delete yet (user hasn't confirmed)
             existing_plan_full = self.workout_service.get_plan_with_details(existing_plan.id)
             existing_plan_dto = workout_plan_model_to_dto(existing_plan_full)
             existing_plan_id = existing_plan.id
-            # Delete old workout days and exercises for update
-            self._delete_workout_plan_details(existing_plan_id)
-        
-        # Generate/update plan with existing plan context (if any)
-        return self._generate_workout_plan(
+
+        return self._generate_workout_draft(
             profile=profile,
             preferences=preferences,
             duration_weeks=duration_weeks,
             existing_plan=existing_plan_dto,
             update_plan_id=existing_plan_id
         )
-    
+
     def generate_nutrition_plan(
         self,
         profile: Profile,
         preferences: NutritionPreferences,
         duration_weeks: int = 4
-    ) -> NutritionPlan:
+    ) -> dict:
         """
-        Generate or update nutrition plan.
-        Smart method that:
-        - If no plan exists: Creates new plan
-        - If plan exists: Updates it using existing plan as AI reference
-        
-        Args:
-            profile: User's profile model (contains user_id)
-            preferences: Nutrition preferences
-            duration_weeks: Plan duration in weeks
-            
-        Returns:
-            NutritionPlan model (created or updated)
+        Generate an AI nutrition plan DRAFT without saving it to the database.
+
+        Returns a dict with:
+          - draft_plan: NutritionPlanCreate (7 days, meals, ingredients)
+          - generated_from_preferences: dict
+          - update_plan_id: int | None (existing plan ID to replace, or None for new)
+
+        The caller must explicitly call save_nutrition_plan() to persist.
         """
-        # Check if user already has an active nutrition plan
         existing_plan = self.nutrition_service.get_active_plan(profile.user_id)
         existing_plan_dto = None
         existing_plan_id = None
-        
+
         if existing_plan:
-            # Load full details and convert to DTO for AI context
+            # Load full details as AI context — do NOT delete yet (user hasn't confirmed)
             existing_plan_full = self.nutrition_service.get_plan_with_full_details(existing_plan.id)
             existing_plan_dto = nutrition_plan_model_to_dto(existing_plan_full)
             existing_plan_id = existing_plan.id
-            # Delete old meals for update
-            self._delete_nutrition_plan_details(existing_plan_id)
-        
-        # Generate/update plan with existing plan context (if any)
+
         return self._generate_nutrition_plan(
             profile=profile,
             preferences=preferences,
@@ -154,31 +140,68 @@ class PlanGenerationService:
             message=message
         )
     
-    def _generate_workout_plan(
+    def save_workout_plan(
+        self,
+        user_id: int,
+        profile_id: int,
+        plan_create,
+        generated_from_preferences: dict,
+        update_plan_id: int = None
+    ):
+        """Persist a workout plan draft to the database (user-confirmed save)."""
+        if update_plan_id:
+            # Only NOW delete the old plan details before replacing
+            self._delete_workout_plan_details(update_plan_id)
+            return self._update_workout_plan_with_details(
+                plan_id=update_plan_id,
+                plan_create=plan_create,
+                generated_from_preferences=generated_from_preferences
+            )
+        else:
+            return self._create_workout_plan_with_details(
+                user_id=user_id,
+                profile_id=profile_id,
+                plan_create=plan_create,
+                generated_from_preferences=generated_from_preferences
+            )
+
+    def save_nutrition_plan(
+        self,
+        user_id: int,
+        profile_id: int,
+        plan_create,
+        generated_from_preferences: dict,
+        update_plan_id: int = None
+    ):
+        """Persist a nutrition plan draft to the database (user-confirmed save)."""
+        if update_plan_id:
+            # Only NOW delete the old plan details before replacing
+            self._delete_nutrition_plan_details(update_plan_id)
+            return self._update_nutrition_plan_with_meals(
+                plan_id=update_plan_id,
+                plan_create=plan_create,
+                generated_from_preferences=generated_from_preferences
+            )
+        else:
+            return self._create_nutrition_plan_with_meals(
+                user_id=user_id,
+                profile_id=profile_id,
+                plan_create=plan_create,
+                generated_from_preferences=generated_from_preferences
+            )
+
+    def _generate_workout_draft(
         self,
         profile: Profile,
         preferences: WorkoutPreferences,
         duration_weeks: int = 4,
         existing_plan=None,
         update_plan_id: int = None
-    ) -> WorkoutPlan:
-        """
-        Generate a new workout plan using AI Coach service.
-        
-        Args:
-            profile: User's profile model
-            preferences: Workout preferences from request
-            duration_weeks: Plan duration in weeks
-            existing_plan: Optional existing plan DTO for regeneration
-            
-        Returns:
-            Created WorkoutPlan model
-        """
-        # Convert to DTOs for AI Coach
+    ) -> dict:
+        """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
         profile_dto = profile_to_dto(profile)
         preferences_dto = workout_preferences_to_dto(preferences)
-        
-        # Generate plan via AI Coach (with existing plan if regenerating)
+
         ai_coach = get_ai_coach_service()
         workout_plan_dto = ai_coach.generate_workout_plan(
             user_profile=profile_dto,
@@ -186,27 +209,15 @@ class PlanGenerationService:
             duration_weeks=duration_weeks,
             existing_plan=existing_plan
         )
-        
-        # Convert DTO to create schema
+
         plan_create = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
-        
-        # Store preferences used for generation
         preferences_dict = preferences.model_dump()
-        
-        # Create or update plan in database
-        if update_plan_id:
-            return self._update_workout_plan_with_details(
-                plan_id=update_plan_id,
-                plan_create=plan_create,
-                generated_from_preferences=preferences_dict
-            )
-        else:
-            return self._create_workout_plan_with_details(
-                user_id=profile.user_id,
-                profile_id=profile.id,
-                plan_create=plan_create,
-                generated_from_preferences=preferences_dict
-            )
+
+        return {
+            "draft_plan": plan_create,
+            "generated_from_preferences": preferences_dict,
+            "update_plan_id": update_plan_id
+        }
     
     def _generate_nutrition_plan(
         self,
@@ -215,7 +226,7 @@ class PlanGenerationService:
         duration_weeks: int = 4,
         existing_plan=None,
         update_plan_id: int = None
-    ) -> NutritionPlan:
+    ) -> dict:
         """
         Generate a new nutrition plan using AI Coach service.
         
@@ -232,13 +243,22 @@ class PlanGenerationService:
         profile_dto = profile_to_dto(profile)
         preferences_dto = nutrition_preferences_to_dto(preferences)
         
+        # Get strict allowed foods string based on user's selected diet preference
+        allowed_foods_str = self.central_food_repo.get_diet_friendly_foods_for_ai(
+            diet_type=profile.dietary_preference if hasattr(profile, 'dietary_preference') else "balanced",
+            allergies=getattr(profile, 'allergies', ''),
+            exclude_ingredients=getattr(preferences, 'exclude_ingredients', []),
+            limit=50
+        )
+        
         # Generate plan via AI Coach (with existing plan if regenerating)
         ai_coach = get_ai_coach_service()
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
             duration_weeks=duration_weeks,
-            existing_plan=existing_plan
+            existing_plan=existing_plan,
+            allowed_foods_str=allowed_foods_str
         )
         
         # Convert DTO to create schema
@@ -247,20 +267,12 @@ class PlanGenerationService:
         # Store preferences used for generation
         preferences_dict = preferences.model_dump()
         
-        # Create or update plan in database
-        if update_plan_id:
-            return self._update_nutrition_plan_with_meals(
-                plan_id=update_plan_id,
-                plan_create=plan_create,
-                generated_from_preferences=preferences_dict
-            )
-        else:
-            return self._create_nutrition_plan_with_meals(
-                user_id=profile.user_id,
-                profile_id=profile.id,
-                plan_create=plan_create,
-                generated_from_preferences=preferences_dict
-            )
+        # Return the generated plan CREATE structure as a DRAFT.
+        return {
+            "draft_plan": plan_create,
+            "generated_from_preferences": preferences_dict,
+            "update_plan_id": update_plan_id
+        }
     
     def _create_workout_plan_with_details(
         self,
@@ -373,7 +385,7 @@ class PlanGenerationService:
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
                     "fiber_g": meal_create.fiber_g,
-                    "ingredients": meal_create.ingredients,
+                    "ingredients": [ing.model_dump() for ing in (meal_create.ingredients or [])],
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,
@@ -503,7 +515,7 @@ class PlanGenerationService:
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
                     "fiber_g": meal_create.fiber_g,
-                    "ingredients": meal_create.ingredients,
+                    "ingredients": [ing.model_dump() for ing in (meal_create.ingredients or [])],
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,

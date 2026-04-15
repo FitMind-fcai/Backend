@@ -218,6 +218,75 @@ class WorkoutPlanSummary(BaseModel):
 # MEAL SCHEMAS
 # ========================================
 
+class NutritionPlanMealIngredientCreate(BaseModel):
+    central_food_id: int
+    amount_g: float
+
+class NutritionPlanMealIngredientResponse(BaseModel):
+    """
+    Full ingredient row including food name, category, and macros
+    scaled to the actual amount_g used in the meal.
+
+    Per-serving values are computed as:  (per_100g_value / 100) * amount_g
+    """
+    id: int
+    nutrition_plan_meal_id: int
+    central_food_id: int
+    amount_g: float
+
+    # Food identity
+    food_name: str = ""
+    food_category: Optional[str] = None
+
+    # Macros scaled to amount_g  (not per-100g)
+    calories: float = 0.0
+    protein_g: float = 0.0
+    carbs_g: float = 0.0
+    fats_g: float = 0.0
+    fiber_g: Optional[float] = None
+
+    # Raw per-100g values (useful for display / editing)
+    calories_per_100g: float = 0.0
+    protein_per_100g: float = 0.0
+    carbs_per_100g: float = 0.0
+    fats_per_100g: float = 0.0
+    fiber_per_100g: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+    @classmethod
+    def from_orm_with_food(cls, ing) -> "NutritionPlanMealIngredientResponse":
+        """Build from a NutritionPlanMealIngredient ORM row that has .food loaded."""
+        food = getattr(ing, "food", None)
+        if food is None:
+            return cls(
+                id=ing.id,
+                nutrition_plan_meal_id=ing.nutrition_plan_meal_id,
+                central_food_id=ing.central_food_id,
+                amount_g=ing.amount_g,
+            )
+        ratio = ing.amount_g / 100.0
+        return cls(
+            id=ing.id,
+            nutrition_plan_meal_id=ing.nutrition_plan_meal_id,
+            central_food_id=ing.central_food_id,
+            amount_g=ing.amount_g,
+            food_name=food.food_name,
+            food_category=food.food_category,
+            calories=round(food.calories_per_100g * ratio, 2),
+            protein_g=round(food.protein_per_100g * ratio, 2),
+            carbs_g=round(food.carbs_per_100g * ratio, 2),
+            fats_g=round(food.fats_per_100g * ratio, 2),
+            fiber_g=round(food.fiber_per_100g * ratio, 2) if food.fiber_per_100g is not None else None,
+            calories_per_100g=food.calories_per_100g,
+            protein_per_100g=food.protein_per_100g,
+            carbs_per_100g=food.carbs_per_100g,
+            fats_per_100g=food.fats_per_100g,
+            fiber_per_100g=food.fiber_per_100g,
+        )
+
+
 class MealCreate(BaseModel):
     """Internal schema for AI-generated meal data"""
     meal_type: str = Field(..., max_length=50)
@@ -227,11 +296,12 @@ class MealCreate(BaseModel):
     carbs_g: float = Field(..., ge=0)
     fats_g: float = Field(..., ge=0)
     fiber_g: Optional[float] = Field(None, ge=0)
-    ingredients: Optional[str] = None
+    ingredients: List[NutritionPlanMealIngredientCreate] = []
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = Field(None, ge=0)
     cook_time_minutes: Optional[int] = Field(None, ge=0)
     servings: int = Field(default=1, ge=1)
+    image_url: Optional[str] = Field(None, max_length=500)
     order_index: int = Field(default=0, ge=0)
 
 
@@ -246,7 +316,7 @@ class NutritionPlanMealResponse(BaseModel):
     carbs_g: float
     fats_g: float
     fiber_g: Optional[float] = None
-    ingredients: Optional[str] = None
+    ingredients: List[NutritionPlanMealIngredientResponse] = []
     instructions: Optional[str] = None
     prep_time_minutes: Optional[int] = None
     cook_time_minutes: Optional[int] = None
@@ -256,6 +326,20 @@ class NutritionPlanMealResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator('ingredients', mode='before')
+    @classmethod
+    def resolve_ingredients(cls, v):
+        if not v:
+            return []
+        resolved = []
+        for ing in v:
+            # If it's an ORM object containing a 'food' attribute
+            if hasattr(ing, 'food'):
+                resolved.append(NutritionPlanMealIngredientResponse.from_orm_with_food(ing))
+            else:
+                resolved.append(ing)
+        return resolved
 
 
 # ========================================
@@ -345,6 +429,67 @@ class CombinedPlanResponse(BaseModel):
     workout_plan: Optional[WorkoutPlanResponse] = None
     nutrition_plan: Optional[NutritionPlanResponse] = None
     message: str = "Plan(s) generated successfully"
+
+
+# ========================================
+# DRAFT RESPONSE & SAVE REQUEST SCHEMAS
+# (Generate = AI only, no DB write;
+#  Save = client confirms and persists)
+# ========================================
+
+class WorkoutPlanDraftResponse(BaseModel):
+    """
+    Returned by POST /plans/generate/workout.
+    Contains the full AI-generated plan structure but NOT yet saved to the database.
+    Pass this entire object to POST /plans/save/workout to persist it.
+    """
+    draft_plan: WorkoutPlanCreate
+    generated_from_preferences: dict = {}
+    update_plan_id: Optional[int] = Field(
+        None,
+        description="ID of the existing plan that will be replaced on save. Null if this is a new plan."
+    )
+
+
+class WorkoutPlanSaveRequest(BaseModel):
+    """
+    Request body for POST /plans/save/workout.
+    Send the exact draft_plan object received from the generate endpoint.
+    """
+    draft_plan: WorkoutPlanCreate
+    generated_from_preferences: dict = {}
+    update_plan_id: Optional[int] = Field(
+        None,
+        description="ID of the existing plan to update. Null to create a new plan."
+    )
+
+
+class NutritionPlanDraftResponse(BaseModel):
+    """
+    Returned by POST /plans/generate/nutrition.
+    Contains the full AI-generated plan structure (7 days, meals, ingredients)
+    but NOT yet saved to the database.
+    Pass this entire object to POST /plans/save/nutrition to persist it.
+    """
+    draft_plan: NutritionPlanCreate
+    generated_from_preferences: dict = {}
+    update_plan_id: Optional[int] = Field(
+        None,
+        description="ID of the existing plan that will be replaced on save. Null if this is a new plan."
+    )
+
+
+class NutritionPlanSaveRequest(BaseModel):
+    """
+    Request body for POST /plans/save/nutrition.
+    Send the exact draft_plan object received from the generate endpoint.
+    """
+    draft_plan: NutritionPlanCreate
+    generated_from_preferences: dict = {}
+    update_plan_id: Optional[int] = Field(
+        None,
+        description="ID of the existing plan to update. Null to create a new plan."
+    )
 
 
 # Aliases for route compatibility

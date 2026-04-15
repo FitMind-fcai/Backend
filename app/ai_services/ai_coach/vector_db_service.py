@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import shutil
 from typing import List, Optional, Dict, Any
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
@@ -23,8 +24,25 @@ class VectorDBService:
     DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
     
     # Embedding model configuration
-    EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+    EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
     COLLECTION_NAME = "fitness_knowledge"
+
+    # Retrieval layers / sectioning
+    WORKOUT_KEYWORDS = {
+        "programming": ["programming", "guideline", "program design", "periodization", "prescription", "resistance training"],
+        "exercise_library": ["exercise database", "exercise directory", "exercise anatomy", "kinesiology", "muscle directory"],
+        "periodization": ["periodization", "hypertrophy", "strength", "power", "endurance"],
+        "cardio": ["cardio", "aerobic", "hiit", "interval", "endurance"],
+        "core": ["core", "stability", "plank", "anti-rotation"],
+        "books": ["handbook", "manual", "book", "guide"],
+    }
+    NUTRITION_KEYWORDS = {
+        "guidelines": ["nutrition", "diet", "healthy diet", "nutrition guidelines"],
+        "database": ["fooddata central", "food database", "nutrient database", "usda"],
+        "sports_nutrition": ["sports nutrition", "supplement", "nutrient timing", "protein"],
+        "macros_tdee": ["macro", "tdee", "calorie", "macronutrient", "energy expenditure"],
+        "books": ["guide", "handbook", "book", "manual"],
+    }
     
     # Text splitting configuration
     CHUNK_SIZE = 1000
@@ -79,6 +97,43 @@ class VectorDBService:
             embedding_function=self.embeddings,
             persist_directory=self.persist_directory
         )
+
+    def _infer_domain(self, text: str) -> str:
+        """Infer a high-level domain from content or query text."""
+        lowered = (text or "").lower()
+        nutrition_signals = [
+            "nutrition", "diet", "meal", "food", "calorie", "macro",
+            "tdee", "protein", "carb", "fat", "supplement",
+        ]
+        workout_signals = [
+            "workout", "exercise", "training", "strength", "cardio", "program",
+            "periodization", "core", "mobility", "resistance",
+        ]
+
+        nutrition_score = sum(1 for term in nutrition_signals if term in lowered)
+        workout_score = sum(1 for term in workout_signals if term in lowered)
+
+        if nutrition_score > workout_score:
+            return "nutrition"
+        if workout_score > nutrition_score:
+            return "workout"
+        return "general"
+
+    def _infer_topic(self, domain: str, text: str) -> str:
+        """Infer a narrower topic within a domain for layered filtering."""
+        lowered = (text or "").lower()
+        keywords_map = self.NUTRITION_KEYWORDS if domain == "nutrition" else self.WORKOUT_KEYWORDS
+
+        for topic, keywords in keywords_map.items():
+            if any(keyword in lowered for keyword in keywords):
+                return topic
+        return "general"
+
+    def _cleanup_existing_store(self) -> None:
+        """Remove the existing vector DB directory before a forced rebuild."""
+        if os.path.exists(self.persist_directory):
+            shutil.rmtree(self.persist_directory)
+            logger.info("🧹 Removed existing vector DB at %s", self.persist_directory)
     
     def _load_scraped_documents(self, json_path: str) -> List[Document]:
         """
@@ -102,6 +157,24 @@ class VectorDBService:
         
         documents = []
         for doc in scraped_docs:
+            domain = self._infer_domain(
+                " ".join([
+                    doc.get("category", ""),
+                    doc.get("resource_name", doc.get("title", "")),
+                    doc.get("description", ""),
+                    doc.get("content", "")[:1000],
+                ])
+            )
+            topic = self._infer_topic(
+                domain,
+                " ".join([
+                    doc.get("category", ""),
+                    doc.get("resource_name", doc.get("title", "")),
+                    doc.get("key_features", ""),
+                    doc.get("description", ""),
+                ])
+            )
+
             # Create LangChain Document with metadata
             documents.append(Document(
                 page_content=doc['content'],
@@ -109,6 +182,9 @@ class VectorDBService:
                     'source': doc['url'],
                     'title': doc.get('resource_name', doc.get('title', 'Unknown')),
                     'category': doc.get('category', 'Unknown'),
+                    'section': doc.get('section', 'Unknown'),
+                    'domain': domain,
+                    'topic': topic,
                     'organization': doc.get('organization', 'Unknown'),
                     'scraped_at': doc.get('scraped_at', '')
                 }
@@ -160,6 +236,9 @@ class VectorDBService:
                 "message": f"Vector database already exists at {self.persist_directory}",
                 "persist_directory": self.persist_directory
             }
+
+        if force_recreate:
+            self._cleanup_existing_store()
         
         # Load documents based on source type
         if source_type == "scraped":
@@ -205,7 +284,8 @@ class VectorDBService:
     def similarity_search(
         self,
         query: str,
-        k: int = 3
+        k: int = 3,
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
         """
         Search for similar documents in the vector store.
@@ -213,17 +293,28 @@ class VectorDBService:
         Args:
             query: Search query
             k: Number of results to return
+            filters: Dictionary of filters applying to metadata
             
         Returns:
             List of relevant document contents
         """
-        results = self.vectorstore.similarity_search(query, k=k)
+        # Format filters for ChromaDB. If there are multiple, wrap them in $and
+        formatted_filter = None
+        if filters:
+            if len(filters) > 1:
+                formatted_filter = {"$and": [{k: v} for k, v in filters.items()]}
+            else:
+                formatted_filter = filters
+
+        results = self.vectorstore.similarity_search(query, k=k, filter=formatted_filter)
         
         # Log retrieved documents
         logger.info(f"\n{'='*70}")
         logger.info(f"📊 Vector DB Query")
         logger.info(f"{'='*70}")
         logger.info(f"Query: {query}")
+        if filters:
+            logger.info(f"Filters: {filters}")
         logger.info(f"Retrieved {len(results)} documents")
         
         for idx, doc in enumerate(results, 1):
@@ -238,7 +329,14 @@ class VectorDBService:
         
         return [doc.page_content for doc in results]
     
-    def get_context(self, query: str, k: int = 3) -> str:
+    def get_context(
+        self,
+        query: str,
+        k: int = 3,
+        domain: Optional[str] = None,
+        topic: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """
         Get concatenated context from similar documents.
         
@@ -249,7 +347,35 @@ class VectorDBService:
         Returns:
             Concatenated context string
         """
-        documents = self.similarity_search(query, k=k)
+        effective_filters: Dict[str, Any] = dict(filters or {})
+
+        inferred_domain = domain or self._infer_domain(query)
+        if inferred_domain in ("workout", "nutrition"):
+            effective_filters.setdefault("domain", inferred_domain)
+
+        inferred_topic = topic or self._infer_topic(inferred_domain, query)
+        if inferred_topic != "general":
+            effective_filters.setdefault("topic", inferred_topic)
+
+        documents = self.similarity_search(query, k=k, filters=effective_filters or None)
+
+        # Fallback: if the filtered retrieval is too narrow, broaden it in two steps
+        # rather than returning too little context.
+        if effective_filters and len(documents) < max(1, k // 2):
+            if "topic" in effective_filters:
+                broader_filters = dict(effective_filters)
+                broader_filters.pop("topic", None)
+                logger.info(
+                    "Broadening retrieval for query '%s' by removing topic filter: %s",
+                    query,
+                    broader_filters,
+                )
+                documents = self.similarity_search(query, k=k, filters=broader_filters)
+
+        if effective_filters and not documents:
+            logger.info("Broadening retrieval for query '%s' by removing all filters", query)
+            documents = self.similarity_search(query, k=k, filters=None)
+
         context = "\n\n".join(documents)
         
         logger.info(f"📝 Total context length: {len(context)} characters")
