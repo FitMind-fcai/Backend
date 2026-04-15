@@ -66,6 +66,9 @@ class CentralFood(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Reverse relationship — allows eager loading via ingredient → food
+    plan_meal_usages = relationship("NutritionPlanMealIngredient", back_populates="food", lazy="dynamic")
+
 
 # ========================================
 # PLANNING TABLES
@@ -200,7 +203,7 @@ class NutritionPlanMeal(Base):
     fiber_g = Column(Float, nullable=True)
 
     # Meal details
-    ingredients = Column(Text, nullable=True)
+    # ingredients = Column(Text, nullable=True) # DEPRECATED: Replaced by relational table
     instructions = Column(Text, nullable=True)
     prep_time_minutes = Column(Integer, nullable=True)
     cook_time_minutes = Column(Integer, nullable=True)
@@ -211,3 +214,20 @@ class NutritionPlanMeal(Base):
 
     # Relationships
     nutrition_plan_day = relationship("NutritionPlanDay", back_populates="meals")
+    ingredients = relationship("NutritionPlanMealIngredient", back_populates="meal", cascade="all, delete-orphan")
+
+
+class NutritionPlanMealIngredient(Base):
+    """Relational map between a drafted meal and the Central Food database"""
+    __tablename__ = "nutrition_plan_meal_ingredients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nutrition_plan_meal_id = Column(Integer, ForeignKey("nutrition_plan_meals.id"), nullable=False, index=True)
+    central_food_id = Column(Integer, ForeignKey("central_foods.id"), nullable=False, index=True)
+    amount_g = Column(Float, nullable=False)
+
+    # Relationships
+    meal = relationship("NutritionPlanMeal", back_populates="ingredients")
+    food = relationship("CentralFood", back_populates="plan_meal_usages", lazy="joined")
+    # ^ lazy='joined' means every ingredient query automatically JOINs central_foods —
+    #   zero extra round-trips, one SQL statement.

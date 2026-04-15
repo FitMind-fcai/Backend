@@ -148,16 +148,22 @@ class FitnessResourceScraper:
         path = urlparse(url).path
         return f"{domain}_{hash(path)}"[:50]
     
-    def extract_text_from_pdf(self, url: str, timeout: int = 30) -> Optional[str]:
+    def extract_text_from_pdf(self, url: str, timeout: int = 120) -> Optional[str]:
         """Extract text from a PDF URL."""
         if PdfReader is None:
             print("  ⚠️ pypdf not installed, skipping PDF")
             return None
         
         try:
-            print("  📄 Downloading PDF...")
+            print("  📄 Downloading PDF (may take a minute for slow servers)...")
             response = self.session.get(url, timeout=timeout, allow_redirects=True)
             response.raise_for_status()
+            
+            # Check if the server redirected us to a Word Document instead of a PDF
+            content_type = response.headers.get('Content-Type', '')
+            if 'wordprocessingml.document' in content_type or url.endswith('.docx') or response.url.endswith('.docx'):
+                print("  ⚠️ Server returned a Word Document (.docx) instead of a PDF. Skipping extraction.")
+                return None
             
             # Read PDF from memory
             pdf_file = io.BytesIO(response.content)

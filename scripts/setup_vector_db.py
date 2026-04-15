@@ -101,24 +101,28 @@ def main():
     print("\n" + "="*70)
     print("📊 Scraping Options")
     print("="*70)
+    print("0. Skip scraping (rebuild from existing downloaded data) - FASTEST")
     print("1. Test mode (3 resources) - Quick test")
     print("2. High priority (17 HIGH resources) - Recommended")
     print("3. All resources (28 resources, includes MEDIUM) - Complete but slow")
     
-    choice = input("\nChoose option (1/2/3) [default: 2]: ").strip() or "2"
+    choice = input("\nChoose option (0/1/2/3) [default: 0]: ").strip() or "0"
     
-    scraper_options = {
-        "1": ("3", "HIGH"),
-        "2": ("999", "HIGH"),  # All HIGH priority resources
-        "3": ("999", "ALL")     # All resources regardless of priority
-    }
-    max_resources, priority_filter = scraper_options.get(choice, ("999", "HIGH"))
-    
-    # Step 3: Run scraper
-    scraper_cmd = f"python scripts/scrape_fitness_resources.py {max_resources} {priority_filter}"
-    if not run_command(scraper_cmd, "Scraping fitness resources"):
-        print("\n❌ Scraping failed. Check your internet connection.")
-        sys.exit(1)
+    if choice != "0":
+        scraper_options = {
+            "1": ("3", "HIGH"),
+            "2": ("999", "HIGH"),  # All HIGH priority resources
+            "3": ("999", "ALL")     # All resources regardless of priority
+        }
+        max_resources, priority_filter = scraper_options.get(choice, ("999", "HIGH"))
+        
+        # Step 3: Run scraper
+        scraper_cmd = f"python scripts/scrape_fitness_resources.py {max_resources} {priority_filter}"
+        if not run_command(scraper_cmd, "Scraping fitness resources"):
+            print("\n❌ Scraping failed. Check your internet connection.")
+            sys.exit(1)
+    else:
+        print("\n⏭️  Skipping scraper. Using existing data...")
     
     # Step 4: Check if we have scraped data
     scraped_file = Path("data/scraped_resources/scraped_documents.json")

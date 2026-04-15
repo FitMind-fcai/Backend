@@ -1,26 +1,23 @@
 [
   {
-    "scraping_completed_at": "2025-12-03T23:03:33.493339",
+    "scraping_completed_at": "2026-04-14T20:00:37.157481",
     "statistics": {
       "total_resources": 28,
-      "successfully_scraped": 27,
-      "failed": 1,
-      "skipped": 0
+      "successfully_scraped": 22,
+      "failed": 4,
+      "skipped": 2
     },
-    "documents_created": 27,
-    "total_content_length": 1716823,
+    "documents_created": 22,
+    "total_content_length": 728541,
     "categories": {
-      "Exercise Programming & Fitness Guidelines": 6,
+      "Exercise Programming & Fitness Guidelines": 3,
       "Exercise Database & Anatomy": 4,
       "Nutrition Guidelines & Databases": 5,
       "Sports Nutrition & Supplementation": 4,
       "Periodization & Training Principles": 3,
-      "Macronutrient Calculations & TDEE": 3,
-      "Fitness Books & Comprehensive Guides": 2
+      "Macronutrient Calculations & TDEE": 3
     },
     "organizations": {
-      "American College of Sports Medicine": 1,
-      "ACSM": 2,
       "National Strength & Conditioning Association": 1,
       "NSCA": 2,
       "ExRx.net": 4,
@@ -36,9 +33,7 @@
       "PT Pioneer": 1,
       "Calculator.net": 1,
       "TDEE Calculator": 1,
-      "NASM": 1,
-      "Clemson University": 1,
-      "Wiley Publishing": 1
+      "NASM": 1
     }
   }
 ]

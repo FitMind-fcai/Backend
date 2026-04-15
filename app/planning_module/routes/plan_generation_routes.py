@@ -1,6 +1,15 @@
 """
-Plan Generation Routes.
-Handles AI-powered generation and regeneration of workout and nutrition plans.
+Plan Generation Routes — Generate & Save (two-step flow)
+
+Flow:
+  1. POST /plans/generate/workout  → AI generates draft, NOT saved to DB
+  2. POST /plans/save/workout      → User confirms → draft is persisted → WorkoutPlanResponse
+
+  Same for nutrition:
+  1. POST /plans/generate/nutrition → AI generates draft, NOT saved to DB
+  2. POST /plans/save/nutrition     → User confirms → draft is persisted → NutritionPlanResponse
+
+  GET /plans/active → currently active workout + nutrition plan.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,178 +22,245 @@ from app.planning_module.services.plan_generation_service import PlanGenerationS
 from app.planning_module.schemas.plan import (
     WorkoutPlanGenerationRequest,
     NutritionPlanGenerationRequest,
+    WorkoutPlanDraftResponse,
+    WorkoutPlanSaveRequest,
     WorkoutPlanResponse,
+    NutritionPlanDraftResponse,
+    NutritionPlanSaveRequest,
     NutritionPlanResponse,
-    CombinedPlanResponse
+    CombinedPlanResponse,
 )
-
 
 plan_generation_router = APIRouter(prefix="/plans", tags=["Plan Generation"])
 
 
-@plan_generation_router.post("/generate/workout", response_model=WorkoutPlanResponse)
+# ────────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ────────────────────────────────────────────────────────────────────────────────
+
+def _require_complete_profile(profile):
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile not found. Please create your profile first.",
+        )
+    if not all([
+        profile.age, profile.gender, profile.height,
+        profile.weight, profile.fitness_goal, profile.activity_level,
+    ]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incomplete profile. Please complete all required fields "
+                   "(age, gender, height, weight, fitness goal, activity level).",
+        )
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# WORKOUT — GENERATE
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/generate/workout",
+    response_model=WorkoutPlanDraftResponse,
+    summary="Generate Workout Plan Draft (AI only, not saved)"
+)
 def generate_workout_plan(
     request: WorkoutPlanGenerationRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Generate or update workout plan using AI based on user profile and preferences.
-    
-    **Smart Generation:**
-    - **If no plan exists**: Creates a new personalized workout plan from scratch
-    - **If plan exists**: Updates it intelligently using the existing plan as reference
-      - AI analyzes your EXISTING plan and NEW preferences
-      - KEEPS exercises that still match your requirements
-      - ONLY CHANGES exercises that conflict with new preferences
-      - Maintains progression and familiarity where possible
-    
-    **Example Use Cases:**
-    - First time → Creates new workout plan
-    - Changed gym to home workouts → Updates equipment only
-    - New focus area (e.g., strength to cardio) → Adjusts exercises
-    - Different difficulty level → Modifies intensity
-    - Already have nutrition plan → Creates workout plan (keeps nutrition)
-    
-    **Workout Preferences Options:**
-    
-    - **workout_location**: Gym | Home | Outdoor | Hybrid
-    - **equipment_availability**: Full Gym Equipment | Basic Equipment | No Equipment
-    - **workout_focus**: Strength Training | Cardiovascular | Flexibility | Hybrid | Sport Specific
-    - **workout_difficulty**: Beginner | Intermediate | Advanced
-    - **workout_days_per_week**: 1-7 days
-    - **session_duration_minutes**: 15-180 minutes
-    - **focus_areas**: Optional list of specific muscle groups or body areas
-    
-    **Requirements:**
-    - User must have a verified account
-    - User must have a complete profile with required fields
-    - Workout preferences must be provided
+    **Step 1 of 2** — Use AI to generate a workout plan draft.
+
+    The plan is **NOT saved** to the database. Review the `draft_plan` returned,
+    then send the entire response body to `POST /plans/save/workout` to persist it.
+
+    If the user already has an active workout plan, the AI uses it as context to
+    generate an improved or adjusted version — the old plan is **not deleted** until
+    the user explicitly saves the new one.
+
+    **Workout Preferences:**
+    - `workout_location`: Gym | Home | Outdoor | Hybrid
+    - `equipment_availability`: Full Gym Equipment | Basic Equipment | No Equipment
+    - `workout_focus`: Strength Training | Cardiovascular | Flexibility | Hybrid | Sport Specific
+    - `workout_difficulty`: Beginner | Intermediate | Advanced
+    - `workout_days_per_week`: 1–7
+    - `session_duration_minutes`: 15–180
+    - `focus_areas`: optional list of muscle groups
     """
-    # Get user profile
     profile = profile_service.get_profile_by_user_id(current_user.id)
-    
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Profile not found. Please create your profile first before generating plans."
-        )
-    
-    # Validate profile completeness
-    if not all([profile.age, profile.gender, profile.height, profile.weight, profile.fitness_goal, profile.activity_level]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incomplete profile. Please complete all required fields (age, gender, height, weight, fitness goal, activity level)."
-        )
-    
-    # Generate workout plan
+    _require_complete_profile(profile)
+
     plan_service = PlanGenerationService(db)
     try:
-        workout_plan = plan_service.generate_workout_plan(
+        draft = plan_service.generate_workout_plan(
             profile=profile,
             preferences=request.workout_preferences,
-            duration_weeks=request.duration_weeks
+            duration_weeks=request.duration_weeks,
         )
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(error)
-        ) from error
-    
-    return WorkoutPlanResponse.model_validate(workout_plan)
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    return WorkoutPlanDraftResponse(**draft)
 
 
-@plan_generation_router.post("/generate/nutrition", response_model=NutritionPlanResponse)
+# ────────────────────────────────────────────────────────────────────────────────
+# WORKOUT — SAVE
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/save/workout",
+    response_model=WorkoutPlanResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Save Workout Plan Draft to Database"
+)
+def save_workout_plan(
+    request: WorkoutPlanSaveRequest,
+    current_user: User = Depends(get_current_verified_user),
+    profile_service: ProfileService = Depends(get_profile_service),
+    db: Session = Depends(get_db),
+):
+    """
+    **Step 2 of 2** — Confirm and persist a previously generated workout plan draft.
+
+    Send the exact body you received from `POST /plans/generate/workout`.
+    If `update_plan_id` is set, the existing plan's days and exercises are deleted
+    and replaced with the new data. Returns the full saved `WorkoutPlanResponse` with IDs.
+    """
+    profile = profile_service.get_profile_by_user_id(current_user.id)
+    _require_complete_profile(profile)
+
+    plan_service = PlanGenerationService(db)
+    try:
+        saved = plan_service.save_workout_plan(
+            user_id=current_user.id,
+            profile_id=profile.id,
+            plan_create=request.draft_plan,
+            generated_from_preferences=request.generated_from_preferences,
+            update_plan_id=request.update_plan_id,
+        )
+    except Exception as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return WorkoutPlanResponse.model_validate(saved)
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# NUTRITION — GENERATE
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/generate/nutrition",
+    response_model=NutritionPlanDraftResponse,
+    summary="Generate Nutrition Plan Draft (AI only, not saved)"
+)
 def generate_nutrition_plan(
     request: NutritionPlanGenerationRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Generate or update nutrition plan using AI based on user profile and preferences.
-    
-    **Smart Generation:**
-    - **If no plan exists**: Creates a new personalized nutrition plan from scratch
-    - **If plan exists**: Updates it intelligently using the existing plan as reference
-      - AI analyzes your EXISTING plan and NEW preferences
-      - KEEPS meals that still match your requirements
-      - ONLY CHANGES meals that conflict with new preferences
-      - Maintains dietary preferences and familiarity where possible
-    
-    **Example Use Cases:**
-    - First time → Creates new nutrition plan
-    - Adjusted calorie target → Modifies portions, not entire meals
-    - New dietary restriction → Replaces only conflicting meals
-    - Different cuisine preference → Updates meal types
-    - Already have workout plan → Creates nutrition plan (keeps workout)
-    
-    **Nutrition Preferences Options:**
-    
-    - **calorie_preference**: Auto | Custom
-    - **custom_calorie_target**: 1000-5000 (required if calorie_preference is Custom)
-    - **meals_per_day**: 3-6 meals
-    - **meal_complexity**: Quick | Moderate | Elaborate | Mixed
-    - **cuisine_preference**: Mediterranean | Asian | Western | Middle Eastern | Latin American | Vegetarian | Vegan | Mixed
-    - **exclude_ingredients**: Optional list of ingredients to avoid
-    
-    **Requirements:**
-    - User must have a verified account
-    - User must have a complete profile with required fields
-    - Nutrition preferences must be provided
+    **Step 1 of 2** — Use AI to generate a 7-day nutrition plan draft.
+
+    The plan is **NOT saved** to the database. Review the `draft_plan` returned
+    (days → meals → ingredients), then send the entire response body to
+    `POST /plans/save/nutrition` to persist it.
+
+    If the user already has an active nutrition plan, the AI uses it as context —
+    the old plan is **not deleted** until the user explicitly saves the new one.
+
+    **Nutrition Preferences:**
+    - `calorie_preference`: Auto | Custom
+    - `custom_calorie_target`: 1000–5000 (required when Custom)
+    - `meals_per_day`: 3–6
+    - `meal_complexity`: Quick | Moderate | Elaborate | Mixed
+    - `cuisine_preference`: Mediterranean | Asian | Western | Middle Eastern | Latin American | Vegetarian | Vegan | Mixed
+    - `exclude_ingredients`: optional list of ingredients to avoid
     """
-    # Get user profile
     profile = profile_service.get_profile_by_user_id(current_user.id)
-    
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Profile not found. Please create your profile first before generating plans."
-        )
-    
-    # Validate profile completeness
-    if not all([profile.age, profile.gender, profile.height, profile.weight, profile.fitness_goal, profile.activity_level]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incomplete profile. Please complete all required fields (age, gender, height, weight, fitness goal, activity level)."
-        )
-    
-    # Generate nutrition plan
+    _require_complete_profile(profile)
+
     plan_service = PlanGenerationService(db)
     try:
-        nutrition_plan = plan_service.generate_nutrition_plan(
+        draft = plan_service.generate_nutrition_plan(
             profile=profile,
             preferences=request.nutrition_preferences,
-            duration_weeks=request.duration_weeks
+            duration_weeks=request.duration_weeks,
         )
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(error)
-        ) from error
-    
-    return NutritionPlanResponse.model_validate(nutrition_plan)
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    return NutritionPlanDraftResponse(**draft)
 
 
-@plan_generation_router.get("/active", response_model=CombinedPlanResponse)
-def get_active_plans(
+# ────────────────────────────────────────────────────────────────────────────────
+# NUTRITION — SAVE
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/save/nutrition",
+    response_model=NutritionPlanResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Save Nutrition Plan Draft to Database"
+)
+def save_nutrition_plan(
+    request: NutritionPlanSaveRequest,
     current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db)
+    profile_service: ProfileService = Depends(get_profile_service),
+    db: Session = Depends(get_db),
 ):
     """
-    Get currently active workout and nutrition plans for the user.
-    
-    Returns both plans (if they exist) with full details including:
-    - All workout days and exercises
-    - All meals with nutritional information
-    
-    **Response:**
-    - Returns plans that are currently active (within date range)
-    - If no plans exist, returns message indicating no active plans
-    - Both workout_plan and nutrition_plan fields can be null if not present
+    **Step 2 of 2** — Confirm and persist a previously generated nutrition plan draft.
+
+    Send the exact body you received from `POST /plans/generate/nutrition`.
+    If `update_plan_id` is set, the existing plan's days, meals and ingredients are
+    deleted and replaced with the new data. Returns the full saved `NutritionPlanResponse` with IDs.
+    """
+    profile = profile_service.get_profile_by_user_id(current_user.id)
+    _require_complete_profile(profile)
+
+    plan_service = PlanGenerationService(db)
+    try:
+        saved = plan_service.save_nutrition_plan(
+            user_id=current_user.id,
+            profile_id=profile.id,
+            plan_create=request.draft_plan,
+            generated_from_preferences=request.generated_from_preferences,
+            update_plan_id=request.update_plan_id,
+        )
+    except Exception as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+    return NutritionPlanResponse.model_validate(saved)
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# ACTIVE PLANS
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.get(
+    "/active",
+    response_model=CombinedPlanResponse,
+    summary="Get Current Active Workout & Nutrition Plans"
+)
+def get_active_plans(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the currently active workout plan and nutrition plan for the user
+    (both with full details — days, exercises/meals, ingredients).
+    Either field can be `null` if no active plan of that type exists.
     """
     plan_service = PlanGenerationService(db)
-    result = plan_service.get_user_active_plans(current_user.id)
-    
-    return result
+    return plan_service.get_user_active_plans(current_user.id)
