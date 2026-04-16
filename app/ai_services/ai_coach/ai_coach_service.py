@@ -165,7 +165,8 @@ class AICoachService:
         preferences: WorkoutPreferencesDTO,
         duration_weeks: int,
         rag_context: str,
-        existing_plan: Optional[WorkoutPlanDTO] = None
+        existing_plan: Optional[WorkoutPlanDTO] = None,
+        allowed_exercises_str: str = ""
     ) -> str:
         """Build the prompt for workout plan generation."""
         user_context = user_profile.to_context_string()
@@ -191,6 +192,8 @@ class AICoachService:
 {prefs_context}{existing_plan_context}
 
 PLAN DURATION: {duration_weeks} week(s)
+
+{allowed_exercises_str}
 
 REFERENCE FITNESS KNOWLEDGE:
 {rag_context}{regeneration_instruction}
@@ -218,6 +221,7 @@ Generate a complete {preferences.workout_days_per_week}-day workout plan in the 
             "notes": "Any special instructions for this day",
             "exercises": [
                 {{
+                    "central_exercise_id": 123,
                     "exercise_name": "Exercise Name",
                     "exercise_type": "Strength/Cardio/Flexibility",
                     "sets": 3,
@@ -490,6 +494,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         preferences: WorkoutPreferencesDTO,
         duration_weeks: int = 4,
         existing_plan: Optional[WorkoutPlanDTO] = None,
+        allowed_exercises_str: str = ""
     ) -> WorkoutPlanDTO:
         """
         Generate a personalized workout plan.
@@ -521,7 +526,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         
         # Build and send prompt
         prompt = self._build_workout_prompt(
-            user_profile, preferences, duration_weeks, rag_context, existing_plan
+            user_profile, preferences, duration_weeks, rag_context, existing_plan, allowed_exercises_str
         )
         
         system_prompt = """You are an expert fitness coach. Generate workout plans as a single valid JSON object only.

@@ -202,12 +202,20 @@ class PlanGenerationService:
         profile_dto = profile_to_dto(profile)
         preferences_dto = workout_preferences_to_dto(preferences)
 
+        # Get strict allowed exercises string based on user's equipment and difficulty
+        allowed_exercises_str = self.central_exercise_repo.get_equipment_friendly_exercises_for_ai(
+            equipment_availability=preferences.equipment_availability,
+            workout_difficulty=preferences.workout_difficulty,
+            limit=80
+        )
+
         ai_coach = get_ai_coach_service()
         workout_plan_dto = ai_coach.generate_workout_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
             duration_weeks=duration_weeks,
-            existing_plan=existing_plan
+            existing_plan=existing_plan,
+            allowed_exercises_str=allowed_exercises_str
         )
 
         plan_create = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
@@ -312,19 +320,27 @@ class PlanGenerationService:
             workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data)
 
             for exercise_create in day_create.exercises:
-                catalog_data = {
-                    "name": exercise_create.exercise_name,
-                    "exercise_type": exercise_create.exercise_type or "Strength",
-                    "primary_muscle_group": day_create.focus_area or "Full Body",
-                    "equipment_required": "Bodyweight",
-                    "difficulty_level": plan_create.difficulty_level or "Beginner",
-                    "location": "Any",
-                    "instructions": exercise_create.instructions,
-                    "video_url": exercise_create.video_url,
-                    "image_url": exercise_create.image_url,
-                    "is_active": True
-                }
-                central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
+                central_exercise = None
+                
+                # Use provided ID directly if available
+                if getattr(exercise_create, 'central_exercise_id', None):
+                    central_exercise = self.central_exercise_repo.get_by_id(exercise_create.central_exercise_id)
+                
+                # Fallback to name search or create new placeholder
+                if not central_exercise:
+                    catalog_data = {
+                        "name": exercise_create.exercise_name,
+                        "exercise_type": exercise_create.exercise_type or "Strength",
+                        "primary_muscle_group": day_create.focus_area or "Full Body",
+                        "equipment_required": "Bodyweight",
+                        "difficulty_level": plan_create.difficulty_level or "Beginner",
+                        "location": "Any",
+                        "instructions": exercise_create.instructions,
+                        "video_url": exercise_create.video_url,
+                        "image_url": exercise_create.image_url,
+                        "is_active": True
+                    }
+                    central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
                 slot_data = {
                     "sets": exercise_create.sets,
                     "reps": exercise_create.reps,

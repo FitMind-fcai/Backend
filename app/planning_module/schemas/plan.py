@@ -106,6 +106,7 @@ class CentralFoodResponse(BaseModel):
 
 class ExerciseCreate(BaseModel):
     """Internal schema for AI-generated exercise data before catalog lookup"""
+    central_exercise_id: Optional[int] = Field(None, description="Direct link to central database if known")
     exercise_name: str = Field(..., min_length=1, max_length=255)
     exercise_type: Optional[str] = Field(None, max_length=50)
     sets: Optional[int] = Field(None, ge=1, le=20)

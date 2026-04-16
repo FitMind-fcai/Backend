@@ -97,6 +97,7 @@ class PlanGenerationRequestDTO(BaseModel):
 
 class ExerciseDTO(BaseModel):
     """DTO for a single exercise."""
+    central_exercise_id: Optional[int] = None
     exercise_name: str
     exercise_type: Optional[str] = None
     sets: Optional[int] = None
