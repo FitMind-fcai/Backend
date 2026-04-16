@@ -241,7 +241,6 @@ Table nutrition_plan_meals {
   carbs_g float [not null, note: 'Carbohydrates in grams']
   fats_g float [not null, note: 'Fats in grams']
   fiber_g float [note: 'Fiber in grams']
-  ingredients text [note: 'Ingredients list']
   instructions text [note: 'Preparation instructions']
   prep_time_minutes integer [note: 'Preparation time in minutes']
   cook_time_minutes integer [note: 'Cooking time in minutes']
@@ -256,6 +255,22 @@ Table nutrition_plan_meals {
   }
 
   Note: 'AI-generated meals within a nutrition plan day — fully self-contained (no FK to food catalog). AI uses central_foods as context but stores final meals inline.'
+}
+
+// ========================================
+
+Table nutrition_plan_meal_ingredients {
+  id integer [pk, increment]
+  nutrition_plan_meal_id integer [not null, ref: > nutrition_plan_meals.id, note: 'Parent meal']
+  central_food_id integer [not null, ref: > central_foods.id, note: 'Food from central catalog']
+  amount_g float [not null, note: 'Amount in grams']
+  
+  Indexes {
+    nutrition_plan_meal_id [name: 'idx_npmi_meal_id']
+    central_food_id [name: 'idx_npmi_food_id']
+  }
+  
+  Note: 'Relational map between a drafted meal and the Central Food database'
 }
 
 // ========================================
@@ -495,6 +510,7 @@ TableGroup nutrition_planning {
   nutrition_plans
   nutrition_plan_days
   nutrition_plan_meals
+  nutrition_plan_meal_ingredients
   
   Note: "AI-generated nutrition planning — meals stored inline, central_foods used as AI context"
 }
