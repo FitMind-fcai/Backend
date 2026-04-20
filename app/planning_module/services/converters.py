@@ -176,48 +176,53 @@ def nutrition_plan_dto_to_create(
     start_date = date.today()
     end_date = start_date + timedelta(weeks=duration_weeks)
 
-    days = [
-        NutritionPlanDayCreate(
-            day_number=day_dto.day_number,
-            day_name=day_dto.day_name,
-            notes=day_dto.notes,
-            meals=[
-                MealCreate(
-                    meal_type=meal.meal_type,
-                    meal_name=meal.meal_name,
-                    calories=meal.calories,
-                    protein_g=meal.protein_g,
-                    carbs_g=meal.carbs_g,
-                    fats_g=meal.fats_g,
-                    ingredients=[
-                        NutritionPlanMealIngredientCreate(
-                            central_food_id=ing.central_food_id,
-                            amount_g=ing.amount_g
-                        )
-                        for ing in (meal.ingredients or [])
-                    ],
-                    instructions=meal.instructions,
-                    prep_time_minutes=meal.prep_time_minutes,
-                    cook_time_minutes=meal.cook_time_minutes,
-                    servings=meal.servings,
-                    image_url=meal.image_url,
-                    order_index=meal.order_index
-                )
-                for meal in day_dto.meals
-            ]
+    days = []
+    for day_dto in dto.days:
+        # Keep day labels aligned with start_date instead of relying on AI weekday text.
+        day_date = start_date + timedelta(days=max(day_dto.day_number - 1, 0))
+        computed_day_name = day_date.strftime("%A")
+
+        days.append(
+            NutritionPlanDayCreate(
+                day_number=day_dto.day_number,
+                day_name=computed_day_name,
+                notes=day_dto.notes,
+                meals=[
+                    MealCreate(
+                        meal_type=meal.meal_type,
+                        meal_name=meal.meal_name,
+                        calories=meal.calories if meal.calories is not None else 0.0,
+                        protein_g=meal.protein_g if meal.protein_g is not None else 0.0,
+                        carbs_g=meal.carbs_g if meal.carbs_g is not None else 0.0,
+                        fats_g=meal.fats_g if meal.fats_g is not None else 0.0,
+                        ingredients=[
+                            NutritionPlanMealIngredientCreate(
+                                central_food_id=ing.central_food_id,
+                                amount_g=ing.amount_g
+                            )
+                            for ing in (meal.ingredients or [])
+                        ],
+                        instructions=meal.instructions,
+                        prep_time_minutes=meal.prep_time_minutes,
+                        cook_time_minutes=meal.cook_time_minutes,
+                        servings=meal.servings,
+                        image_url=meal.image_url,
+                        order_index=meal.order_index
+                    )
+                    for meal in day_dto.meals
+                ]
+            )
         )
-        for day_dto in dto.days
-    ]
 
     return NutritionPlanCreate(
         plan_name=dto.plan_name,
         description=dto.description,
         start_date=start_date,
         end_date=end_date,
-        daily_calories=dto.daily_calories,
-        daily_protein_g=dto.daily_protein_g,
-        daily_carbs_g=dto.daily_carbs_g,
-        daily_fats_g=dto.daily_fats_g,
+        daily_calories=dto.daily_calories if dto.daily_calories is not None else 0.0,
+        daily_protein_g=dto.daily_protein_g if dto.daily_protein_g is not None else 0.0,
+        daily_carbs_g=dto.daily_carbs_g if dto.daily_carbs_g is not None else 0.0,
+        daily_fats_g=dto.daily_fats_g if dto.daily_fats_g is not None else 0.0,
         days=days
     )
 

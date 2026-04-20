@@ -142,6 +142,11 @@ def save_workout_plan(
             generated_from_preferences=request.generated_from_preferences,
             update_plan_id=request.update_plan_id,
         )
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in str(exc).lower() else status.HTTP_422_UNPROCESSABLE_ENTITY
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except Exception as exc:
         import traceback, logging
         logging.getLogger(__name__).error(traceback.format_exc())
@@ -236,6 +241,11 @@ def save_nutrition_plan(
             generated_from_preferences=request.generated_from_preferences,
             update_plan_id=request.update_plan_id,
         )
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in str(exc).lower() else status.HTTP_422_UNPROCESSABLE_ENTITY
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except Exception as exc:
         import traceback, logging
         logging.getLogger(__name__).error(traceback.format_exc())

@@ -167,10 +167,10 @@ class MealDTO(BaseModel):
     """DTO for a single meal."""
     meal_type: str
     meal_name: str
-    calories: float
-    protein_g: float
-    carbs_g: float
-    fats_g: float
+    calories: Optional[float] = None
+    protein_g: Optional[float] = None
+    carbs_g: Optional[float] = None
+    fats_g: Optional[float] = None
     fiber_g: Optional[float] = None
     ingredients: Optional[List[IngredientDTO]] = []
     instructions: Optional[str] = None
@@ -193,10 +193,10 @@ class NutritionPlanDTO(BaseModel):
     """DTO for generated nutrition plan."""
     plan_name: str
     description: Optional[str] = None
-    daily_calories: float
-    daily_protein_g: float
-    daily_carbs_g: float
-    daily_fats_g: float
+    daily_calories: Optional[float] = None
+    daily_protein_g: Optional[float] = None
+    daily_carbs_g: Optional[float] = None
+    daily_fats_g: Optional[float] = None
     days: List[NutritionDayDTO] = []
 
     def to_context_string(self) -> str:

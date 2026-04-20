@@ -260,7 +260,7 @@ def get_meal_ingredients(
     if not meal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meal not found")
 
-    return [NutritionPlanMealIngredientResponse.model_validate(ing) for ing in meal.ingredients]
+    return [NutritionPlanMealIngredientResponse.from_orm_with_food(ing) for ing in meal.ingredients]
 
 
 # ============================================================

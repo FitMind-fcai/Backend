@@ -4,6 +4,7 @@ from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables
+from app.core.config import SQLALCHEMY_LOG_LEVEL
 from app.profile_module.routes import profileRouter
 from app.planning_module.routes import (
     workout_router,
@@ -26,6 +27,11 @@ logging.basicConfig(
 # Set specific log levels for AI services
 logging.getLogger('app.ai_services.ai_coach.vector_db_service').setLevel(logging.INFO)
 logging.getLogger('app.ai_services.ai_coach.ai_coach_service').setLevel(logging.INFO)
+
+# Keep SQL logs quiet by default; can be overridden via SQLALCHEMY_LOG_LEVEL.
+_sql_log_level = getattr(logging, SQLALCHEMY_LOG_LEVEL, logging.WARNING)
+logging.getLogger('sqlalchemy.engine').setLevel(_sql_log_level)
+logging.getLogger('sqlalchemy.pool').setLevel(_sql_log_level)
 
 app = FastAPI(
     title="FitMind API",

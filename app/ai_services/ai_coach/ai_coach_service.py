@@ -299,15 +299,14 @@ IMPORTANT INSTRUCTIONS:
 6. Match meal complexity to the user\'s preference
 7. Ensure meals align with the user\'s fitness goals
 8. Balance macronutrients appropriately for the fitness goal
+9. Use an appropriate number of ingredients per meal based on the meal type and complexity
+10. Meal name and instructions MUST match the selected ingredient IDs
+11. Do NOT output meal or plan macro numbers; backend will compute nutrition from ingredient amounts
 
 Generate a complete 7-day meal plan in the following JSON format:
 {{
     "plan_name": "Descriptive plan name",
     "description": "Brief description of the nutrition plan",
-    "daily_calories": {target_calories},
-    "daily_protein_g": calculated_protein,
-    "daily_carbs_g": calculated_carbs,
-    "daily_fats_g": calculated_fats,
     "days": [
         {{
             "day_name": "Monday",
@@ -317,10 +316,6 @@ Generate a complete 7-day meal plan in the following JSON format:
                 {{
                     "meal_type": "Breakfast",
                     "meal_name": "Meal Name",
-                    "calories": meal_calories,
-                    "protein_g": protein_amount,
-                    "carbs_g": carbs_amount,
-                    "fats_g": fats_amount,
                     "ingredients": [
                         {{
                             "central_food_id": 123,
@@ -523,6 +518,11 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
         logger.info(f"🏋️ Generating workout plan - RAG query: {query}")
         rag_context = self.vector_db.get_context(query, k=self.rag_top_k, domain="workout")
         rag_context = self._trim_rag_context(rag_context, "workout")
+
+        logger.info("===================================")
+        logger.info("🏋️ INJECTED DB EXERCISES STRING:")
+        logger.info(allowed_exercises_str)
+        logger.info("===================================")
         
         # Build and send prompt
         prompt = self._build_workout_prompt(
@@ -605,7 +605,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
                 f"Raw output preview: {response[:1500]!r}"
             ) from error
         return self._validate_nutrition_plan_response(plan_data)
-    
+
     def ask_coach(
         self,
         question: str,
