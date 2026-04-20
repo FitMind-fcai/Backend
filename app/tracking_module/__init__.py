@@ -1,6 +1,5 @@
-"""
-Tracking Module
-Handles workout logs, meal logs, and weight tracking.
-"""
+"""Tracking module exports."""
 
-__all__ = []
+from app.tracking_module.routes import tracking_router
+
+__all__ = ["tracking_router"]

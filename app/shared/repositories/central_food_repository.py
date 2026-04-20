@@ -44,6 +44,34 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             q = q.filter(CentralFood.food_category.ilike(f"%{food_category}%"))
         return q.order_by(CentralFood.food_name).limit(limit).all()
 
+    def search_for_tracking(self, query: str, user_id: int, limit: int = 20) -> List[CentralFood]:
+        """Search foods visible to user: verified/public + user's private entries."""
+        q = (
+            self.db.query(CentralFood)
+            .filter(CentralFood.is_active == True)
+            .filter(CentralFood.food_name.ilike(f"%{query}%"))
+            .filter(
+                (CentralFood.is_verified == True)
+                | (CentralFood.is_public == True)
+                | (CentralFood.created_by_user_id == user_id)
+            )
+        )
+        return q.order_by(CentralFood.food_name.asc()).limit(limit).all()
+
+    def create_manual_food(self, user_id: int, food_data: dict) -> CentralFood:
+        """Create a user-scoped manual food in central_foods with governance flags."""
+        payload = dict(food_data)
+        payload.update(
+            {
+                "created_by_user_id": user_id,
+                "is_verified": False,
+                "is_public": False,
+                "source": "ManualUser",
+                "is_active": True,
+            }
+        )
+        return self.create(payload)
+
     def get_by_filters(
         self,
         food_category: Optional[str] = None,
