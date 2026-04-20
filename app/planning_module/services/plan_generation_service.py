@@ -18,6 +18,7 @@ from app.planning_module.schemas.plan import (
     NutritionPreferences
 )
 from app.planning_module.models import WorkoutPlan, NutritionPlan
+from app.planning_module.models import CentralFood
 from app.profile_module.models.profile import Profile
 from app.planning_module.services.converters import (
     profile_to_dto,
@@ -150,6 +151,9 @@ class PlanGenerationService:
     ):
         """Persist a workout plan draft to the database (user-confirmed save)."""
         if update_plan_id:
+            existing = self.workout_repo.get_by_id(update_plan_id)
+            if not existing or existing.user_id != user_id:
+                raise ValueError(f"Workout plan {update_plan_id} not found for this user")
             # Only NOW delete the old plan details before replacing
             self._delete_workout_plan_details(update_plan_id)
             return self._update_workout_plan_with_details(
@@ -174,7 +178,13 @@ class PlanGenerationService:
         update_plan_id: int = None
     ):
         """Persist a nutrition plan draft to the database (user-confirmed save)."""
+        # Authoritative nutrition numbers are always computed on server from ingredients.
+        self._hydrate_nutrition_macros_from_ingredients(plan_create)
+
         if update_plan_id:
+            existing = self.nutrition_repo.get_by_id(update_plan_id)
+            if not existing or existing.user_id != user_id:
+                raise ValueError(f"Nutrition plan {update_plan_id} not found for this user")
             # Only NOW delete the old plan details before replacing
             self._delete_nutrition_plan_details(update_plan_id)
             return self._update_nutrition_plan_with_meals(
@@ -258,7 +268,7 @@ class PlanGenerationService:
             exclude_ingredients=getattr(preferences, 'exclude_ingredients', []),
             limit=50
         )
-        
+
         # Generate plan via AI Coach (with existing plan if regenerating)
         ai_coach = get_ai_coach_service()
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
@@ -271,6 +281,9 @@ class PlanGenerationService:
         
         # Convert DTO to create schema
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
+
+        # Authoritative nutrition numbers are always computed on server from ingredients.
+        self._hydrate_nutrition_macros_from_ingredients(plan_create)
         
         # Store preferences used for generation
         preferences_dict = preferences.model_dump()
@@ -281,7 +294,65 @@ class PlanGenerationService:
             "generated_from_preferences": preferences_dict,
             "update_plan_id": update_plan_id
         }
-    
+
+    def _hydrate_nutrition_macros_from_ingredients(self, nutrition_plan):
+        """Compute meal/day/plan macros from ingredient amounts and central_food records."""
+        referenced_food_ids = {
+            ing.central_food_id
+            for day in nutrition_plan.days
+            for meal in day.meals
+            for ing in (meal.ingredients or [])
+        }
+
+        foods_by_id = {}
+        if referenced_food_ids:
+            foods = (
+                self.db.query(CentralFood)
+                .filter(CentralFood.id.in_(list(referenced_food_ids)))
+                .all()
+            )
+            foods_by_id = {food.id: food for food in foods}
+
+        day_totals = []
+        for day in nutrition_plan.days:
+            day_calories = day_protein = day_carbs = day_fats = 0.0
+            for meal in day.meals:
+                meal_calories = meal_protein = meal_carbs = meal_fats = meal_fiber = 0.0
+
+                for ing in (meal.ingredients or []):
+                    food = foods_by_id.get(ing.central_food_id)
+                    if not food:
+                        continue
+                    amount_g = float(ing.amount_g or 0)
+                    if amount_g <= 0:
+                        continue
+                    ratio = amount_g / 100.0
+                    meal_calories += float(food.calories_per_100g) * ratio
+                    meal_protein += float(food.protein_per_100g) * ratio
+                    meal_carbs += float(food.carbs_per_100g) * ratio
+                    meal_fats += float(food.fats_per_100g) * ratio
+                    meal_fiber += float(food.fiber_per_100g or 0.0) * ratio
+
+                meal.calories = round(meal_calories, 1)
+                meal.protein_g = round(meal_protein, 2)
+                meal.carbs_g = round(meal_carbs, 2)
+                meal.fats_g = round(meal_fats, 2)
+                meal.fiber_g = round(meal_fiber, 2)
+
+                day_calories += meal_calories
+                day_protein += meal_protein
+                day_carbs += meal_carbs
+                day_fats += meal_fats
+
+            day_totals.append((day_calories, day_protein, day_carbs, day_fats))
+
+        if day_totals:
+            days_count = float(len(day_totals))
+            nutrition_plan.daily_calories = round(sum(x[0] for x in day_totals) / days_count, 1)
+            nutrition_plan.daily_protein_g = round(sum(x[1] for x in day_totals) / days_count, 2)
+            nutrition_plan.daily_carbs_g = round(sum(x[2] for x in day_totals) / days_count, 2)
+            nutrition_plan.daily_fats_g = round(sum(x[3] for x in day_totals) / days_count, 2)
+
     def _create_workout_plan_with_details(
         self,
         user_id: int,
@@ -451,6 +522,8 @@ class PlanGenerationService:
         }
         
         plan = self.workout_repo.update_plan(plan_id, plan_data)
+        if plan is None:
+            raise ValueError(f"Workout plan {plan_id} not found")
 
         for day_create in plan_create.workout_days:
             day_data = {
@@ -513,6 +586,8 @@ class PlanGenerationService:
         }
 
         plan = self.nutrition_repo.update_plan(plan_id, plan_data)
+        if plan is None:
+            raise ValueError(f"Nutrition plan {plan_id} not found")
 
         for day_create in plan_create.days:
             day_data = {

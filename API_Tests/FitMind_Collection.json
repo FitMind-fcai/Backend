@@ -1386,7 +1386,15 @@
                 "exec": [
                   "// Auto-inject the draft captured from the generate step",
                   "const draft = pm.environment.get('workoutDraft');",
-                  "if (draft) { pm.request.body.raw = draft; }"
+                  "if (!draft) {",
+                  "  throw new Error('Missing workoutDraft. Run a Generate Workout Plan request first.');",
+                  "}",
+                  "try {",
+                  "  JSON.parse(draft);",
+                  "} catch (e) {",
+                  "  throw new Error('workoutDraft is not valid JSON in environment.');",
+                  "}",
+                  "pm.request.body.raw = draft;"
                 ],
                 "type": "text/javascript"
               }
@@ -1427,7 +1435,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "// Paste the full response body from 'Generate Workout Plan Draft - Gym Strength' here.\n// Or use the pre-request script below to load it from the environment.\n{{workoutDraft}}"
+              "raw": "{{workoutDraft}}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/plans/save/workout",

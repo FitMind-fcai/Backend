@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import date
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import NutritionPlan, NutritionPlanDay, NutritionPlanMeal
+from app.planning_module.models.plan import NutritionPlanMealIngredient
 
 
 class NutritionPlanRepository(BaseRepository[NutritionPlan]):
@@ -154,9 +155,24 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
         return slot
 
     def delete_meal_slots_by_day_id(self, day_id: int):
+        # Delete child ingredient rows first to satisfy FK constraints.
+        meal_ids = [
+            meal_id
+            for (meal_id,) in (
+                self.db.query(NutritionPlanMeal.id)
+                .filter(NutritionPlanMeal.nutrition_plan_day_id == day_id)
+                .all()
+            )
+        ]
+
+        if meal_ids:
+            self.db.query(NutritionPlanMealIngredient).filter(
+                NutritionPlanMealIngredient.nutrition_plan_meal_id.in_(meal_ids)
+            ).delete(synchronize_session=False)
+
         self.db.query(NutritionPlanMeal).filter(
             NutritionPlanMeal.nutrition_plan_day_id == day_id
-        ).delete()
+        ).delete(synchronize_session=False)
         self.db.commit()
 
 
