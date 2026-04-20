@@ -1,6 +1,5 @@
-"""
-Tracking Services
-Business logic for logging and progress analytics.
-"""
+"""Tracking service exports."""
 
-__all__ = []
+from app.tracking_module.services.tracking_service import TrackingService
+
+__all__ = ["TrackingService"]

@@ -33,6 +33,10 @@ class CentralExercise(Base):
     instructions = Column(Text, nullable=True)
     video_url = Column(String(500), nullable=True)
     image_url = Column(String(500), nullable=True)
+    source = Column(String(50), nullable=False, default="System")
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    is_verified = Column(Boolean, nullable=False, default=True, index=True)
+    is_public = Column(Boolean, nullable=False, default=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -62,6 +66,9 @@ class CentralFood(Base):
     # Metadata
     dietary_tags = Column(JSON, nullable=True, default=list)
     usda_fdc_id = Column(Integer, nullable=True, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    is_verified = Column(Boolean, nullable=False, default=True, index=True)
+    is_public = Column(Boolean, nullable=False, default=True, index=True)
     source = Column(String(50), nullable=False, default="USDA")
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

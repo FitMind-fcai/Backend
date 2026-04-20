@@ -17,9 +17,10 @@ A FastAPI backend for the FitMind fitness application — featuring AI-powered w
 9. [Docker Setup](#docker-setup)
 10. [Deployment (Railway)](#deployment-railway)
 11. [Vector Database (RAG / AI Coach)](#vector-database-rag--ai-coach)
-12. [AI Coach Evaluation (LLM-as-Judge)](#ai-coach-evaluation-llm-as-judge)
-13. [Development Guidelines](#development-guidelines)
-14. [Troubleshooting](#troubleshooting)
+12. [Scripts (Linux & Windows)](#scripts-linux--windows)
+13. [AI Coach Evaluation (LLM-as-Judge)](#ai-coach-evaluation-llm-as-judge)
+14. [Development Guidelines](#development-guidelines)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -32,7 +33,7 @@ A FastAPI backend for the FitMind fitness application — featuring AI-powered w
 | Cache / OTP Store | Redis 7 |
 | Authentication | JWT + bcrypt |
 | AI / LLM | Groq API (Llama, Mixtral, Whisper) |
-| Vector DB | ChromaDB + HuggingFace `all-MiniLM-L6-v2` |
+| Vector DB | ChromaDB + HuggingFace `BAAI/bge-small-en-v1.5` |
 | Validation | Pydantic v2 |
 | Containerization | Docker + Docker Compose |
 | Docs | Auto-generated Swagger / ReDoc |
@@ -52,7 +53,10 @@ Backend/
 ├── resources.csv                    # RAG data sources (28 fitness resources)
 ├── scripts/
 │   ├── scrape_fitness_resources.py  # Scrapes resources.csv sources
-│   └── setup_vector_db.py          # Builds ChromaDB vector store
+│   ├── setup_vector_db.py           # Builds ChromaDB vector store
+│   ├── import_food.py               # Imports nutrition.csv into central_foods
+│   ├── import_workouts.py           # Imports megaGymDataset.csv into central_exercises
+│   └── evaluate_rag_pipeline.py     # LLM-as-judge evaluation runner
 ├── data/
 │   └── scraped_resources/
 │       └── scraped_documents.json
@@ -130,6 +134,9 @@ def register(
 | Synchronous routes | Simpler code, SQLAlchemy ORM is sync |
 | Redis for OTPs & tokens | Auto-expiry via TTL, atomic counters, no DB migrations |
 | JSON preferences in plan | Enables history/regeneration without extra tables |
+| Deterministic food retrieval for AI plans | Avoids random ingredient sets and improves semantic consistency |
+| Hybrid RAG retrieval with metadata-aware context blocks | Improves relevance and grounding vs plain vector search |
+| Source-quality filtering before embedding | Reduces navigation/boilerplate noise in retrieved context |
 
 ---
 
@@ -447,8 +454,10 @@ The AI Coach uses **Retrieval-Augmented Generation (RAG)** with ChromaDB to grou
 resources.csv (28 sources)
     ↓ scraper
 data/scraped_resources/scraped_documents.json
-    ↓ chunker (1000 chars, 200 overlap)
-    ↓ embedder (all-MiniLM-L6-v2 → 384-dim vectors)
+    ↓ quality filter (drop low-signal boilerplate/navigation-heavy pages)
+    ↓ cleaner + chunker (~2200 chars, 200 overlap)
+    ↓ metadata enrichment (chunk_summary + chunk_keywords + source)
+    ↓ embedder (BAAI/bge-small-en-v1.5)
     ↓ stored in ChromaDB
 app/ai_services/ai_coach/chroma_db/
 
@@ -456,8 +465,10 @@ app/ai_services/ai_coach/chroma_db/
 FastAPI starts → first /v1/plans/... request
     → VectorDBService loads ChromaDB from disk (~1s)
     → stays in memory for all subsequent requests
-    → similarity_search(query, k=5) → top chunks
-    → chunks injected into Groq LLM prompt
+    → query expansion (base + retrieval-oriented variants)
+    → hybrid rerank (semantic score + lexical overlap)
+    → domain/topic filtering with fallback broadening
+    → structured context blocks injected into Groq LLM prompt
     → LLM returns evidence-grounded plan
 ```
 
@@ -465,7 +476,7 @@ FastAPI starts → first /v1/plans/... request
 
 **Recommended (Docker):**
 ```bash
-docker-compose exec web python scripts/setup_vector_db.py
+docker compose exec -T web python scripts/setup_vector_db.py
 # Choose option 2 (HIGH priority, 17 sources, ~5 min)
 ```
 
@@ -483,6 +494,15 @@ python scripts/scrape_fitness_resources.py 999 HIGH
 # Step 2: Build vector store
 python -c "from app.ai_services.ai_coach.vector_db_service import initialize_vector_db; initialize_vector_db(force_recreate=True)"
 ```
+
+### Retrieval Pipeline (Current)
+
+1. Infer `domain/topic` from query and apply metadata filters.
+2. Generate query variants for better recall.
+3. Retrieve semantic candidates from Chroma.
+4. Re-rank with a combined score: semantic relevance + lexical overlap.
+5. Format context as `[SOURCE | URL] + summary + keywords + content`.
+6. Fallback broadening if filters are too narrow.
 
 ### Rebuild When
 - ✅ First-time setup
@@ -510,13 +530,117 @@ python -c "from app.ai_services.ai_coach.vector_db_service import initialize_vec
 
 | Parameter | Value |
 |---|---|
-| Embedding model | `all-MiniLM-L6-v2` (384-dim, ~90MB) |
-| Chunk size | 1000 characters |
+| Embedding model | `BAAI/bge-small-en-v1.5` |
+| Chunk size | ~2200 characters (~512-token equivalent) |
 | Chunk overlap | 200 characters |
-| Similarity | Cosine similarity |
+| Retrieval | Hybrid rerank (semantic + lexical overlap) |
 | Default k | 3–5 documents |
 | Query time | < 100ms |
 | DB disk size | ~100–150MB (HIGH priority) |
+
+---
+
+## Scripts (Linux & Windows)
+
+Use these commands to run project scripts locally or inside Docker.
+
+### Local Environment
+
+**Linux / macOS (Bash):**
+```bash
+source venv/bin/activate
+```
+
+**Windows (PowerShell):**
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+**Windows (CMD):**
+```bat
+venv\Scripts\activate.bat
+```
+
+### Food Import (`scripts/import_food.py`)
+
+**Linux / macOS / Windows (local Python):**
+```bash
+# dry-run preview
+python scripts/import_food.py
+
+# import into DB
+python scripts/import_food.py --import
+
+# clear table then import
+python scripts/import_food.py --import --clear
+```
+
+**Docker:**
+```bash
+docker compose exec -T web python scripts/import_food.py --import --clear
+```
+
+### Workout Import (`scripts/import_workouts.py`)
+
+**Linux / macOS / Windows (local Python):**
+```bash
+# dry-run preview
+python scripts/import_workouts.py
+
+# import into DB
+python scripts/import_workouts.py --import
+
+# clear table then import
+python scripts/import_workouts.py --import --clear
+```
+
+**Docker:**
+```bash
+docker compose exec -T web python scripts/import_workouts.py --import
+```
+
+### Scrape Fitness Sources (`scripts/scrape_fitness_resources.py`)
+
+**Linux / macOS / Windows (local Python):**
+```bash
+# scrape top 3 HIGH-priority resources (quick test)
+python scripts/scrape_fitness_resources.py 3 HIGH
+
+# scrape all HIGH-priority resources
+python scripts/scrape_fitness_resources.py 999 HIGH
+
+# scrape all priorities
+python scripts/scrape_fitness_resources.py 999 ALL
+```
+
+**Docker:**
+```bash
+docker compose exec -T web python scripts/scrape_fitness_resources.py 999 HIGH
+```
+
+### Build / Rebuild Vector DB (`scripts/setup_vector_db.py`)
+
+**Linux / macOS / Windows (local Python):**
+```bash
+python scripts/setup_vector_db.py
+```
+
+**Docker:**
+```bash
+docker compose exec -T web python scripts/setup_vector_db.py
+```
+
+### One-Liner Vector DB Rebuild (Non-interactive)
+
+**Linux / macOS / Windows (local Python):**
+```bash
+python -c "from app.ai_services.ai_coach.vector_db_service import initialize_vector_db; print(initialize_vector_db(force_recreate=True, source_type='scraped'))"
+```
+
+**Docker:**
+```bash
+docker compose exec -T web python -c "from app.ai_services.ai_coach.vector_db_service import initialize_vector_db; print(initialize_vector_db(force_recreate=True, source_type='scraped'))"
+```
 
 ---
 

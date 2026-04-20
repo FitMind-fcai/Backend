@@ -1,6 +1,5 @@
-"""
-Tracking Routes
-API endpoints for logging workouts, meals, and weight.
-"""
+"""Tracking route exports."""
 
-__all__ = []
+from app.tracking_module.routes.tracking import tracking_router
+
+__all__ = ["tracking_router"]

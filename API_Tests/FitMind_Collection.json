@@ -3322,6 +3322,698 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "06 Tracking",
+      "item": [
+        {
+          "name": "Search Foods - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Food search returns serving-level nutrition', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('serving_description');",
+                  "    pm.expect(body[0]).to.have.property('calories_per_serving');",
+                  "    pm.expect(body[0]).to.have.property('protein_g_per_serving');",
+                  "    pm.environment.set('trackingCentralFoodId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/foods/search?q=chicken&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "foods",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "chicken"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Exercises - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Exercise search returns details', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('name');",
+                  "    pm.expect(body[0]).to.have.property('equipment_required');",
+                  "    pm.environment.set('trackingCentralExerciseId', body[0].id);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/exercises/search?q=squat&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "exercises",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "squat"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Manual Food - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Manual food created in central table', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body.source).to.eql('ManualUser');",
+                  "  pm.expect(body.is_verified).to.eql(false);",
+                  "  pm.environment.set('trackingManualFoodId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"food_name\": \"Homemade Chicken Bowl\",\n  \"food_category\": \"Manual\",\n  \"serving_size_g\": 250,\n  \"serving_description\": \"1 bowl\",\n  \"calories_per_serving\": 560,\n  \"protein_g_per_serving\": 42,\n  \"carbs_g_per_serving\": 50,\n  \"fats_g_per_serving\": 18,\n  \"fiber_g_per_serving\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/foods/manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "foods",
+                "manual"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Manual Exercise - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Manual exercise created in central table', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body.source).to.eql('ManualUser');",
+                  "  pm.expect(body.is_verified).to.eql(false);",
+                  "  pm.environment.set('trackingManualExerciseId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Band Row Custom\",\n  \"exercise_type\": \"Strength\",\n  \"primary_muscle_group\": \"Back\",\n  \"equipment_required\": \"Resistance Band\",\n  \"difficulty_level\": \"Beginner\",\n  \"location\": \"Home\",\n  \"instructions\": \"Pull band to lower ribs with neutral spine\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/exercises/manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "exercises",
+                "manual"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Workout Log (Text) - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Workout log created', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body).to.have.property('central_exercise_id');",
+                  "  pm.environment.set('trackingWorkoutLogId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"central_exercise_id\": 1,\n  \"log_date\": \"2026-04-20\",\n  \"sets_completed\": 3,\n  \"reps_completed\": 10,\n  \"weight_used\": 40.0,\n  \"notes\": \"text workout logging smoke\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/workouts/text",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "workouts",
+                "text"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Workout Logs - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/workouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "workouts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workout Log by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/workouts/{{trackingWorkoutLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "workouts",
+                "{{trackingWorkoutLogId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Workout Log - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/workouts/{{trackingWorkoutLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "workouts",
+                "{{trackingWorkoutLogId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Meal Log (Text) - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Meal log created', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.expect(body.log_method).to.eql('TEXT');",
+                  "  pm.environment.set('trackingMealLogId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"central_food_id\": 1,\n  \"log_date\": \"2026-04-20\",\n  \"meal_type\": \"Lunch\",\n  \"meal_name\": \"Chicken rice bowl\",\n  \"servings\": 1,\n  \"calories\": 650,\n  \"protein_g\": 45,\n  \"carbs_g\": 70,\n  \"fats_g\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/meals/text",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "meals",
+                "text"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Meal Logs - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/meals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "meals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal Log by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/meals/{{trackingMealLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "meals",
+                "{{trackingMealLogId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Meal Log - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/meals/{{trackingMealLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "meals",
+                "{{trackingMealLogId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Weight Log (Text) - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Weight log created', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('id');",
+                  "  pm.environment.set('trackingWeightLogId', body.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"log_date\": \"2026-04-20\",\n  \"weight\": 81.3,\n  \"notes\": \"Morning weigh-in\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/weights/text",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "weights",
+                "text"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Weight Logs - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/weights",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "weights"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Weight Log by ID - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/weights/{{trackingWeightLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "weights",
+                "{{trackingWeightLogId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Weight Log - Success",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tracking/weights/{{trackingWeightLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "tracking",
+                "weights",
+                "{{trackingWeightLogId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

@@ -11,6 +11,7 @@ from app.planning_module.routes import (
     nutrition_router,
     plan_generation_router
 )
+from app.tracking_module.routes import tracking_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -91,6 +92,7 @@ v1_router.include_router(profileRouter, tags=["Profiles"])
 v1_router.include_router(plan_generation_router, tags=["Plan Generation"])
 v1_router.include_router(workout_router, tags=["Workout Plans"])
 v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
+v1_router.include_router(tracking_router, tags=["Tracking"])
 
 app.include_router(v1_router)
 
