@@ -119,8 +119,9 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             .filter(CentralFood.protein_per_100g >= 1.5)     # at least 1.5 g protein / 100 g
         )
             
-        # Get a diverse randomized selection of matching foods
-        foods = query.order_by(sql_func.random()).limit(limit).all()
+        # Deterministic retrieval: avoid random() so core ingredient families are consistently present.
+        foods_pool = query.order_by(CentralFood.food_name.asc()).limit(max(limit * 12, 240)).all()
+        foods = self._select_balanced_foods_for_prompt(foods_pool, limit)
         
         if not foods:
             return "Note: No strict food constraints applied due to overly restrictive filters. Generate generic healthy meals."
@@ -136,6 +137,128 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             )
         
         return prompt_str
+
+    def _select_balanced_foods_for_prompt(self, foods: List[CentralFood], limit: int) -> List[CentralFood]:
+        """Build a deterministic, balanced food set for AI prompts."""
+        if not foods:
+            return []
+
+        limit = max(12, int(limit or 50))
+
+        proteins: List[CentralFood] = []
+        carbs: List[CentralFood] = []
+        produce: List[CentralFood] = []
+        fats: List[CentralFood] = []
+        others: List[CentralFood] = []
+
+        for food in foods:
+            bucket = self._classify_food_bucket(food)
+            if bucket == "protein":
+                proteins.append(food)
+            elif bucket == "carb":
+                carbs.append(food)
+            elif bucket == "produce":
+                produce.append(food)
+            elif bucket == "fat":
+                fats.append(food)
+            else:
+                others.append(food)
+
+        quotas = {
+            "protein": max(3, int(limit * 0.30)),
+            "carb": max(3, int(limit * 0.25)),
+            "produce": max(3, int(limit * 0.25)),
+            "fat": max(2, int(limit * 0.20)),
+        }
+
+        selected: List[CentralFood] = []
+        selected_ids = set()
+
+        def _pick(items: List[CentralFood], amount: int, key_name: str) -> None:
+            if amount <= 0 or not items:
+                return
+            ranked = self._rank_bucket_items(items, key_name)
+            for candidate in ranked:
+                if len(selected) >= limit:
+                    break
+                if candidate.id in selected_ids:
+                    continue
+                selected.append(candidate)
+                selected_ids.add(candidate.id)
+                if len([f for f in selected if self._classify_food_bucket(f) == key_name]) >= amount:
+                    break
+
+        _pick(proteins, quotas["protein"], "protein")
+        _pick(carbs, quotas["carb"], "carb")
+        _pick(produce, quotas["produce"], "produce")
+        _pick(fats, quotas["fat"], "fat")
+
+        # Fill any remaining slots with deterministic best-of leftovers.
+        leftovers = proteins + carbs + produce + fats + others
+        leftovers_ranked = sorted(
+            leftovers,
+            key=lambda f: (
+                -(f.protein_per_100g or 0),
+                -(f.fiber_per_100g or 0),
+                -(f.carbs_per_100g or 0),
+                f.food_name.lower(),
+            ),
+        )
+        for food in leftovers_ranked:
+            if len(selected) >= limit:
+                break
+            if food.id in selected_ids:
+                continue
+            selected.append(food)
+            selected_ids.add(food.id)
+
+        return selected[:limit]
+
+    def _classify_food_bucket(self, food: CentralFood) -> str:
+        """Classify food into broad meal-building buckets."""
+        name = (food.food_name or "").lower()
+        category = (food.food_category or "").lower()
+
+        produce_terms = [
+            "vegetable", "fruit", "greens", "salad", "tomato", "cucumber", "pepper",
+            "broccoli", "spinach", "lettuce", "apple", "banana", "berry", "orange",
+        ]
+        protein_terms = [
+            "chicken", "turkey", "beef", "fish", "salmon", "tuna", "egg", "tofu",
+            "tempeh", "lentil", "bean", "yogurt", "cottage", "protein",
+        ]
+        carb_terms = [
+            "rice", "bread", "oat", "pasta", "potato", "quinoa", "barley", "cereal",
+            "tortilla", "wrap", "noodle",
+        ]
+        fat_terms = [
+            "avocado", "olive", "almond", "walnut", "cashew", "peanut", "seed", "nut",
+            "tahini", "flax", "chia",
+        ]
+
+        search_space = f"{name} {category}"
+
+        if any(term in search_space for term in produce_terms):
+            return "produce"
+        if any(term in search_space for term in protein_terms) or (food.protein_per_100g or 0) >= 15:
+            return "protein"
+        if any(term in search_space for term in fat_terms) or ((food.fats_per_100g or 0) >= 12 and (food.protein_per_100g or 0) < 12):
+            return "fat"
+        if any(term in search_space for term in carb_terms) or (food.carbs_per_100g or 0) >= 20:
+            return "carb"
+        return "other"
+
+    def _rank_bucket_items(self, items: List[CentralFood], bucket: str) -> List[CentralFood]:
+        """Deterministic ranking by bucket-specific nutritional signals."""
+        if bucket == "protein":
+            return sorted(items, key=lambda f: (-(f.protein_per_100g or 0), f.food_name.lower()))
+        if bucket == "carb":
+            return sorted(items, key=lambda f: (-(f.carbs_per_100g or 0), -(f.fiber_per_100g or 0), f.food_name.lower()))
+        if bucket == "produce":
+            return sorted(items, key=lambda f: (-(f.fiber_per_100g or 0), f.food_name.lower()))
+        if bucket == "fat":
+            return sorted(items, key=lambda f: (-(f.fats_per_100g or 0), f.food_name.lower()))
+        return sorted(items, key=lambda f: f.food_name.lower())
 
     def find_or_create(self, food_data: dict) -> CentralFood:
         """Find by USDA FDC ID first, then by name, or create if not found"""
