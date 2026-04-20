@@ -111,9 +111,12 @@ class AICoachService:
     def _trim_rag_context(self, rag_context: str, context_name: str) -> str:
         """Trim long RAG context to keep total prompt size under control."""
         context = rag_context or ""
-        
-        # Log the full retrieved context (or a preview if desired)
-        logger.info(f"📚 Full retrieved {context_name} context:\n{context}\n{'-'*50}")
+
+        # Avoid flooding logs with full context; keep a short preview for debugging.
+        preview = context[:800].rstrip()
+        if len(context) > 800:
+            preview += "..."
+        logger.info("📚 Retrieved %s context preview (%s chars): %s", context_name, len(context), preview)
 
         if len(context) <= self.rag_max_context_chars:
             return context
@@ -204,6 +207,7 @@ IMPORTANT INSTRUCTIONS:
 3. Match the difficulty level to the user's fitness goal and activity level
 4. Include proper warm-up and cool-down recommendations
 5. Ensure exercises are appropriate for the available equipment and location
+6. Ground recommendations in REFERENCE FITNESS KNOWLEDGE; avoid unsupported or invented factual claims
 
 Generate a complete {preferences.workout_days_per_week}-day workout plan in the following JSON format:
 {{
@@ -302,6 +306,7 @@ IMPORTANT INSTRUCTIONS:
 9. Use an appropriate number of ingredients per meal based on the meal type and complexity
 10. Meal name and instructions MUST match the selected ingredient IDs
 11. Do NOT output meal or plan macro numbers; backend will compute nutrition from ingredient amounts
+12. Ground recommendations in REFERENCE NUTRITION KNOWLEDGE; avoid unsupported or invented factual claims
 
 Generate a complete 7-day meal plan in the following JSON format:
 {{
@@ -683,7 +688,8 @@ Remember: You're their trusted coach who is here to help them succeed safely."""
 
 Question: {question}
 
-Give me your professional advice as my coach. Be practical and specific."""
+    Give me your professional advice as my coach. Be practical and specific.
+    Cite the supporting source inline using this format when relevant: [SOURCE: title]."""
         
         return self._call_llm(system_prompt, user_prompt, json_mode=False)
 

@@ -2,7 +2,8 @@ import os
 import json
 import logging
 import shutil
-from typing import List, Optional, Dict, Any
+import re
+from typing import List, Optional, Dict, Any, Tuple
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -20,7 +21,7 @@ class VectorDBService:
     DEFAULT_PERSIST_DIR = os.path.join(BASE_DIR, "chroma_db")
     DEFAULT_PDF_PATH = os.path.join(BASE_DIR, "fitness-handbook.pdf")
     # Path to scraped documents (from scraper script)
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR))))
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
     DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
     
     # Embedding model configuration
@@ -45,8 +46,12 @@ class VectorDBService:
     }
     
     # Text splitting configuration
-    CHUNK_SIZE = 1000
+    # 2200 chars is a practical approximation for ~512 tokens in English text.
+    CHUNK_SIZE = 2200
     CHUNK_OVERLAP = 200
+    MAX_CONTEXT_CHARS = 3600
+    LEXICAL_TOP_K = 24
+    SEMANTIC_TOP_K_MULTIPLIER = 4
     
     def __init__(
         self,
@@ -134,6 +139,136 @@ class VectorDBService:
         if os.path.exists(self.persist_directory):
             shutil.rmtree(self.persist_directory)
             logger.info("🧹 Removed existing vector DB at %s", self.persist_directory)
+
+    def _clean_text(self, text: str) -> str:
+        """Normalize scraped text before chunking and embedding."""
+        if not text:
+            return ""
+
+        cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+        cleaned = re.sub(r"\u00a0", " ", cleaned)
+        return cleaned.strip()
+
+    def _is_low_quality_document(self, text: str) -> bool:
+        """Heuristic filter for navigation-heavy or boilerplate-only pages."""
+        lowered = (text or "").lower()
+        word_count = len(lowered.split())
+        if word_count < 60:
+            return True
+
+        boilerplate_markers = [
+            "about nsca",
+            "membership overview",
+            "contact us",
+            "privacy policy",
+            "terms of use",
+            "become a member",
+            "report ceus",
+            "login",
+            "shop",
+            "donate",
+            "all rights reserved",
+        ]
+        marker_hits = sum(1 for marker in boilerplate_markers if marker in lowered)
+        if marker_hits >= 5:
+            return True
+
+        unique_tokens = set(self._tokenize(lowered))
+        lexical_diversity = len(unique_tokens) / max(word_count, 1)
+        if word_count > 300 and lexical_diversity < 0.08:
+            return True
+
+        return False
+
+    def _extract_keywords(self, text: str, max_keywords: int = 8) -> List[str]:
+        """Extract simple keywords for retrieval diagnostics and prompt grounding."""
+        tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9\-]{2,}", (text or "").lower())
+        stop_words = {
+            "the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are",
+            "was", "were", "have", "has", "had", "not", "can", "may", "will", "about", "their",
+            "than", "then", "also", "when", "what", "where", "which", "while", "using", "used",
+            "these", "those", "over", "under", "between", "within", "should", "could", "would",
+        }
+        counts: Dict[str, int] = {}
+        for token in tokens:
+            if token in stop_words:
+                continue
+            counts[token] = counts.get(token, 0) + 1
+
+        ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return [token for token, _ in ranked[:max_keywords]]
+
+    def _summarize_text(self, text: str) -> str:
+        """Create a compact two-line summary for metadata and context rendering."""
+        if not text:
+            return ""
+        sentences = re.split(r"(?<=[.!?])\s+", text)
+        summary = " ".join([s.strip() for s in sentences if s.strip()][:2])
+        return summary[:260]
+
+    def _tokenize(self, text: str) -> List[str]:
+        return re.findall(r"[a-zA-Z0-9\-]{3,}", (text or "").lower())
+
+    def _lexical_overlap_score(self, query: str, content: str) -> float:
+        query_tokens = set(self._tokenize(query))
+        if not query_tokens:
+            return 0.0
+        content_tokens = set(self._tokenize(content))
+        if not content_tokens:
+            return 0.0
+        overlap = len(query_tokens.intersection(content_tokens))
+        return overlap / max(len(query_tokens), 1)
+
+    def _expand_query(self, query: str) -> List[str]:
+        """Generate retrieval-oriented query variants (lightweight query transformation)."""
+        base = (query or "").strip()
+        if not base:
+            return []
+
+        variants = [base]
+        short_query = len(base.split()) <= 8
+        if short_query:
+            variants.append(f"{base} guidelines")
+            variants.append(f"{base} best practices")
+            variants.append(f"{base} safety recommendations")
+        else:
+            variants.append(f"summary of {base}")
+            variants.append(f"evidence for {base}")
+
+        deduped: List[str] = []
+        seen = set()
+        for variant in variants:
+            key = variant.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(variant)
+        return deduped
+
+    def _format_filters(self, filters: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Format filters for ChromaDB query methods."""
+        if not filters:
+            return None
+        if len(filters) > 1:
+            return {"$and": [{k: v} for k, v in filters.items()]}
+        return filters
+
+    def _build_context_block(self, document: Document) -> str:
+        source = document.metadata.get("source", "Unknown")
+        title = document.metadata.get("title", "Unknown")
+        summary = document.metadata.get("chunk_summary", "")
+        keywords = document.metadata.get("chunk_keywords", "")
+        text = (document.page_content or "").strip()
+        if len(text) > 900:
+            text = text[:900].rstrip() + "..."
+        return (
+            f"[SOURCE: {title} | {source}]\n"
+            f"Summary: {summary}\n"
+            f"Keywords: {keywords}\n"
+            f"Content: {text}"
+        )
     
     def _load_scraped_documents(self, json_path: str) -> List[Document]:
         """
@@ -156,6 +291,7 @@ class VectorDBService:
         scraped_docs = data if isinstance(data, list) else data.get('documents', [])
         
         documents = []
+        seen_signatures = set()
         for doc in scraped_docs:
             domain = self._infer_domain(
                 " ".join([
@@ -176,8 +312,19 @@ class VectorDBService:
             )
 
             # Create LangChain Document with metadata
+            content = self._clean_text(doc.get('content', ''))
+            if len(content) < 120:
+                continue
+            if self._is_low_quality_document(content):
+                continue
+
+            signature = hash(content[:2000])
+            if signature in seen_signatures:
+                continue
+            seen_signatures.add(signature)
+
             documents.append(Document(
-                page_content=doc['content'],
+                page_content=content,
                 metadata={
                     'source': doc['url'],
                     'title': doc.get('resource_name', doc.get('title', 'Unknown')),
@@ -257,7 +404,20 @@ class VectorDBService:
             chunk_overlap=self.CHUNK_OVERLAP,
             separators=["\n\n", "\n", " ", ""]
         )
-        texts = text_splitter.split_documents(documents)
+        split_docs = text_splitter.split_documents(documents)
+
+        texts: List[Document] = []
+        for idx, doc in enumerate(split_docs):
+            cleaned_content = self._clean_text(doc.page_content)
+            if len(cleaned_content) < 80:
+                continue
+            doc.page_content = cleaned_content
+            doc.metadata = dict(doc.metadata or {})
+            doc.metadata["chunk_index"] = idx
+            doc.metadata["chunk_summary"] = self._summarize_text(cleaned_content)
+            doc.metadata["chunk_keywords"] = ", ".join(self._extract_keywords(cleaned_content))
+            texts.append(doc)
+
         print(f"📝 Created {len(texts)} text chunks")
         
         # Create vector store
@@ -286,7 +446,7 @@ class VectorDBService:
         query: str,
         k: int = 3,
         filters: Optional[Dict[str, Any]] = None,
-    ) -> List[str]:
+    ) -> List[Document]:
         """
         Search for similar documents in the vector store.
         
@@ -298,15 +458,52 @@ class VectorDBService:
         Returns:
             List of relevant document contents
         """
-        # Format filters for ChromaDB. If there are multiple, wrap them in $and
-        formatted_filter = None
-        if filters:
-            if len(filters) > 1:
-                formatted_filter = {"$and": [{k: v} for k, v in filters.items()]}
-            else:
-                formatted_filter = filters
+        formatted_filter = self._format_filters(filters)
 
-        results = self.vectorstore.similarity_search(query, k=k, filter=formatted_filter)
+        query_variants = self._expand_query(query)
+        semantic_k = max(k * self.SEMANTIC_TOP_K_MULTIPLIER, k + 4)
+        lexical_k = max(k * 3, self.LEXICAL_TOP_K)
+
+        candidate_scores: Dict[str, Tuple[float, Document]] = {}
+
+        def _doc_key(doc: Document) -> str:
+            source = doc.metadata.get("source", "")
+            title = doc.metadata.get("title", "")
+            chunk_index = doc.metadata.get("chunk_index", "")
+            return f"{source}|{title}|{chunk_index}|{hash(doc.page_content)}"
+
+        for variant in query_variants:
+            semantic_results = self.vectorstore.similarity_search_with_relevance_scores(
+                variant,
+                k=semantic_k,
+                filter=formatted_filter,
+            )
+            for doc, semantic_score in semantic_results:
+                lexical_score = self._lexical_overlap_score(query, doc.page_content)
+                combined_score = (semantic_score * 0.70) + (lexical_score * 0.30)
+                key = _doc_key(doc)
+                previous = candidate_scores.get(key)
+                if previous is None or combined_score > previous[0]:
+                    candidate_scores[key] = (combined_score, doc)
+
+            lexical_candidates = self.vectorstore.similarity_search(
+                variant,
+                k=lexical_k,
+                filter=formatted_filter,
+            )
+            for doc in lexical_candidates:
+                lexical_score = self._lexical_overlap_score(query, doc.page_content)
+                if lexical_score <= 0:
+                    continue
+                semantic_hint = 0.45
+                combined_score = (semantic_hint * 0.70) + (lexical_score * 0.30)
+                key = _doc_key(doc)
+                previous = candidate_scores.get(key)
+                if previous is None or combined_score > previous[0]:
+                    candidate_scores[key] = (combined_score, doc)
+
+        ranked_candidates = sorted(candidate_scores.values(), key=lambda item: item[0], reverse=True)
+        results = [doc for _, doc in ranked_candidates[:k]]
         
         # Log retrieved documents
         logger.info(f"\n{'='*70}")
@@ -327,7 +524,7 @@ class VectorDBService:
         
         logger.info(f"{'='*70}\n")
         
-        return [doc.page_content for doc in results]
+        return results
     
     def get_context(
         self,
@@ -376,7 +573,9 @@ class VectorDBService:
             logger.info("Broadening retrieval for query '%s' by removing all filters", query)
             documents = self.similarity_search(query, k=k, filters=None)
 
-        context = "\n\n".join(documents)
+        context_blocks = [self._build_context_block(doc) for doc in documents]
+        context = "\n\n".join(context_blocks)
+        context = context[:self.MAX_CONTEXT_CHARS].rstrip()
         
         logger.info(f"📝 Total context length: {len(context)} characters")
         
