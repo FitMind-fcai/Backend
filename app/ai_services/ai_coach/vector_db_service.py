@@ -171,8 +171,20 @@ class VectorDBService:
             "donate",
             "all rights reserved",
         ]
+        
+        low_quality_markers = [
+            "calculator result",
+            "blog post",
+            "read more articles",
+            "leave a comment",
+        ]
+        
         marker_hits = sum(1 for marker in boilerplate_markers if marker in lowered)
         if marker_hits >= 5:
+            return True
+            
+        spam_hits = sum(1 for marker in low_quality_markers if marker in lowered)
+        if spam_hits >= 2:
             return True
 
         unique_tokens = set(self._tokenize(lowered))
@@ -481,6 +493,18 @@ class VectorDBService:
             for doc, semantic_score in semantic_results:
                 lexical_score = self._lexical_overlap_score(query, doc.page_content)
                 combined_score = (semantic_score * 0.70) + (lexical_score * 0.30)
+                
+                # Boost gold tier sources, penalize general blogs/calculators
+                title = doc.metadata.get("title", "").lower()
+                source = doc.metadata.get("source", "").lower()
+                
+                gold_sources = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
+                if any(org in title or org in source for org in gold_sources):
+                    combined_score += 0.15
+                    
+                if "blog" in source or "calculator" in source or "blog" in title:
+                    combined_score -= 0.20
+                    
                 key = _doc_key(doc)
                 previous = candidate_scores.get(key)
                 if previous is None or combined_score > previous[0]:
@@ -497,6 +521,16 @@ class VectorDBService:
                     continue
                 semantic_hint = 0.45
                 combined_score = (semantic_hint * 0.70) + (lexical_score * 0.30)
+                
+                title = doc.metadata.get("title", "").lower()
+                source = doc.metadata.get("source", "").lower()
+                gold_sources = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
+                if any(org in title or org in source for org in gold_sources):
+                    combined_score += 0.15
+                    
+                if "blog" in source or "calculator" in source or "blog" in title:
+                    combined_score -= 0.20
+                    
                 key = _doc_key(doc)
                 previous = candidate_scores.get(key)
                 if previous is None or combined_score > previous[0]:

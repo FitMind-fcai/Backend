@@ -27,18 +27,21 @@ class UserProfileDTO(BaseModel):
 
     def to_context_string(self) -> str:
         """Convert profile to context string for LLM prompt."""
-        return f"""USER PROFILE:
-- Age: {self.age}
-- Gender: {self.gender}
-- Height: {self.height} cm
-- Weight: {self.weight} kg
-- Fitness Goal: {self.fitness_goal}
-- Activity Level: {self.activity_level}
-- Dietary Preference: {self.dietary_preference or 'None'}
-- Medical Conditions: {self.medical_conditions or 'None'}
-- Allergies: {self.allergies or 'None'}
-- Injuries: {self.injuries or 'None'}
-- Medications: {self.medications or 'None'}"""
+        import json
+        data = {
+            "age": self.age,
+            "gender": self.gender,
+            "height_cm": self.height,
+            "weight_kg": self.weight,
+            "fitness_goal": self.fitness_goal,
+            "activity_level": self.activity_level,
+            "dietary_preference": self.dietary_preference or "None",
+            "medical_conditions": self.medical_conditions or "None",
+            "allergies": self.allergies or "None",
+            "injuries": self.injuries or "None",
+            "medications": self.medications or "None"
+        }
+        return f"USER PROFILE CONSTRAINTS:\n{json.dumps(data, indent=2)}"
 
 
 class WorkoutPreferencesDTO(BaseModel):
@@ -53,14 +56,17 @@ class WorkoutPreferencesDTO(BaseModel):
 
     def to_context_string(self) -> str:
         """Convert preferences to context string for LLM prompt."""
-        return f"""WORKOUT PREFERENCES:
-- Days per Week: {self.workout_days_per_week}
-- Location: {self.workout_location}
-- Equipment: {self.equipment_availability}
-- Focus: {self.workout_focus}
-- Difficulty: {self.workout_difficulty}
-- Session Duration: {self.session_duration_minutes} minutes
-- Focus Areas: {', '.join(self.focus_areas) if self.focus_areas else 'General'}"""
+        import json
+        data = {
+            "workout_days_per_week": self.workout_days_per_week,
+            "workout_location": self.workout_location,
+            "equipment_availability": self.equipment_availability,
+            "workout_focus": self.workout_focus,
+            "workout_difficulty": self.workout_difficulty,
+            "session_duration_minutes": self.session_duration_minutes,
+            "focus_areas": self.focus_areas if self.focus_areas else ["General"]
+        }
+        return f"WORKOUT PREFERENCES CONSTRAINTS:\n{json.dumps(data, indent=2)}"
 
 
 class NutritionPreferencesDTO(BaseModel):
@@ -74,13 +80,16 @@ class NutritionPreferencesDTO(BaseModel):
 
     def to_context_string(self) -> str:
         """Convert preferences to context string for LLM prompt."""
+        import json
         calorie_info = self.custom_calorie_target if self.custom_calorie_target else self.calorie_preference
-        return f"""NUTRITION PREFERENCES:
-- Calorie Target: {calorie_info}
-- Meals per Day: {self.meals_per_day}
-- Meal Complexity: {self.meal_complexity}
-- Cuisine Preference: {self.cuisine_preference}
-- Excluded Ingredients: {', '.join(self.exclude_ingredients) if self.exclude_ingredients else 'None'}"""
+        data = {
+            "calorie_target": calorie_info,
+            "meals_per_day": self.meals_per_day,
+            "meal_complexity": self.meal_complexity,
+            "cuisine_preference": self.cuisine_preference,
+            "exclude_ingredients": self.exclude_ingredients if self.exclude_ingredients else ["None"]
+        }
+        return f"NUTRITION PREFERENCES CONSTRAINTS:\n{json.dumps(data, indent=2)}"
 
 
 class PlanGenerationRequestDTO(BaseModel):
