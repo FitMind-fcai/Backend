@@ -78,11 +78,11 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         self,
         equipment_availability: str = "Full Gym Equipment",
         workout_difficulty: str = "Beginner",
-        limit: int = 50
+        focus_areas: Optional[List[str]] = None,
+        limit: int = 25
     ) -> str:
         """
-        Fetch a list of exercises matching equipment availability and difficulty.
-        Returns formatted text constraint for the LLM.
+        Fetch a structured constraint JSON of exercises matching preferences.
         """
         query = self.db.query(CentralExercise).filter(CentralExercise.is_active == True)
         
@@ -102,7 +102,6 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
             query = query.filter(or_(*conditions))
         
         # 2. Difficulty Constraints
-        # Advanced users can do beginner exercises, but beginners shouldn't do expert ones (usually).
         workout_difficulty = str(workout_difficulty).lower()
         if workout_difficulty == "beginner":
             query = query.filter(CentralExercise.difficulty_level.ilike('%beginner%'))
@@ -112,23 +111,147 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
                 (CentralExercise.difficulty_level.ilike('%intermediate%'))
             )
         
-        # Get a diverse randomized selection of matching exercises
-        exercises = query.order_by(sql_func.random()).limit(limit).all()
+        exercises = query.all()
         
         if not exercises:
-            return "Note: No strict exercise constraints applied due to restrictive filters. Generate generic functional workouts."
+            return '{"error": "No exercises match the restrictive filters", "instruction": "Generate functional bodyweight variations as fallback."}'
 
-        prompt_str = f"=== MANDATORY EXERCISE DATABASE ({len(exercises)} ITEMS) ===\\n"
-        prompt_str += "You MUST ONLY generate workouts using the exact exercises and IDs from this list below. Do not invent new exercises.\\n"
-        prompt_str += "Select exercises creatively to form balanced workouts based on the user's focus.\\n\\n"
+        top_exercises = self._select_balanced_exercises_for_prompt(exercises, limit, focus_areas)
+
+        import json
+        catalog = []
+        for e in top_exercises:
+            catalog.append({
+                "id": e.id,
+                "name": e.name,
+                "muscle": e.primary_muscle_group,
+                "equipment": e.equipment_required,
+                "type": e.exercise_type,
+                "level": e.difficulty_level
+            })
+            
+        constraints_block = {
+            "MANDATORY_EXERCISE_CATALOG": catalog,
+            "INSTRUCTION": "You MUST ONLY generate workouts using the exact exercises and IDs from this catalog. Do not invent new exercises."
+        }
+        return json.dumps(constraints_block, indent=2)
+
+    def _select_balanced_exercises_for_prompt(
+        self,
+        exercises: List[CentralExercise],
+        limit: int,
+        focus_areas: Optional[List[str]]
+    ) -> List[CentralExercise]:
+        """Build a deterministic, balanced exercise set for AI prompts, preventing starvation of specific muscle groups."""
+        if not exercises:
+            return []
+
+        limit = max(12, int(limit or 25))
         
-        for e in exercises:
-            prompt_str += (
-                f"- [ID: {e.id}] {e.name} "
-                f"(Muscle: {e.primary_muscle_group} | Equipment: {e.equipment_required} | Type: {e.exercise_type} | Level: {e.difficulty_level})\\n"
-            )
+        buckets = {}
+        for exercise in exercises:
+            mg = str(exercise.primary_muscle_group or "Full Body").lower()
+            if "chest" in mg or "pec" in mg:
+                bucket = "Chest"
+            elif "back" in mg or "lat" in mg or "trap" in mg:
+                bucket = "Back"
+            elif "leg" in mg or "quad" in mg or "ham" in mg or "calf" in mg or "glute" in mg:
+                bucket = "Legs"
+            elif "shoulder" in mg or "delt" in mg:
+                bucket = "Shoulders"
+            elif "arm" in mg or "bicep" in mg or "tricep" in mg or "forearm" in mg:
+                bucket = "Arms"
+            elif "ab" in mg or "core" in mg or "oblique" in mg:
+                bucket = "Core"
+            elif "cardio" in str(exercise.exercise_type).lower():
+                bucket = "Cardio"
+            else:
+                bucket = "Other"
+                
+            if bucket not in buckets:
+                buckets[bucket] = []
+            buckets[bucket].append(exercise)
+
+        def score_exercise(e):
+            score = 0
+            if focus_areas and e.primary_muscle_group:
+                if any(fa.lower() in str(e.primary_muscle_group).lower() for fa in focus_areas):
+                    score += 20
+            if e.exercise_type and "compound" in str(e.exercise_type).lower():
+                score += 10
+            if not focus_areas and e.exercise_type:
+                if "core" in str(e.exercise_type).lower() or "cardio" in str(e.exercise_type).lower():
+                    score += 5
+            return score
+
+        for bucket in buckets:
+            buckets[bucket].sort(key=lambda e: (score_exercise(e), e.id), reverse=True)
+
+        selected = []
+        selected_ids = set()
+
+        target_buckets = []
+        if focus_areas:
+            for fa in focus_areas:
+                fa_lower = fa.lower()
+                if "chest" in fa_lower: target_buckets.append("Chest")
+                elif "back" in fa_lower: target_buckets.append("Back")
+                elif "leg" in fa_lower: target_buckets.append("Legs")
+                elif "shoulder" in fa_lower: target_buckets.append("Shoulders")
+                elif "arm" in fa_lower: target_buckets.append("Arms")
+                elif "core" in fa_lower: target_buckets.append("Core")
         
-        return prompt_str
+        target_buckets = list(set(target_buckets))
+            
+        bucket_indices = {b: 0 for b in buckets.keys()}
+        target_limit = int(limit * 0.75) if target_buckets else 0
+        
+        # Phase 1: Fill primarily from target focus area buckets
+        while len(selected) < target_limit:
+            added_any = False
+            for bucket in target_buckets:
+                if bucket in buckets and bucket_indices[bucket] < len(buckets[bucket]):
+                    e = buckets[bucket][bucket_indices[bucket]]
+                    if e.id not in selected_ids:
+                        selected.append(e)
+                        selected_ids.add(e.id)
+                        added_any = True
+                    bucket_indices[bucket] += 1
+                if len(selected) >= target_limit:
+                    break
+            if not added_any:
+                break
+                
+        # Phase 2: Round-robin across ALL buckets for variety (or if no focus_areas specified)
+        while len(selected) < limit:
+            added_any = False
+            for bucket in buckets.keys():
+                if bucket_indices[bucket] < len(buckets[bucket]):
+                    e = buckets[bucket][bucket_indices[bucket]]
+                    if e.id not in selected_ids:
+                        selected.append(e)
+                        selected_ids.add(e.id)
+                        added_any = True
+                    bucket_indices[bucket] += 1
+                if len(selected) >= limit:
+                    break
+            if not added_any:
+                break
+                
+        # Phase 3: Add leftovers if limit still not reached
+        if len(selected) < limit:
+            leftovers = sorted(exercises, key=lambda e: (score_exercise(e), e.id), reverse=True)
+            for e in leftovers:
+                if len(selected) >= limit:
+                    break
+                if e.id not in selected_ids:
+                    selected.append(e)
+                    selected_ids.add(e.id)
+
+        import random
+        # Optional: deterministic shuffle to mix up the json array a bit so the LLM doesn't skew to the first items
+        random.Random(42).shuffle(selected)
+        return selected[:limit]
 
     def find_or_create(self, exercise_data: dict) -> CentralExercise:
         """Find exercise by name or create a new catalog entry if not found"""

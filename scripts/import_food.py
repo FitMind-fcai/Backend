@@ -105,6 +105,7 @@ def preview(records: list[dict]):
 def run_import(records: list[dict], clear: bool):
     from app.db.database import SessionLocal
     from app.planning_module.models.plan import CentralFood
+    from app.auth_module.models.user import User  # noqa: F401 - ensure users table is registered for FK resolution
     from sqlalchemy.orm import Session
     from sqlalchemy import func as sql_func
 

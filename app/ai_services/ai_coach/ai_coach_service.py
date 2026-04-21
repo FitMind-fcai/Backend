@@ -28,7 +28,7 @@ class AICoachService:
     # LLM Configuration
     DEFAULT_PROVIDER = "groq"
     DEFAULT_MODEL = "openai/gpt-oss-120b"
-    DEFAULT_TEMPERATURE = 0.0
+    DEFAULT_TEMPERATURE = 0.30
     DEFAULT_MAX_TOKENS = 6000
 
     PROVIDER_BASE_URLS = {
@@ -162,6 +162,31 @@ class AICoachService:
 
         return headers or None
     
+    def _get_workout_scaffold_for_user(self, days_per_week: int, goal: str) -> str:
+        """Deterministically determine the day splits and structure."""
+        scaffold = {
+            "day_split_template": {},
+            "slot_types_per_day": ["Primary Compound", "Secondary Compound", "Accessories", "Core/Conditioning"],
+            "target_rep_zones": "8-12 reps for size, 4-6 reps for strength",
+            "target_rest_zones": "90s for compounds, 60s for accessories"
+        }
+        
+        if days_per_week == 3:
+            scaffold["day_split_template"] = {"Day 1": "Push", "Day 2": "Pull", "Day 3": "Legs/Core"}
+        elif days_per_week == 4:
+            scaffold["day_split_template"] = {"Day 1": "Upper", "Day 2": "Lower", "Day 3": "Upper", "Day 4": "Lower"}
+        elif days_per_week >= 5:
+            scaffold["day_split_template"] = {"Day 1": "Push", "Day 2": "Pull", "Day 3": "Legs", "Day 4": "Upper", "Day 5": "Lower"}
+        else:
+             scaffold["day_split_template"] = {f"Day {i+1}": "Full Body" for i in range(days_per_week)}
+
+        if goal and "strength" in goal.lower():
+            scaffold["target_rep_zones"] = "3-5 reps for primary, 6-8 for secondary"
+            scaffold["target_rest_zones"] = "180s for primary, 90s for secondary"
+            
+        import json
+        return json.dumps(scaffold, indent=2)
+
     def _build_workout_prompt(
         self,
         user_profile: UserProfileDTO,
@@ -174,6 +199,7 @@ class AICoachService:
         """Build the prompt for workout plan generation."""
         user_context = user_profile.to_context_string()
         prefs_context = preferences.to_context_string()
+        scaffold_context = self._get_workout_scaffold_for_user(preferences.workout_days_per_week, user_profile.fitness_goal)
         
         existing_plan_context = ""
         regeneration_instruction = ""
@@ -196,10 +222,15 @@ class AICoachService:
 
 PLAN DURATION: {duration_weeks} week(s)
 
+=== CHANNEL A: EXPERT RAG GUIDELINES ===
+{rag_context}{regeneration_instruction}
+
+=== CHANNEL B: DATABASE CONSTRAINTS ===
 {allowed_exercises_str}
 
-REFERENCE FITNESS KNOWLEDGE:
-{rag_context}{regeneration_instruction}
+=== CHANNEL C: DETERMINISTIC SCAFFOLD ===
+MUST ADHERE TO THIS STRUCTURE FOR SESSIONS:
+{scaffold_context}
 
 IMPORTANT INSTRUCTIONS:
 1. Consider the user's medical conditions, injuries, and limitations
@@ -207,7 +238,7 @@ IMPORTANT INSTRUCTIONS:
 3. Match the difficulty level to the user's fitness goal and activity level
 4. Include proper warm-up and cool-down recommendations
 5. Ensure exercises are appropriate for the available equipment and location
-6. Ground recommendations in REFERENCE FITNESS KNOWLEDGE; avoid unsupported or invented factual claims
+6. Ground recommendations in CHANNEL A guidelines; avoid unsupported or invented factual claims
 
 Generate a complete {preferences.workout_days_per_week}-day workout plan in the following JSON format:
 {{
@@ -289,10 +320,11 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
 PLAN DURATION: {duration_weeks} week(s)
 TARGET DAILY CALORIES: {target_calories}
 
-{allowed_foods_str}
-
-REFERENCE NUTRITION KNOWLEDGE:
+=== CHANNEL A: EXPERT RAG GUIDELINES ===
 {rag_context}{regeneration_instruction}
+
+=== CHANNEL B: DATABASE CONSTRAINTS ===
+{allowed_foods_str}
 
 IMPORTANT INSTRUCTIONS:
 1. Generate a FULL 7-day plan (Monday through Sunday)
@@ -306,7 +338,7 @@ IMPORTANT INSTRUCTIONS:
 9. Use an appropriate number of ingredients per meal based on the meal type and complexity
 10. Meal name and instructions MUST match the selected ingredient IDs
 11. Do NOT output meal or plan macro numbers; backend will compute nutrition from ingredient amounts
-12. Ground recommendations in REFERENCE NUTRITION KNOWLEDGE; avoid unsupported or invented factual claims
+12. Ground recommendations in CHANNEL A guidelines; avoid unsupported or invented factual claims
 
 Generate a complete 7-day meal plan in the following JSON format:
 {{
@@ -362,6 +394,7 @@ CRITICAL: Return ONLY valid JSON, no additional text or markdown formatting."""
             model=self.model,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
+            top_p=0.90,
         )
         if json_mode:
             call_kwargs["response_format"] = {"type": "json_object"}
