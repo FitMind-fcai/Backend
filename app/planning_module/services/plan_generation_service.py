@@ -1,7 +1,3 @@
-"""
-Combined Plan Generation Service.
-Handles generation of both workout and nutrition plans together.
-"""
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.planning_module.services.workout_plan_service import WorkoutPlanService

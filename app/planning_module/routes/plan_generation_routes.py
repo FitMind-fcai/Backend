@@ -12,12 +12,11 @@ Flow:
   GET /plans/active → currently active workout + nutrition plan.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.db.database import get_db
 from app.auth_module.models.user import User
 from app.auth_module.core.dependencies import get_current_verified_user
 from app.profile_module.services.profile_service import ProfileService
 from app.profile_module.core.dependencies import get_profile_service
+from app.planning_module.core.dependencies import get_plan_generation_service
 from app.planning_module.services.plan_generation_service import PlanGenerationService
 from app.planning_module.schemas.plan import (
     WorkoutPlanGenerationRequest,
@@ -68,7 +67,7 @@ def generate_workout_plan(
     request: WorkoutPlanGenerationRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
 ):
     """
     **Step 1 of 2** — Use AI to generate a workout plan draft.
@@ -92,7 +91,6 @@ def generate_workout_plan(
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
 
-    plan_service = PlanGenerationService(db)
     try:
         draft = plan_service.generate_workout_plan(
             profile=profile,
@@ -121,7 +119,7 @@ def save_workout_plan(
     request: WorkoutPlanSaveRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
 ):
     """
     **Step 2 of 2** — Confirm and persist a previously generated workout plan draft.
@@ -133,7 +131,6 @@ def save_workout_plan(
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
 
-    plan_service = PlanGenerationService(db)
     try:
         saved = plan_service.save_workout_plan(
             user_id=current_user.id,
@@ -168,7 +165,7 @@ def generate_nutrition_plan(
     request: NutritionPlanGenerationRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
 ):
     """
     **Step 1 of 2** — Use AI to generate a 7-day nutrition plan draft.
@@ -191,7 +188,6 @@ def generate_nutrition_plan(
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
 
-    plan_service = PlanGenerationService(db)
     try:
         draft = plan_service.generate_nutrition_plan(
             profile=profile,
@@ -220,7 +216,7 @@ def save_nutrition_plan(
     request: NutritionPlanSaveRequest,
     current_user: User = Depends(get_current_verified_user),
     profile_service: ProfileService = Depends(get_profile_service),
-    db: Session = Depends(get_db),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
 ):
     """
     **Step 2 of 2** — Confirm and persist a previously generated nutrition plan draft.
@@ -232,7 +228,6 @@ def save_nutrition_plan(
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
 
-    plan_service = PlanGenerationService(db)
     try:
         saved = plan_service.save_nutrition_plan(
             user_id=current_user.id,
@@ -265,12 +260,11 @@ def save_nutrition_plan(
 )
 def get_active_plans(
     current_user: User = Depends(get_current_verified_user),
-    db: Session = Depends(get_db),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
 ):
     """
     Returns the currently active workout plan and nutrition plan for the user
     (both with full details — days, exercises/meals, ingredients).
     Either field can be `null` if no active plan of that type exists.
     """
-    plan_service = PlanGenerationService(db)
     return plan_service.get_user_active_plans(current_user.id)

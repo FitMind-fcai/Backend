@@ -161,31 +161,6 @@ class AICoachService:
             headers["X-Title"] = app_name
 
         return headers or None
-    
-    def _get_workout_scaffold_for_user(self, days_per_week: int, goal: str) -> str:
-        """Deterministically determine the day splits and structure."""
-        scaffold = {
-            "day_split_template": {},
-            "slot_types_per_day": ["Primary Compound", "Secondary Compound", "Accessories", "Core/Conditioning"],
-            "target_rep_zones": "8-12 reps for size, 4-6 reps for strength",
-            "target_rest_zones": "90s for compounds, 60s for accessories"
-        }
-        
-        if days_per_week == 3:
-            scaffold["day_split_template"] = {"Day 1": "Push", "Day 2": "Pull", "Day 3": "Legs/Core"}
-        elif days_per_week == 4:
-            scaffold["day_split_template"] = {"Day 1": "Upper", "Day 2": "Lower", "Day 3": "Upper", "Day 4": "Lower"}
-        elif days_per_week >= 5:
-            scaffold["day_split_template"] = {"Day 1": "Push", "Day 2": "Pull", "Day 3": "Legs", "Day 4": "Upper", "Day 5": "Lower"}
-        else:
-             scaffold["day_split_template"] = {f"Day {i+1}": "Full Body" for i in range(days_per_week)}
-
-        if goal and "strength" in goal.lower():
-            scaffold["target_rep_zones"] = "3-5 reps for primary, 6-8 for secondary"
-            scaffold["target_rest_zones"] = "180s for primary, 90s for secondary"
-            
-        import json
-        return json.dumps(scaffold, indent=2)
 
     def _build_workout_prompt(
         self,
@@ -199,7 +174,6 @@ class AICoachService:
         """Build the prompt for workout plan generation."""
         user_context = user_profile.to_context_string()
         prefs_context = preferences.to_context_string()
-        scaffold_context = self._get_workout_scaffold_for_user(preferences.workout_days_per_week, user_profile.fitness_goal)
         
         existing_plan_context = ""
         regeneration_instruction = ""
@@ -228,10 +202,6 @@ PLAN DURATION: {duration_weeks} week(s)
 === CHANNEL B: DATABASE CONSTRAINTS ===
 {allowed_exercises_str}
 
-=== CHANNEL C: DETERMINISTIC SCAFFOLD ===
-MUST ADHERE TO THIS STRUCTURE FOR SESSIONS:
-{scaffold_context}
-
 IMPORTANT INSTRUCTIONS:
 1. Consider the user's medical conditions, injuries, and limitations
 2. Provide safe alternatives for exercises that might be problematic
@@ -239,6 +209,7 @@ IMPORTANT INSTRUCTIONS:
 4. Include proper warm-up and cool-down recommendations
 5. Ensure exercises are appropriate for the available equipment and location
 6. Ground recommendations in CHANNEL A guidelines; avoid unsupported or invented factual claims
+7. Choose the most suitable training system (e.g., Full Body, Upper/Lower, Push/Pull/Legs, or hybrid) using the full user profile and workout preferences
 
 Generate a complete {preferences.workout_days_per_week}-day workout plan in the following JSON format:
 {{
