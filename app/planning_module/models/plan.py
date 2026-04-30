@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Float, Text, JSON
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from app.db.database import Base
+from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Float, Text, JSON # type: ignore
+from sqlalchemy.sql import func # type: ignore
+from sqlalchemy.orm import relationship # type: ignore
+from app.db.database import Base 
 from app.planning_module.models.enums import (
     PlanType,
     WorkoutLocation,
