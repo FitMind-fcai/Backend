@@ -191,9 +191,7 @@ $RECYCLE.BIN/
 
 # ========== FastAPI / Project Specific ==========
 # Database
-*.db
-*.sqlite
-*.sqlite3
+
 
 # Alembic
 alembic/versions/*.pyc
