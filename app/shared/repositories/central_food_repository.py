@@ -1,5 +1,5 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func as sql_func
+from sqlalchemy.orm import Session # type: ignore
+from sqlalchemy import func as sql_func # type: ignore
 from typing import List, Optional
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralFood

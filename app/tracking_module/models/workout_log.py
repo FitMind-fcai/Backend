@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey, Float, Text, Index
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey, Float, Text, Index # type: ignore
+from sqlalchemy.sql import func # type: ignore
 
 from app.db.database import Base
 

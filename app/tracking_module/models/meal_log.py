@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Float, Index
-from sqlalchemy.sql import func
+import enum
+from app.tracking_module.models.enums import MealType
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Float, Index, Enum # type: ignore
+from sqlalchemy.sql import func # type: ignore
 
 from app.db.database import Base
-
 
 class MealLog(Base):
     __tablename__ = "meal_logs"
@@ -16,7 +17,7 @@ class MealLog(Base):
     central_food_id = Column(Integer, ForeignKey("central_foods.id"), nullable=True, index=True)
 
     log_date = Column(Date, nullable=False)
-    meal_type = Column(String(50), nullable=False)
+    meal_type = Column(Enum(MealType), nullable=False)
     meal_name = Column(String(255), nullable=False)
     servings = Column(Float, nullable=False, default=1.0)
     serving_size_g_snapshot = Column(Float, nullable=True)
