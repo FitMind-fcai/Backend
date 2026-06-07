@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import re
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 
 from openai import OpenAI
 from pydantic import ValidationError
@@ -21,6 +21,9 @@ from app.ai_services.ai_coach.dtos import (
 )
 from app.core import config
 
+if TYPE_CHECKING:
+    from app.planning_module.core.planning_engine import PlanningEngineOutput
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,27 +31,49 @@ logger = logging.getLogger(__name__)
 # Lookup tables
 # ---------------------------------------------------------------------------
 
+# Primary keys are the exact FitnessGoal enum values.
+# Aliases cover free-text inputs (e.g. from ask_coach).
+# Internal canonical goal keys (right-hand side) are intentionally stable
+# and independent of the enum values so renaming an enum never breaks logic.
+from app.profile_module.models.enums import FitnessGoal, ActivityLevel, Gender as _Gender
+
 GOAL_ALIASES: Dict[str, str] = {
-    "get bulks":         "build muscle",
-    "bulking":           "build muscle",
-    "gain muscle":       "build muscle",
-    "muscle gain":       "build muscle",
-    "hypertrophy":       "build muscle",
-    "build muscle":      "build muscle",
+    # ── Exact FitnessGoal enum values (primary) ──────────────────────
+    FitnessGoal.LOSE_WEIGHT.value:        "lose weight",
+    FitnessGoal.GET_BULKS.value:          "build muscle",
+    FitnessGoal.IMPROVE_ENDURANCE.value:  "improve fitness",
+    FitnessGoal.TRY_AI_COACH.value:       "maintain",
+    # ── Common free-text aliases (for ask_coach / plain strings) ─────
     "lose weight":       "lose weight",
     "weight loss":       "lose weight",
     "fat loss":          "lose weight",
     "cut":               "lose weight",
     "cutting":           "lose weight",
+    "build muscle":      "build muscle",
+    "get bulks":         "build muscle",
+    "bulking":           "build muscle",
+    "gain muscle":       "build muscle",
+    "muscle gain":       "build muscle",
+    "hypertrophy":       "build muscle",
     "maintain":          "maintain",
     "maintain weight":   "maintain",
     "maintenance":       "maintain",
-    "improve fitness":   "improve fitness",
-    "endurance":         "improve fitness",
     "recomposition":     "maintain",
+    "try ai coach":      "maintain",
+    "improve fitness":   "improve fitness",
+    "improve endurance": "improve fitness",
+    "endurance":         "improve fitness",
+    "cardiovascular":    "improve fitness",
 }
 
 ACTIVITY_MULTIPLIERS: Dict[str, float] = {
+    # ── Exact ActivityLevel enum values (primary) ─────────────────────
+    ActivityLevel.SEDENTARY.value:          1.20,
+    ActivityLevel.LIGHTLY_ACTIVE.value:     1.375,
+    ActivityLevel.MODERATELY_ACTIVE.value:  1.55,
+    ActivityLevel.VERY_ACTIVE.value:        1.725,
+    ActivityLevel.EXTRA_ACTIVE.value:       1.90,
+    # ── Lowercase aliases (for ask_coach / plain strings) ─────────────
     "sedentary":          1.20,
     "lightly active":     1.375,
     "moderately active":  1.55,
@@ -63,7 +88,6 @@ GOAL_CALORIE_DELTA: Dict[str, int] = {
     "improve fitness":    0,
 }
 
-# Protein g per kg of bodyweight
 GOAL_PROTEIN_PER_KG: Dict[str, float] = {
     "build muscle":    1.8,
     "lose weight":     1.6,
@@ -71,7 +95,6 @@ GOAL_PROTEIN_PER_KG: Dict[str, float] = {
     "improve fitness": 1.4,
 }
 
-# Fat as a fraction of total calories
 GOAL_FAT_PCT: Dict[str, float] = {
     "build muscle":    0.28,
     "lose weight":     0.30,
@@ -293,24 +316,36 @@ class AICoachService:
     # Goal & calorie helpers
     # ------------------------------------------------------------------
 
-    def _normalize_goal(self, raw_goal: str) -> str:
-        """Map any free-text fitness goal to a canonical lowercase key."""
-        return GOAL_ALIASES.get((raw_goal or "").lower().strip(), "maintain")
+    def _normalize_goal(self, raw_goal) -> str:
+        """Map a FitnessGoal enum value (or free-text string) to a canonical internal key."""
+        val = raw_goal.value if hasattr(raw_goal, "value") else str(raw_goal or "")
+        # Try exact match first (covers enum values), then lowercase alias
+        return (
+            GOAL_ALIASES.get(val)
+            or GOAL_ALIASES.get(val.lower().strip())
+            or "maintain"
+        )
 
     def _calculate_tdee(self, user_profile: UserProfileDTO) -> float:
         """Mifflin-St Jeor BMR multiplied by activity multiplier to get TDEE kcal/day."""
         weight = user_profile.weight or 70.0
         height = user_profile.height or 170.0
         age    = user_profile.age    or 25
-        gender = (user_profile.gender or "male").lower()
 
-        if gender == "male":
-            bmr = 10 * weight + 6.25 * height - 5 * age + 5
-        else:
+        gender_val = user_profile.gender
+        gender_val = gender_val.value if hasattr(gender_val, "value") else str(gender_val or "")
+        if gender_val == _Gender.FEMALE.value:
             bmr = 10 * weight + 6.25 * height - 5 * age - 161
+        else:
+            bmr = 10 * weight + 6.25 * height - 5 * age + 5
 
-        level      = (user_profile.activity_level or "lightly active").lower()
-        multiplier = ACTIVITY_MULTIPLIERS.get(level, 1.375)
+        act_val    = user_profile.activity_level
+        act_val    = act_val.value if hasattr(act_val, "value") else str(act_val or "")
+        multiplier = (
+            ACTIVITY_MULTIPLIERS.get(act_val)
+            or ACTIVITY_MULTIPLIERS.get(act_val.lower().strip())
+            or 1.375
+        )
         return round(bmr * multiplier, 1)
 
     def _calculate_target_calories(
@@ -411,22 +446,25 @@ class AICoachService:
         rag_context: str,
         existing_plan: Optional[NutritionPlanDTO] = None,
         allowed_foods_str: str = "",
+        planning_output: Optional["PlanningEngineOutput"] = None,
     ) -> str:
 
         user_context  = user_profile.to_context_string()
         prefs_context = preferences.to_context_string()
 
-        # ── Portion-sizing guidance (NOT written into JSON output) ────
-        target_calories = self._calculate_target_calories(
-            user_profile, preferences.custom_calorie_target
-        )
-        macros = self._calculate_macro_guidance(user_profile, target_calories)
-
-        protein_pct = round(macros["protein_g"] * 4 / target_calories * 100)
-        fat_pct_val = round(macros["fat_g"]     * 9 / target_calories * 100)
-        carb_pct    = round(macros["carb_g"]    * 4 / target_calories * 100)
-
-        macro_guidance_block = f"""
+        # ── Macro targets — from Planning Engine if provided, else compute internally ──
+        if planning_output is not None:
+            macro_guidance_block = planning_output.nutrition.to_prompt_block()
+            target_calories      = planning_output.nutrition.calories
+        else:
+            target_calories = self._calculate_target_calories(
+                user_profile, preferences.custom_calorie_target
+            )
+            macros = self._calculate_macro_guidance(user_profile, target_calories)
+            protein_pct = round(macros["protein_g"] * 4 / target_calories * 100)
+            fat_pct_val = round(macros["fat_g"]     * 9 / target_calories * 100)
+            carb_pct    = round(macros["carb_g"]    * 4 / target_calories * 100)
+            macro_guidance_block = f"""
 PORTION-SIZING TARGETS — use these to decide the amount_g values for each ingredient.
 Do NOT copy these numbers into the JSON output; the backend computes all macros from DB records.
 
@@ -485,16 +523,21 @@ REGENERATION RULES:
 Before writing the JSON, reason through these steps inside a <think> block.
 The <think> block must NOT appear in the final JSON output.
 
-  1. Confirm the target calories ({target_calories} kcal) and macro split.
+  1. Accept the pre-computed targets above — do NOT recalculate calories or macros.
   2. List 7 distinct breakfasts that fit the cuisine, portion targets, and medical rules.
   3. List 7 distinct lunches.
   4. List 7 distinct dinners, each with a different primary protein source.
   5. List snack options (at most 3 repeats across the week).
   6. For each meal verify: no allergens present, all medical rules respected, fat at least 25%.
-  7. Only after completing the above write the final JSON.
+  7. For each ingredient, set amount_g so the day's total approaches the target calories.
+  8. Only after completing the above write the final JSON.
 """.strip()
 
-        return f"""You are an expert registered dietitian and sports nutritionist.
+        return f"""You are an expert registered dietitian and sports nutritionist acting as the REFINEMENT LAYER.
+The Planning Engine has already determined the macro targets and meal structure below.
+Your job is to SELECT appropriate foods, SET ingredient amounts (amount_g), WRITE coaching instructions,
+and EXPLAIN the nutritional reasoning — NOT to recalculate targets.
+
 Reason first inside <think>...</think>, then output ONLY a single valid JSON object.
 No markdown fences. No text before or after the JSON.
 
@@ -503,6 +546,7 @@ No markdown fences. No text before or after the JSON.
 
 PLAN DURATION: {duration_weeks} week(s)
 
+=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===
 {macro_guidance_block}
 
 {medical_block}
@@ -535,7 +579,7 @@ Do NOT include any macro or calorie numbers in the JSON output.
     {{
       "day_name": "Monday",
       "day_number": 1,
-      "notes": "Optional note, e.g. omega-3 focus day",
+      "notes": "Optional coaching note, e.g. high-protein day or omega-3 focus",
       "meals": [
         {{
           "meal_type": "Breakfast",
@@ -544,7 +588,7 @@ Do NOT include any macro or calorie numbers in the JSON output.
             {{"central_food_id": 123, "amount_g": 80.0}},
             {{"central_food_id": 456, "amount_g": 15.0}}
           ],
-          "instructions": "Step-by-step instructions that name every ingredient",
+          "instructions": "Step-by-step instructions that name every ingredient with coaching cues",
           "prep_time_minutes": 10,
           "cook_time_minutes": 20,
           "servings": 1,
@@ -566,102 +610,112 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         rag_context: str,
         existing_plan: Optional[WorkoutPlanDTO] = None,
         allowed_exercises_str: str = "",
+        planning_output: Optional["PlanningEngineOutput"] = None,
     ) -> str:
 
         user_context  = user_profile.to_context_string()
         prefs_context = preferences.to_context_string()
 
+        # ── Training targets — from Planning Engine if provided ───────
+        if planning_output is not None:
+            training_block   = planning_output.training.to_prompt_block()
+            days_per_week    = planning_output.training.training_days
+            session_duration = planning_output.training.session_duration_minutes
+        else:
+            training_block   = (
+                f"Training days/week : {preferences.workout_days_per_week}\n"
+                f"Session duration   : {preferences.session_duration_minutes} minutes"
+            )
+            days_per_week    = preferences.workout_days_per_week
+            session_duration = preferences.session_duration_minutes
+
         # ── Medical / injury rules ────────────────────────────────────
         medical_rules = self._build_medical_workout_rules(user_profile)
-        medical_block = f"""
-=== CHANNEL C: INJURY & MEDICAL EXERCISE RULES (OVERRIDE EVERYTHING ELSE) ===
-{medical_rules if medical_rules else "No specific injury or medical exercise restrictions for this user."}
-""".strip()
+        medical_block = (
+            "=== CHANNEL C: INJURY & MEDICAL EXERCISE RULES (OVERRIDE EVERYTHING ELSE) ===\n"
+            + (medical_rules if medical_rules else "No specific injury or medical exercise restrictions for this user.")
+        )
 
         # ── Existing plan (regeneration mode) ────────────────────────
         existing_ctx = ""
         regen_block  = ""
         if existing_plan:
             existing_ctx = f"\n\nEXISTING WORKOUT PLAN TO UPDATE:\n{existing_plan.to_context_string()}"
-            regen_block  = """
-REGENERATION RULES:
-• Keep exercises that still match the new preferences and are safe for the user's conditions.
-• Only modify days or exercises that conflict with new preferences or medical rules.
-• Maintain progression continuity where appropriate.
-""".strip()
+            regen_block  = (
+                "REGENERATION RULES:\n"
+                "• Keep exercises that still match the new preferences and are safe for the user's conditions.\n"
+                "• Only modify days or exercises that conflict with new preferences or medical rules.\n"
+                "• Maintain progression continuity where appropriate."
+            )
 
         # ── Chain-of-thought scaffold ─────────────────────────────────
-        thinking_scaffold = f"""
-Before writing the JSON, reason through these steps inside a <think> block.
-The <think> block must NOT appear in the final JSON output.
+        thinking_scaffold = (
+            "Before writing the JSON, reason through these steps inside a <think> block.\n"
+            "The <think> block must NOT appear in the final JSON output.\n\n"
+            "  1. Accept the pre-computed training targets above — do NOT change the split or days.\n"
+            "  2. List every excluded exercise (from CHANNEL C injury rules above).\n"
+            f"  3. Map out each of the {days_per_week} workout days according to the split.\n"
+            "  4. For each day, select exercises from the catalog that fit the focus area and avoid exclusions.\n"
+            f"  5. Confirm each session fits within {session_duration} minutes.\n"
+            "  6. Only after completing the above write the final JSON."
+        )
 
-  1. Choose the optimal training split for {preferences.workout_days_per_week} days/week
-     given the user's goal, injuries, and conditions.
-  2. List every excluded exercise (from CHANNEL C rules above).
-  3. For each workout day list candidate exercises and verify none are in the exclusion list.
-  4. Confirm the total session fits within {preferences.session_duration_minutes} minutes.
-  5. Only after completing the above write the final JSON.
-""".strip()
-
-        return f"""You are an expert certified personal trainer and strength & conditioning coach.
-Reason first inside <think>...</think>, then output ONLY a single valid JSON object.
-No markdown fences. No text before or after the JSON.
-
-{user_context}
-{prefs_context}{existing_ctx}
-
-PLAN DURATION: {duration_weeks} week(s)
-
-{medical_block}
-
-=== CHANNEL A: EVIDENCE-BASED TRAINING GUIDELINES (RAG) ===
-{rag_context}
-
-{regen_block}
-
-=== CHANNEL B: DATABASE EXERCISE CONSTRAINTS ===
-Use ONLY the exercise IDs listed below. Never invent a central_exercise_id.
-{allowed_exercises_str}
-
-=== REASONING SCAFFOLD ===
-{thinking_scaffold}
-
-=== FINAL OUTPUT FORMAT ===
-Generate a {preferences.workout_days_per_week}-day workout plan.
-
-{{
-  "plan_name": "Descriptive name reflecting goal and training split",
-  "description": "2-3 sentences covering training methodology, goal alignment, and injury modifications",
-  "frequency": "{preferences.workout_days_per_week} days per week",
-  "difficulty_level": "{preferences.workout_difficulty}",
-  "estimated_duration_per_session": {preferences.session_duration_minutes},
-  "workout_days": [
-    {{
-      "day_name": "Day 1 - Focus Area",
-      "day_number": 1,
-      "focus_area": "e.g. Upper Body Push",
-      "estimated_duration": {preferences.session_duration_minutes},
-      "notes": "Warm-up, cool-down, and session-specific safety cues",
-      "exercises": [
-        {{
-          "central_exercise_id": 123,
-          "exercise_name": "Exercise Name",
-          "exercise_type": "Strength",
-          "sets": 3,
-          "reps": 12,
-          "weight_kg": null,
-          "duration_seconds": null,
-          "rest_seconds": 90,
-          "instructions": "Step-by-step cues including safety and form corrections",
-          "order_index": 0
-        }}
-      ]
-    }}
-  ]
-}}
-
-CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.
-""".strip()
+        return (
+            "You are an expert certified personal trainer and strength & conditioning coach "
+            "acting as the REFINEMENT LAYER.\n"
+            "The Planning Engine has already determined the training structure below.\n"
+            "Your job is to SELECT appropriate exercises from the catalog, WRITE form cues and coaching\n"
+            "instructions, and EXPLAIN the programming rationale — NOT to change the training structure.\n\n"
+            "Reason first inside <think>...</think>, then output ONLY a single valid JSON object.\n"
+            "No markdown fences. No text before or after the JSON.\n\n"
+            f"{user_context}\n"
+            f"{prefs_context}{existing_ctx}\n\n"
+            f"PLAN DURATION: {duration_weeks} week(s)\n\n"
+            "=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===\n"
+            f"{training_block}\n\n"
+            f"{medical_block}\n\n"
+            "=== CHANNEL A: EVIDENCE-BASED TRAINING GUIDELINES (RAG) ===\n"
+            f"{rag_context}\n\n"
+            f"{regen_block}\n\n"
+            "=== CHANNEL B: DATABASE EXERCISE CONSTRAINTS ===\n"
+            "Use ONLY the exercise IDs listed below. Never invent a central_exercise_id.\n"
+            f"{allowed_exercises_str}\n\n"
+            "=== REASONING SCAFFOLD ===\n"
+            f"{thinking_scaffold}\n\n"
+            "=== FINAL OUTPUT FORMAT ===\n"
+            f"Generate a {days_per_week}-day workout plan.\n\n"
+            "{{\n"
+            '  "plan_name": "Descriptive name reflecting goal and training split",\n'
+            '  "description": "2-3 sentences covering training methodology, goal alignment, and injury modifications",\n'
+            f'  "frequency": "{days_per_week} days per week",\n'
+            f'  "difficulty_level": "{preferences.workout_difficulty}",\n'
+            f'  "estimated_duration_per_session": {session_duration},\n'
+            '  "workout_days": [\n'
+            "    {{\n"
+            '      "day_name": "Day 1 - Focus Area",\n'
+            '      "day_number": 1,\n'
+            '      "focus_area": "e.g. Upper Body Push",\n'
+            f'      "estimated_duration": {session_duration},\n'
+            '      "notes": "Warm-up, cool-down, and session-specific safety cues",\n'
+            '      "exercises": [\n'
+            "        {{\n"
+            '          "central_exercise_id": 123,\n'
+            '          "exercise_name": "Exercise Name",\n'
+            '          "exercise_type": "Strength",\n'
+            '          "sets": 3,\n'
+            '          "reps": 12,\n'
+            '          "weight_kg": null,\n'
+            '          "duration_seconds": null,\n'
+            '          "rest_seconds": 90,\n'
+            '          "instructions": "Step-by-step cues including safety and form corrections",\n'
+            '          "order_index": 0\n'
+            "        }}\n"
+            "      ]\n"
+            "    }}\n"
+            "  ]\n"
+            "}}\n\n"
+            "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after."
+        )
 
     # ------------------------------------------------------------------
     # LLM call
@@ -871,6 +925,7 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         duration_weeks: int = 4,
         existing_plan: Optional[NutritionPlanDTO] = None,
         allowed_foods_str: str = "",
+        planning_output: Optional["PlanningEngineOutput"] = None,
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
@@ -911,6 +966,7 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         prompt = self._build_nutrition_prompt(
             user_profile, preferences, duration_weeks,
             rag_context, existing_plan, allowed_foods_str,
+            planning_output=planning_output,
         )
 
         system_prompt = (
@@ -948,6 +1004,7 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         duration_weeks: int = 4,
         existing_plan: Optional[WorkoutPlanDTO] = None,
         allowed_exercises_str: str = "",
+        planning_output: Optional["PlanningEngineOutput"] = None,
     ) -> WorkoutPlanDTO:
         """Generate a personalised workout plan respecting all injury and medical constraints."""
         profile_tags = " ".join(filter(None, [
@@ -972,6 +1029,7 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         prompt = self._build_workout_prompt(
             user_profile, preferences, duration_weeks,
             rag_context, existing_plan, allowed_exercises_str,
+            planning_output=planning_output,
         )
 
         system_prompt = (
