@@ -23,10 +23,6 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the HuggingFace embedding model into the image
-# We use a reliable mirror (hf-mirror.com) to bypass CDN network hangs!
-RUN HF_ENDPOINT=https://hf-mirror.com python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='BAAI/bge-small-en-v1.5')"
-
 # Copy project files
 COPY . .
 
