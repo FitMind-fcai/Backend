@@ -1,25 +1,22 @@
-import os
-import json
 import logging
-import re
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
+import os
+from typing import Optional, TYPE_CHECKING
 
-from openai import OpenAI
-from pydantic import ValidationError
-
-from app.ai_services.ai_coach.vector_db_service import get_vector_db_service, VectorDBService
-from app.ai_services.ai_coach.dtos import (
-    UserProfileDTO,
-    WorkoutPreferencesDTO,
-    NutritionPreferencesDTO,
-    WorkoutPlanDTO,
-    NutritionPlanDTO,
-    NutritionDayDTO,
-    WorkoutDayDTO,
-    ExerciseDTO,
-    MealDTO,
+from app.ai_services.ai_coach import plan_validator, prompt_builder
+from app.ai_services.ai_coach.calorie_calculator import (
+    calculate_macro_guidance,
+    calculate_target_calories,
 )
-from app.core import config
+from app.ai_services.ai_coach.dtos import (
+    NutritionPlanDTO,
+    NutritionPreferencesDTO,
+    UserProfileDTO,
+    WorkoutPlanDTO,
+    WorkoutPreferencesDTO,
+)
+from app.ai_services.ai_coach.llm_client import LLMClient
+from app.ai_services.ai_coach.plan_judge import PlanJudge
+from app.ai_services.ai_coach.vector_db_service import VectorDBService, get_vector_db_service
 
 if TYPE_CHECKING:
     from app.planning_module.core.planning_engine import PlanningEngineOutput
@@ -27,185 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Lookup tables
-# ---------------------------------------------------------------------------
-
-# Primary keys are the exact FitnessGoal enum values.
-# Aliases cover free-text inputs (e.g. from ask_coach).
-# Internal canonical goal keys (right-hand side) are intentionally stable
-# and independent of the enum values so renaming an enum never breaks logic.
-from app.profile_module.models.enums import FitnessGoal, ActivityLevel, Gender as _Gender
-
-GOAL_ALIASES: Dict[str, str] = {
-    # ── Exact FitnessGoal enum values (primary) ──────────────────────
-    FitnessGoal.LOSE_WEIGHT.value:        "lose weight",
-    FitnessGoal.GET_BULKS.value:          "build muscle",
-    FitnessGoal.IMPROVE_ENDURANCE.value:  "improve fitness",
-    FitnessGoal.TRY_AI_COACH.value:       "maintain",
-    # ── Common free-text aliases (for ask_coach / plain strings) ─────
-    "lose weight":       "lose weight",
-    "weight loss":       "lose weight",
-    "fat loss":          "lose weight",
-    "cut":               "lose weight",
-    "cutting":           "lose weight",
-    "build muscle":      "build muscle",
-    "get bulks":         "build muscle",
-    "bulking":           "build muscle",
-    "gain muscle":       "build muscle",
-    "muscle gain":       "build muscle",
-    "hypertrophy":       "build muscle",
-    "maintain":          "maintain",
-    "maintain weight":   "maintain",
-    "maintenance":       "maintain",
-    "recomposition":     "maintain",
-    "try ai coach":      "maintain",
-    "improve fitness":   "improve fitness",
-    "improve endurance": "improve fitness",
-    "endurance":         "improve fitness",
-    "cardiovascular":    "improve fitness",
-}
-
-ACTIVITY_MULTIPLIERS: Dict[str, float] = {
-    # ── Exact ActivityLevel enum values (primary) ─────────────────────
-    ActivityLevel.SEDENTARY.value:          1.20,
-    ActivityLevel.LIGHTLY_ACTIVE.value:     1.375,
-    ActivityLevel.MODERATELY_ACTIVE.value:  1.55,
-    ActivityLevel.VERY_ACTIVE.value:        1.725,
-    ActivityLevel.EXTRA_ACTIVE.value:       1.90,
-    # ── Lowercase aliases (for ask_coach / plain strings) ─────────────
-    "sedentary":          1.20,
-    "lightly active":     1.375,
-    "moderately active":  1.55,
-    "very active":        1.725,
-    "extra active":       1.90,
-}
-
-GOAL_CALORIE_DELTA: Dict[str, int] = {
-    "build muscle":    +450,
-    "lose weight":     -400,
-    "maintain":           0,
-    "improve fitness":    0,
-}
-
-GOAL_PROTEIN_PER_KG: Dict[str, float] = {
-    "build muscle":    1.8,
-    "lose weight":     1.6,
-    "maintain":        1.4,
-    "improve fitness": 1.4,
-}
-
-GOAL_FAT_PCT: Dict[str, float] = {
-    "build muscle":    0.28,
-    "lose weight":     0.30,
-    "maintain":        0.28,
-    "improve fitness": 0.28,
-}
-
-# ---------------------------------------------------------------------------
-# Medical rule libraries
-# ---------------------------------------------------------------------------
-
-MEDICAL_NUTRITION_RULES: Dict[str, str] = {
-    "hypertension": """
-HYPERTENSION DIETARY RULES — override everything else, non-negotiable:
-• Use ONLY "without salt" or "no salt added" variants of legumes and canned goods.
-  Never select any ingredient explicitly labelled "with salt".
-• Include at least ONE omega-3 source per day from: salmon, sardines, mackerel,
-  trout, herring, flaxseed, chia seeds, walnuts.
-  (Shellfish are excluded due to the user's allergy.)
-• Include at least ONE potassium-rich food per day:
-  sweet potato, spinach, banana, avocado, lentils, kidney beans, yogurt.
-• Keep total daily sodium under 2 000 mg — avoid processed, cured, smoked, or pickled items.
-• Use olive oil as the primary fat source (cardioprotective + Mediterranean authentic).
-  Include at least 1 tbsp (approx. 14 g) per day.
-• Completely exclude grapefruit and grapefruit juice (Amlodipine interaction).
-""",
-
-    "diabetes": """
-DIABETES DIETARY RULES — override everything else, non-negotiable:
-• Use only low-GI carbohydrates: legumes, non-starchy vegetables, oats, barley,
-  quinoa, sweet potato. Avoid white rice, white bread, and refined-sugar products.
-• Distribute carbohydrates evenly across ALL meals — no single meal should supply
-  more than 40% of the day's total carbohydrate.
-• Avoid honey, maple syrup, agave, and other high-GI sweeteners.
-• Limit fruit juice entirely; prefer whole fruit in moderate portions.
-""",
-
-    "celiac": """
-CELIAC / GLUTEN INTOLERANCE RULES — override everything else, non-negotiable:
-• Exclude ALL wheat, barley, rye, spelt, kamut, and triticale ingredients.
-• Permitted grains: rice, quinoa, buckwheat, millet, amaranth, sorghum,
-  certified gluten-free oats.
-""",
-
-    "high cholesterol": """
-HIGH CHOLESTEROL DIETARY RULES — override everything else, non-negotiable:
-• Limit saturated fat to less than 7% of total calories.
-• Exclude processed meats (sausage, bacon, salami, hot dogs).
-• Emphasise soluble-fibre sources: oats, barley, legumes, apples, flaxseed.
-• Use olive oil or avocado oil as the primary cooking fat.
-""",
-
-    "gout": """
-GOUT DIETARY RULES — override everything else, non-negotiable:
-• Limit high-purine proteins: organ meats, anchovies, sardines, mussels.
-• Avoid alcohol and high-fructose corn syrup entirely.
-• Prefer lower-purine proteins: chicken breast, turkey, eggs, tofu.
-• Note in meal instructions to drink plenty of water throughout the day.
-""",
-}
-
-MEDICAL_WORKOUT_RULES: Dict[str, str] = {
-    "hypertension": """
-HYPERTENSION EXERCISE RULES — override everything else, non-negotiable:
-• Keep all aerobic work at moderate intensity (RPE 4-6 / 50-70% HRmax).
-• Avoid heavy Valsalva manoeuvre — cue exhale on exertion for every resistance exercise.
-• Avoid isometric holds longer than 10 seconds at high intensity (e.g. plank over 30 s, wall-sit).
-• Warm-up and cool-down must each be at least 5 minutes — state this in the day notes field.
-• Do NOT programme HIIT or max-effort sprint intervals.
-""",
-
-    "right shoulder impingement": """
-RIGHT SHOULDER IMPINGEMENT RULES — override everything else, non-negotiable:
-• Exclude ALL overhead pressing: overhead press, push press, Arnold press,
-  landmine press above shoulder height.
-• Exclude behind-the-neck pull-downs and behind-the-neck presses.
-• Exclude upright rows.
-• Allowed shoulder work: lateral raises (controlled, below 90 degrees), face pulls,
-  band external rotation, prone Y/T/W, reverse flyes.
-• For chest: prefer dumbbell floor press or cable fly over barbell bench press.
-• Always cue: keep shoulder blades retracted and depressed throughout the movement.
-""",
-
-    "lower back pain": """
-LOWER BACK PAIN RULES — override everything else, non-negotiable:
-• Exclude conventional deadlifts and good mornings.
-• Replace barbell squats with goblet squats, leg press, or box squats
-  with a neutral-spine cue.
-• Exclude sit-ups and full Roman-chair hyperextensions.
-• Include at least one core-stability exercise per session:
-  dead bugs, bird dogs, pallof press, or suitcase carry.
-• Cue bracing, neutral spine, and hip hinge mechanics in every relevant instruction.
-""",
-}
-
-
 class AICoachService:
-
-    DEFAULT_PROVIDER    = "openrouter"
-    DEFAULT_MODEL       = "qwen/qwen3-235b-a22b-2507"
-    DEFAULT_TEMPERATURE = 0.25
-    DEFAULT_MAX_TOKENS  = 8000
-
-    PROVIDER_BASE_URLS = {
-        "groq":       "https://api.groq.com/openai/v1",
-        "openrouter": "https://openrouter.ai/api/v1",
-        "openai":     "https://api.openai.com/v1",
-        "together":   "https://api.together.xyz/v1",
-        "deepinfra":  "https://api.deepinfra.com/v1/openai",
-        "fireworks":  "https://api.fireworks.ai/inference/v1",
-    }
 
     def __init__(
         self,
@@ -215,704 +34,19 @@ class AICoachService:
         model: Optional[str] = None,
         vector_db_service: Optional[VectorDBService] = None,
     ):
-        self.provider = (
-            provider or os.getenv("AI_PROVIDER") or config.AI_PROVIDER or self.DEFAULT_PROVIDER
-        ).lower()
-
-        self.api_key = (
-            api_key
-            or os.getenv("AI_API_KEY")
-            or config.AI_API_KEY
-            or self._get_provider_api_key(self.provider)
-        )
-        if not self.api_key:
-            raise ValueError(
-                f"No API key found for provider '{self.provider}'. "
-                "Set AI_API_KEY or a provider-specific key in environment."
-            )
-
-        self.base_url = (
-            base_url
-            or os.getenv("AI_BASE_URL")
-            or config.AI_BASE_URL
-            or self.PROVIDER_BASE_URLS.get(self.provider)
-        )
-        if not self.base_url:
-            raise ValueError(f"No base URL configured for provider '{self.provider}'.")
-
-        self.model = model or os.getenv("AI_MODEL") or config.AI_MODEL or self.DEFAULT_MODEL
-        self.temperature = float(
-            os.getenv("AI_COACH_TEMPERATURE")
-            or str(config.AI_COACH_TEMPERATURE or self.DEFAULT_TEMPERATURE)
-        )
-        self.max_tokens = int(
-            os.getenv("AI_COACH_MAX_TOKENS")
-            or str(config.AI_COACH_MAX_TOKENS or self.DEFAULT_MAX_TOKENS)
-        )
-        self.rag_top_k             = int(os.getenv("AI_RAG_TOP_K", "3"))
-        self.rag_max_context_chars = int(os.getenv("AI_RAG_MAX_CONTEXT_CHARS", "2400"))
-
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url,
-            default_headers=self._build_provider_headers(self.provider),
-        )
+        self.llm    = LLMClient(provider=provider, api_key=api_key, base_url=base_url, model=model)
+        self.judge  = PlanJudge(self.llm)
         self.vector_db = vector_db_service or get_vector_db_service()
 
-        logger.info(
-            "AI Coach initialised — provider=%s model=%s base_url=%s max_tokens=%s",
-            self.provider, self.model, self.base_url, self.max_tokens,
-        )
-
-    # ------------------------------------------------------------------
-    # Provider helpers
-    # ------------------------------------------------------------------
-
-    def _get_provider_api_key(self, provider: str) -> str:
-        mapping = {
-            "groq":       ("GROQ_API_KEY",      getattr(config, "GROQ_API_KEY",      "")),
-            "openrouter": ("OPENROUTER_API_KEY", getattr(config, "OPENROUTER_API_KEY", "")),
-            "openai":     ("OPENAI_API_KEY",     getattr(config, "OPENAI_API_KEY",     "")),
-            "together":   ("TOGETHER_API_KEY",   getattr(config, "TOGETHER_API_KEY",   "")),
-            "deepinfra":  ("DEEPINFRA_API_KEY",  getattr(config, "DEEPINFRA_API_KEY",  "")),
-            "fireworks":  ("FIREWORKS_API_KEY",  getattr(config, "FIREWORKS_API_KEY",  "")),
-        }
-        if provider in mapping:
-            env_key, cfg_val = mapping[provider]
-            return os.getenv(env_key) or cfg_val or ""
-        return ""
-
-    def _build_provider_headers(self, provider: str) -> Optional[Dict[str, str]]:
-        if provider != "openrouter":
-            return None
-        headers: Dict[str, str] = {}
-        site_url = os.getenv("OPENROUTER_SITE_URL") or getattr(config, "OPENROUTER_SITE_URL", "")
-        app_name = os.getenv("OPENROUTER_APP_NAME") or getattr(config, "OPENROUTER_APP_NAME", "")
-        if site_url:
-            headers["HTTP-Referer"] = site_url
-        if app_name:
-            headers["X-Title"] = app_name
-        return headers or None
-
-    def _trim_rag_context(self, rag_context: str, context_name: str) -> str:
-        context = (rag_context or "").strip()
-        preview = context[:800]
-        if len(context) > 800:
-            preview += "..."
-        logger.info(
-            "📚 Retrieved %s context preview (%s chars): %s",
-            context_name, len(context), preview,
-        )
-        if len(context) <= self.rag_max_context_chars:
-            return context
-        trimmed = context[: self.rag_max_context_chars].rstrip()
-        logger.info(
-            "✂️ Trimmed %s context from %s to %s chars",
-            context_name, len(context), len(trimmed),
-        )
-        return trimmed
-
-    # ------------------------------------------------------------------
-    # Goal & calorie helpers
-    # ------------------------------------------------------------------
-
-    def _normalize_goal(self, raw_goal) -> str:
-        """Map a FitnessGoal enum value (or free-text string) to a canonical internal key."""
-        val = raw_goal.value if hasattr(raw_goal, "value") else str(raw_goal or "")
-        # Try exact match first (covers enum values), then lowercase alias
-        return (
-            GOAL_ALIASES.get(val)
-            or GOAL_ALIASES.get(val.lower().strip())
-            or "maintain"
-        )
-
-    def _calculate_tdee(self, user_profile: UserProfileDTO) -> float:
-        """Mifflin-St Jeor BMR multiplied by activity multiplier to get TDEE kcal/day."""
-        weight = user_profile.weight or 70.0
-        height = user_profile.height or 170.0
-        age    = user_profile.age    or 25
-
-        gender_val = user_profile.gender
-        gender_val = gender_val.value if hasattr(gender_val, "value") else str(gender_val or "")
-        if gender_val == _Gender.FEMALE.value:
-            bmr = 10 * weight + 6.25 * height - 5 * age - 161
-        else:
-            bmr = 10 * weight + 6.25 * height - 5 * age + 5
-
-        act_val    = user_profile.activity_level
-        act_val    = act_val.value if hasattr(act_val, "value") else str(act_val or "")
-        multiplier = (
-            ACTIVITY_MULTIPLIERS.get(act_val)
-            or ACTIVITY_MULTIPLIERS.get(act_val.lower().strip())
-            or 1.375
-        )
-        return round(bmr * multiplier, 1)
-
-    def _calculate_target_calories(
-        self,
-        user_profile: UserProfileDTO,
-        custom_target: Optional[int],
-    ) -> int:
-        """
-        Return the daily calorie target used exclusively as PORTION-SIZING GUIDANCE
-        in the prompt.
-
-        This number tells the AI how many grams of each ingredient to prescribe so
-        that the meal totals land near the right energy level.
-
-        IMPORTANT: The authoritative macro numbers stored in the database are ALWAYS
-        computed by the backend (_hydrate_nutrition_macros_from_ingredients) from
-        the exact per-100g values in CentralFood records — never from anything the
-        AI writes in the JSON.
-        """
-        if custom_target:
-            return int(custom_target)
-
-        tdee   = self._calculate_tdee(user_profile)
-        goal   = self._normalize_goal(user_profile.fitness_goal)
-        delta  = GOAL_CALORIE_DELTA.get(goal, 0)
-        target = int(tdee + delta)
-        target = max(1200, min(target, 5000))   # hard safety floor / ceiling
+        self.rag_top_k = int(os.getenv("AI_RAG_TOP_K", "3"))
+        # Max judge-fix iterations after the initial generation.
+        # 2 means: generate → judge → fix → judge → fix → judge → done (3 generations, 3 judge calls max).
+        self.max_judge_iterations = int(os.getenv("AI_JUDGE_MAX_ITERATIONS", "2"))
 
         logger.info(
-            "🔢 Calorie guidance — goal=%s TDEE=%.0f delta=%+d target=%d kcal",
-            goal, tdee, delta, target,
+            "AI Coach initialised — provider=%s model=%s judge_model=%s",
+            self.llm.provider, self.llm.model, self.llm.judge_model,
         )
-        return target
-
-    def _calculate_macro_guidance(
-        self,
-        user_profile: UserProfileDTO,
-        target_calories: int,
-    ) -> Dict[str, int]:
-        """
-        Return approximate macro gram targets used ONLY to guide ingredient portion
-        sizes in the prompt.
-
-        The backend always recomputes the real macro totals from DB records.
-        """
-        goal      = self._normalize_goal(user_profile.fitness_goal)
-        weight    = user_profile.weight or 70.0
-
-        protein_g = round(weight * GOAL_PROTEIN_PER_KG.get(goal, 1.4))
-        fat_pct   = GOAL_FAT_PCT.get(goal, 0.28)
-        fat_g     = round((target_calories * fat_pct) / 9)
-        carb_g    = max(50, round((target_calories - protein_g * 4 - fat_g * 9) / 4))
-
-        return {"protein_g": protein_g, "fat_g": fat_g, "carb_g": carb_g}
-
-    # ------------------------------------------------------------------
-    # Medical rule builders
-    # ------------------------------------------------------------------
-
-    def _build_medical_nutrition_rules(self, user_profile: UserProfileDTO) -> str:
-        """Translate medical_conditions and medications into hard dietary rules."""
-        conditions = (user_profile.medical_conditions or "").lower()
-        meds       = (user_profile.medications or "").lower()
-
-        # Amlodipine implies hypertension management even if the condition field is vague
-        if ("amlodipine" in meds or "calcium channel" in meds) and "hypertension" not in conditions:
-            conditions += " hypertension"
-
-        rules = [
-            rule_text
-            for key, rule_text in MEDICAL_NUTRITION_RULES.items()
-            if key in conditions
-        ]
-        return "\n".join(rules).strip()
-
-    def _build_medical_workout_rules(self, user_profile: UserProfileDTO) -> str:
-        """Translate medical_conditions and injuries into hard exercise exclusions."""
-        combined = " ".join(filter(None, [
-            (user_profile.medical_conditions or "").lower(),
-            (user_profile.injuries or "").lower(),
-        ]))
-        rules = [
-            rule_text
-            for key, rule_text in MEDICAL_WORKOUT_RULES.items()
-            if key in combined
-        ]
-        return "\n".join(rules).strip()
-
-    # ------------------------------------------------------------------
-    # Prompt builders
-    # ------------------------------------------------------------------
-
-    def _build_nutrition_prompt(
-        self,
-        user_profile: UserProfileDTO,
-        preferences: NutritionPreferencesDTO,
-        duration_weeks: int,
-        rag_context: str,
-        existing_plan: Optional[NutritionPlanDTO] = None,
-        allowed_foods_str: str = "",
-        planning_output: Optional["PlanningEngineOutput"] = None,
-    ) -> str:
-
-        user_context  = user_profile.to_context_string()
-        prefs_context = preferences.to_context_string()
-
-        # ── Macro targets — from Planning Engine if provided, else compute internally ──
-        if planning_output is not None:
-            macro_guidance_block = planning_output.nutrition.to_prompt_block()
-            target_calories      = planning_output.nutrition.calories
-        else:
-            target_calories = self._calculate_target_calories(
-                user_profile, preferences.custom_calorie_target
-            )
-            macros = self._calculate_macro_guidance(user_profile, target_calories)
-            protein_pct = round(macros["protein_g"] * 4 / target_calories * 100)
-            fat_pct_val = round(macros["fat_g"]     * 9 / target_calories * 100)
-            carb_pct    = round(macros["carb_g"]    * 4 / target_calories * 100)
-            macro_guidance_block = f"""
-PORTION-SIZING TARGETS — use these to decide the amount_g values for each ingredient.
-Do NOT copy these numbers into the JSON output; the backend computes all macros from DB records.
-
-  Daily energy  : ~{target_calories} kcal
-  Protein       : ~{macros['protein_g']}g  ({protein_pct}% of calories)
-  Fat           : ~{macros['fat_g']}g  ({fat_pct_val}% of calories)  — must be at least 25%
-  Carbohydrates : ~{macros['carb_g']}g  ({carb_pct}% of calories)
-
-If fat would fall below 25% of the day's energy, raise the amount_g of olive oil,
-nuts (not peanuts), seeds, avocado, or fatty fish in that day's meals.
-""".strip()
-
-        # ── Medical dietary rules ─────────────────────────────────────
-        medical_rules = self._build_medical_nutrition_rules(user_profile)
-        medical_block = f"""
-=== CHANNEL C: MEDICAL & MEDICATION DIETARY RULES (OVERRIDE EVERYTHING ELSE) ===
-{medical_rules if medical_rules else "No specific medical dietary rules for this user."}
-""".strip()
-
-        # ── Allergy block ─────────────────────────────────────────────
-        allergies = user_profile.allergies or "None"
-        allergy_block = f"""
-ALLERGY SAFETY — zero tolerance, any violation is a critical failure:
-The user is allergic to: {allergies}
-Before finalising each meal, check every ingredient name against this allergy list.
-""".strip()
-
-        # ── Diversity / variety rules ─────────────────────────────────
-        cuisine = preferences.cuisine_preference
-        diversity_block = f"""
-VARIETY & DIVERSITY RULES (mandatory for long-term adherence):
-• No breakfast template may be identical more than 2 times across the 7 days.
-• No snack may be identical more than 3 times across the 7 days.
-• Each day's dinner must use a different primary protein source than the previous day.
-• Across the full 7-day plan use at least 4 distinct protein sources.
-• Across the full 7-day plan use at least 4 distinct carbohydrate sources.
-• Do NOT use the same grain in more than 2 consecutive meals.
-• Cuisine style must feel authentically {cuisine} — use characteristic herbs,
-  spices, and cooking methods typical of that cuisine.
-""".strip()
-
-        # ── Existing plan context (regeneration mode) ─────────────────
-        existing_ctx = ""
-        regen_block  = ""
-        if existing_plan:
-            existing_ctx = f"\n\nEXISTING NUTRITION PLAN TO UPDATE:\n{existing_plan.to_context_string()}"
-            regen_block  = """
-REGENERATION RULES:
-• Keep meals that still satisfy the current preferences and restrictions.
-• Only replace meals that violate new preferences, allergen rules, or macro targets.
-• Adjust ingredient amounts (amount_g) to fix macro deviations before replacing whole meals.
-""".strip()
-
-        # ── Chain-of-thought scaffold ─────────────────────────────────
-        thinking_scaffold = f"""
-Before writing the JSON, reason through these steps inside a <think> block.
-The <think> block must NOT appear in the final JSON output.
-
-  1. Accept the pre-computed targets above — do NOT recalculate calories or macros.
-  2. List 7 distinct breakfasts that fit the cuisine, portion targets, and medical rules.
-  3. List 7 distinct lunches.
-  4. List 7 distinct dinners, each with a different primary protein source.
-  5. List snack options (at most 3 repeats across the week).
-  6. For each meal verify: no allergens present, all medical rules respected, fat at least 25%.
-  7. For each ingredient, set amount_g so the day's total approaches the target calories.
-  8. Only after completing the above write the final JSON.
-""".strip()
-
-        return f"""You are an expert registered dietitian and sports nutritionist acting as the REFINEMENT LAYER.
-The Planning Engine has already determined the macro targets and meal structure below.
-Your job is to SELECT appropriate foods, SET ingredient amounts (amount_g), WRITE coaching instructions,
-and EXPLAIN the nutritional reasoning — NOT to recalculate targets.
-
-Reason first inside <think>...</think>, then output ONLY a single valid JSON object.
-No markdown fences. No text before or after the JSON.
-
-{user_context}
-{prefs_context}{existing_ctx}
-
-PLAN DURATION: {duration_weeks} week(s)
-
-=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===
-{macro_guidance_block}
-
-{medical_block}
-
-{allergy_block}
-
-{diversity_block}
-
-=== CHANNEL A: EVIDENCE-BASED NUTRITION GUIDELINES (RAG) ===
-{rag_context}
-
-{regen_block}
-
-=== CHANNEL B: DATABASE FOOD CONSTRAINTS ===
-Use ONLY the food IDs listed below. Never invent a central_food_id.
-{allowed_foods_str}
-
-=== REASONING SCAFFOLD ===
-{thinking_scaffold}
-
-=== FINAL OUTPUT FORMAT ===
-Generate a complete 7-day meal plan with EXACTLY {preferences.meals_per_day} meals per day.
-Every ingredient mentioned in the instructions field MUST appear in the ingredients array.
-Do NOT include any macro or calorie numbers in the JSON output.
-
-{{
-  "plan_name": "Descriptive name reflecting cuisine and goal",
-  "description": "2-3 sentences covering cuisine style, fitness goal, and medical considerations",
-  "days": [
-    {{
-      "day_name": "Monday",
-      "day_number": 1,
-      "notes": "Optional coaching note, e.g. high-protein day or omega-3 focus",
-      "meals": [
-        {{
-          "meal_type": "Breakfast",
-          "meal_name": "Creative specific meal name",
-          "ingredients": [
-            {{"central_food_id": 123, "amount_g": 80.0}},
-            {{"central_food_id": 456, "amount_g": 15.0}}
-          ],
-          "instructions": "Step-by-step instructions that name every ingredient with coaching cues",
-          "prep_time_minutes": 10,
-          "cook_time_minutes": 20,
-          "servings": 1,
-          "order_index": 0
-        }}
-      ]
-    }}
-  ]
-}}
-
-CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.
-""".strip()
-
-    def _build_workout_prompt(
-        self,
-        user_profile: UserProfileDTO,
-        preferences: WorkoutPreferencesDTO,
-        duration_weeks: int,
-        rag_context: str,
-        existing_plan: Optional[WorkoutPlanDTO] = None,
-        allowed_exercises_str: str = "",
-        planning_output: Optional["PlanningEngineOutput"] = None,
-    ) -> str:
-
-        user_context  = user_profile.to_context_string()
-        prefs_context = preferences.to_context_string()
-
-        # ── Training targets — from Planning Engine if provided ───────
-        if planning_output is not None:
-            training_block   = planning_output.training.to_prompt_block()
-            days_per_week    = planning_output.training.training_days
-            session_duration = planning_output.training.session_duration_minutes
-        else:
-            training_block   = (
-                f"Training days/week : {preferences.workout_days_per_week}\n"
-                f"Session duration   : {preferences.session_duration_minutes} minutes"
-            )
-            days_per_week    = preferences.workout_days_per_week
-            session_duration = preferences.session_duration_minutes
-
-        # ── Medical / injury rules ────────────────────────────────────
-        medical_rules = self._build_medical_workout_rules(user_profile)
-        medical_block = (
-            "=== CHANNEL C: INJURY & MEDICAL EXERCISE RULES (OVERRIDE EVERYTHING ELSE) ===\n"
-            + (medical_rules if medical_rules else "No specific injury or medical exercise restrictions for this user.")
-        )
-
-        # ── Existing plan (regeneration mode) ────────────────────────
-        existing_ctx = ""
-        regen_block  = ""
-        if existing_plan:
-            existing_ctx = f"\n\nEXISTING WORKOUT PLAN TO UPDATE:\n{existing_plan.to_context_string()}"
-            regen_block  = (
-                "REGENERATION RULES:\n"
-                "• Keep exercises that still match the new preferences and are safe for the user's conditions.\n"
-                "• Only modify days or exercises that conflict with new preferences or medical rules.\n"
-                "• Maintain progression continuity where appropriate."
-            )
-
-        # ── Chain-of-thought scaffold ─────────────────────────────────
-        thinking_scaffold = (
-            "Before writing the JSON, reason through these steps inside a <think> block.\n"
-            "The <think> block must NOT appear in the final JSON output.\n\n"
-            "  1. Accept the pre-computed training targets above — do NOT change the split or days.\n"
-            "  2. List every excluded exercise (from CHANNEL C injury rules above).\n"
-            f"  3. Map out each of the {days_per_week} workout days according to the split.\n"
-            "  4. For each day, select exercises from the catalog that fit the focus area and avoid exclusions.\n"
-            f"  5. Confirm each session fits within {session_duration} minutes.\n"
-            "  6. Only after completing the above write the final JSON."
-        )
-
-        return (
-            "You are an expert certified personal trainer and strength & conditioning coach "
-            "acting as the REFINEMENT LAYER.\n"
-            "The Planning Engine has already determined the training structure below.\n"
-            "Your job is to SELECT appropriate exercises from the catalog, WRITE form cues and coaching\n"
-            "instructions, and EXPLAIN the programming rationale — NOT to change the training structure.\n\n"
-            "Reason first inside <think>...</think>, then output ONLY a single valid JSON object.\n"
-            "No markdown fences. No text before or after the JSON.\n\n"
-            f"{user_context}\n"
-            f"{prefs_context}{existing_ctx}\n\n"
-            f"PLAN DURATION: {duration_weeks} week(s)\n\n"
-            "=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===\n"
-            f"{training_block}\n\n"
-            f"{medical_block}\n\n"
-            "=== CHANNEL A: EVIDENCE-BASED TRAINING GUIDELINES (RAG) ===\n"
-            f"{rag_context}\n\n"
-            f"{regen_block}\n\n"
-            "=== CHANNEL B: DATABASE EXERCISE CONSTRAINTS ===\n"
-            "Use ONLY the exercise IDs listed below. Never invent a central_exercise_id.\n"
-            f"{allowed_exercises_str}\n\n"
-            "=== REASONING SCAFFOLD ===\n"
-            f"{thinking_scaffold}\n\n"
-            "=== FINAL OUTPUT FORMAT ===\n"
-            f"Generate a {days_per_week}-day workout plan.\n\n"
-            "{{\n"
-            '  "plan_name": "Descriptive name reflecting goal and training split",\n'
-            '  "description": "2-3 sentences covering training methodology, goal alignment, and injury modifications",\n'
-            f'  "frequency": "{days_per_week} days per week",\n'
-            f'  "difficulty_level": "{preferences.workout_difficulty}",\n'
-            f'  "estimated_duration_per_session": {session_duration},\n'
-            '  "workout_days": [\n'
-            "    {{\n"
-            '      "day_name": "Day 1 - Focus Area",\n'
-            '      "day_number": 1,\n'
-            '      "focus_area": "e.g. Upper Body Push",\n'
-            f'      "estimated_duration": {session_duration},\n'
-            '      "notes": "Warm-up, cool-down, and session-specific safety cues",\n'
-            '      "exercises": [\n'
-            "        {{\n"
-            '          "central_exercise_id": 123,\n'
-            '          "exercise_name": "Exercise Name",\n'
-            '          "exercise_type": "Strength",\n'
-            '          "sets": 3,\n'
-            '          "reps": 12,\n'
-            '          "weight_kg": null,\n'
-            '          "duration_seconds": null,\n'
-            '          "rest_seconds": 90,\n'
-            '          "instructions": "Step-by-step cues including safety and form corrections",\n'
-            '          "order_index": 0\n'
-            "        }}\n"
-            "      ]\n"
-            "    }}\n"
-            "  ]\n"
-            "}}\n\n"
-            "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after."
-        )
-
-    # ------------------------------------------------------------------
-    # LLM call
-    # ------------------------------------------------------------------
-
-    def _call_llm(
-        self, system_prompt: str, user_prompt: str, json_mode: bool = True
-    ) -> str:
-        call_kwargs: Dict[str, Any] = dict(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
-            ],
-            model=self.model,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=0.90,
-        )
-        if json_mode:
-            call_kwargs["response_format"] = {"type": "json_object"}
-
-        chat_completion = self.client.chat.completions.create(**call_kwargs)
-
-        finish_reason     = None
-        prompt_tokens     = None
-        completion_tokens = None
-        total_tokens      = None
-
-        if chat_completion.choices:
-            finish_reason = chat_completion.choices[0].finish_reason
-        usage = getattr(chat_completion, "usage", None)
-        if usage:
-            prompt_tokens     = getattr(usage, "prompt_tokens",     None)
-            completion_tokens = getattr(usage, "completion_tokens", None)
-            total_tokens      = getattr(usage, "total_tokens",      None)
-
-        logger.info(
-            "LLM usage finish_reason=%s prompt=%s completion=%s total=%s",
-            finish_reason, prompt_tokens, completion_tokens, total_tokens,
-        )
-        return chat_completion.choices[0].message.content
-
-    # ------------------------------------------------------------------
-    # JSON parsing
-    # ------------------------------------------------------------------
-
-    def _parse_json_response(self, response: str) -> Dict[str, Any]:
-        """
-        Parse the LLM response to a dict, handling:
-          - Qwen3 <think>...</think> reasoning blocks emitted before the JSON
-          - Markdown code fences
-          - Stray text before or after the JSON object
-        """
-        cleaned = (response or "").strip()
-
-        # Strip Qwen3 <think>...</think> reasoning blocks
-        cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL).strip()
-
-        # Strip markdown code fences
-        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$",           "", cleaned)
-        cleaned = cleaned.strip()
-
-        # Direct parse
-        try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError:
-            pass
-
-        # Fallback: extract the first balanced top-level JSON object
-        start = cleaned.find("{")
-        if start != -1:
-            in_string = False
-            escape    = False
-            depth     = 0
-            for idx in range(start, len(cleaned)):
-                char = cleaned[idx]
-                if escape:
-                    escape = False
-                    continue
-                if char == "\\":
-                    escape = True
-                    continue
-                if char == '"':
-                    in_string = not in_string
-                    continue
-                if in_string:
-                    continue
-                if char == "{":
-                    depth += 1
-                elif char == "}":
-                    depth -= 1
-                    if depth == 0:
-                        candidate = cleaned[start: idx + 1]
-                        try:
-                            return json.loads(candidate)
-                        except json.JSONDecodeError:
-                            break
-
-        raise ValueError(
-            f"Could not parse LLM response as JSON "
-            f"(length: {len(cleaned)} chars). Preview: {cleaned[:300]!r}"
-        )
-
-    # ------------------------------------------------------------------
-    # DTO validation
-    # ------------------------------------------------------------------
-
-    def _format_validation_error(self, error: ValidationError) -> str:
-        details = []
-        for item in error.errors():
-            loc = ".".join(str(p) for p in item.get("loc", []))
-            msg = item.get("msg", "invalid value")
-            details.append(f"{loc}: {msg}" if loc else msg)
-        return "; ".join(details)
-
-    def _validate_workout_plan_response(self, plan_data: Dict[str, Any]) -> WorkoutPlanDTO:
-        if not isinstance(plan_data, dict):
-            raise ValueError("Workout plan response must be a JSON object")
-        try:
-            return WorkoutPlanDTO.model_validate(plan_data)
-        except ValidationError as err:
-            raise ValueError(
-                f"Workout plan schema validation failed: {self._format_validation_error(err)}"
-            ) from err
-
-    def _validate_nutrition_plan_response(self, plan_data: Dict[str, Any]) -> NutritionPlanDTO:
-        if not isinstance(plan_data, dict):
-            raise ValueError("Nutrition plan response must be a JSON object")
-        try:
-            return NutritionPlanDTO.model_validate(plan_data)
-        except ValidationError as err:
-            raise ValueError(
-                f"Nutrition plan schema validation failed: {self._format_validation_error(err)}"
-            ) from err
-
-    def _validate_nutrition_semantics(
-        self,
-        plan: NutritionPlanDTO,
-        user_profile: UserProfileDTO,
-    ) -> None:
-        """
-        Allergy safety gate applied after schema validation.
-
-        Raises ValueError immediately if any ingredient name matches a known allergen.
-        Caloric / macro accuracy is NOT checked here — the backend recomputes those
-        from CentralFood DB records in _hydrate_nutrition_macros_from_ingredients.
-        """
-        allergy_str = (user_profile.allergies or "").lower()
-        if not allergy_str or allergy_str == "none":
-            return
-
-        # Build keyword list from the free-text allergies field
-        allergen_keywords: List[str] = []
-        if "peanut"    in allergy_str:
-            allergen_keywords += ["peanut"]
-        if "shellfish" in allergy_str:
-            allergen_keywords += [
-                "shrimp", "prawn", "crab", "lobster",
-                "clam", "oyster", "mussel", "scallop", "crawfish",
-            ]
-        if "gluten"    in allergy_str:
-            allergen_keywords += ["wheat", "barley", "rye", "spelt"]
-        if "dairy"     in allergy_str:
-            allergen_keywords += ["milk", "cheese", "butter", "cream", "yogurt", "whey"]
-        if "egg"       in allergy_str:
-            allergen_keywords += ["egg"]
-        if "tree nut"  in allergy_str:
-            allergen_keywords += [
-                "almond", "cashew", "walnut", "pecan", "pistachio", "hazelnut",
-            ]
-        if "soy"       in allergy_str:
-            allergen_keywords += ["soy", "tofu", "edamame", "tempeh"]
-
-        if not allergen_keywords:
-            return
-
-        violations: List[str] = []
-        for day in plan.days:
-            for meal in day.meals:
-                for ing in (meal.ingredients or []):
-                    food_name = (getattr(ing, "food_name", None) or "").lower()
-                    for kw in allergen_keywords:
-                        if kw in food_name:
-                            msg = (
-                                f"Day {day.day_number} — {meal.meal_name}: "
-                                f"ingredient '{getattr(ing, 'food_name', ing)}' "
-                                f"contains allergen '{kw}'"
-                            )
-                            violations.append(msg)
-                            logger.error("ALLERGY VIOLATION: %s", msg)
-
-        if violations:
-            raise ValueError(
-                "Nutrition plan rejected — allergy violations detected:\n"
-                + "\n".join(violations)
-            )
 
     # ------------------------------------------------------------------
     # Public API
@@ -930,44 +64,25 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         """
         Generate a personalised 7-day nutrition plan.
 
-        The AI uses portion-sizing guidance (target_calories + macro gram targets)
-        to decide how many grams of each ingredient to include.  It does NOT write
-        macro or calorie numbers into the JSON.  All authoritative nutrition values
-        are computed by the backend from exact CentralFood DB records.
+        Workflow: Generate → Judge → Fix (if failed) → Allergy gate → Return
+
+        The AI uses portion-sizing guidance (TDEE-based calorie + macro targets) to
+        decide ingredient amounts. It does NOT write macro/calorie numbers into JSON;
+        the backend recomputes those from exact CentralFood DB records.
         """
-        target_calories = self._calculate_target_calories(
-            user_profile, preferences.custom_calorie_target
-        )
-        macros = self._calculate_macro_guidance(user_profile, target_calories)
+        target_calories = calculate_target_calories(user_profile, preferences.custom_calorie_target)
+        macros          = calculate_macro_guidance(user_profile, target_calories)
         logger.info(
             "Portion-sizing guidance — calories=%d protein=%dg fat=%dg carbs=%dg",
             target_calories, macros["protein_g"], macros["fat_g"], macros["carb_g"],
         )
 
-        profile_tags = " ".join(filter(None, [
-            user_profile.allergies          and f"allergies:{user_profile.allergies}",
-            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
-            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
-        ]))
-        query = (
-            f"nutrition meal plan {preferences.cuisine_preference} "
-            f"{preferences.calorie_preference} {profile_tags}"
-        )
-        logger.info("Generating nutrition plan — RAG query: %s", query)
-
-        rag_context = self.vector_db.get_context(query, k=self.rag_top_k, domain="nutrition")
-        rag_context = self._trim_rag_context(rag_context, "nutrition")
+        rag_context = self._fetch_nutrition_rag(user_profile, preferences)
 
         logger.info("===================================")
         logger.info("INJECTED DB FOODS STRING:")
         logger.info(allowed_foods_str)
         logger.info("===================================")
-
-        prompt = self._build_nutrition_prompt(
-            user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_foods_str,
-            planning_output=planning_output,
-        )
 
         system_prompt = (
             "You are an expert registered dietitian and sports nutritionist. "
@@ -979,21 +94,43 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
             "Any allergy violation is a critical failure."
         )
 
-        response = self._call_llm(system_prompt, prompt)
-        logger.info("Raw nutrition LLM output (first 3000 chars): %s", response[:3000])
+        # ── Generate → Judge → Fix loop ──────────────────────────────
+        # Initial generation (no feedback yet).
+        logger.info("Nutrition — iteration 0: generating plan")
+        plan = self._generate_nutrition_once(
+            system_prompt, user_profile, preferences, duration_weeks,
+            rag_context, existing_plan, allowed_foods_str, planning_output,
+        )
 
-        try:
-            plan_data = self._parse_json_response(response)
-        except ValueError as err:
-            raise ValueError(
-                "Nutrition plan generation failed: model output was not valid JSON. "
-                f"Raw output preview: {response[:1500]!r}"
-            ) from err
+        # Up to max_judge_iterations judge-fix cycles.
+        # Each iteration judges the *current* plan so the feedback always reflects
+        # whatever issues remain — no stale or already-resolved complaints.
+        for iteration in range(1, self.max_judge_iterations + 1):
+            passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
+            if passed:
+                logger.info("Nutrition — judge passed on iteration %d", iteration)
+                break
+            if not feedback:
+                logger.info("Nutrition — judge failed but gave no feedback; stopping loop")
+                break
+            logger.info("Nutrition — iteration %d: judge failed, regenerating with feedback", iteration)
+            fixed = self._generate_nutrition_once(
+                system_prompt, user_profile, preferences, duration_weeks,
+                rag_context, existing_plan, allowed_foods_str, planning_output,
+                judge_feedback=feedback,
+            )
+            if fixed is not None:
+                plan = fixed
+            else:
+                logger.warning("Nutrition — fix-pass iteration %d produced invalid output; keeping current plan", iteration)
+                break
+        else:
+            # Loop exhausted — judge the final plan once more just for logging.
+            passed, _ = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
+            logger.info("Nutrition — max iterations reached, final judge passed=%s", passed)
 
-        plan = self._validate_nutrition_plan_response(plan_data)
-
-        # Allergy safety gate — raises ValueError if any violation is found
-        self._validate_nutrition_semantics(plan, user_profile)
+        # ── Allergy safety gate (last-resort deterministic check) ─────
+        plan_validator.validate_nutrition_semantics(plan, user_profile)
 
         return plan
 
@@ -1006,31 +143,17 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         allowed_exercises_str: str = "",
         planning_output: Optional["PlanningEngineOutput"] = None,
     ) -> WorkoutPlanDTO:
-        """Generate a personalised workout plan respecting all injury and medical constraints."""
-        profile_tags = " ".join(filter(None, [
-            user_profile.injuries           and f"injuries:{user_profile.injuries}",
-            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
-            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
-        ]))
-        query = (
-            f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} "
-            f"{preferences.workout_location} {profile_tags}"
-        )
-        logger.info("Generating workout plan — RAG query: %s", query)
+        """
+        Generate a personalised workout plan.
 
-        rag_context = self.vector_db.get_context(query, k=self.rag_top_k, domain="workout")
-        rag_context = self._trim_rag_context(rag_context, "workout")
+        Workflow: Generate → Judge → Fix (if failed) → Return
+        """
+        rag_context = self._fetch_workout_rag(user_profile, preferences)
 
         logger.info("===================================")
         logger.info("INJECTED DB EXERCISES STRING:")
         logger.info(allowed_exercises_str)
         logger.info("===================================")
-
-        prompt = self._build_workout_prompt(
-            user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_exercises_str,
-            planning_output=planning_output,
-        )
 
         system_prompt = (
             "You are an expert certified personal trainer and strength & conditioning coach. "
@@ -1040,18 +163,37 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
             "Never suggest exercises that could harm the user."
         )
 
-        response = self._call_llm(system_prompt, prompt)
-        logger.info("Raw workout LLM output (first 3000 chars): %s", response[:3000])
+        # ── Generate → Judge → Fix loop ──────────────────────────────
+        logger.info("Workout — iteration 0: generating plan")
+        plan = self._generate_workout_once(
+            system_prompt, user_profile, preferences, duration_weeks,
+            rag_context, existing_plan, allowed_exercises_str, planning_output,
+        )
 
-        try:
-            plan_data = self._parse_json_response(response)
-        except ValueError as err:
-            raise ValueError(
-                "Workout plan generation failed: model output was not valid JSON. "
-                f"Raw output preview: {response[:1500]!r}"
-            ) from err
+        for iteration in range(1, self.max_judge_iterations + 1):
+            passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
+            if passed:
+                logger.info("Workout — judge passed on iteration %d", iteration)
+                break
+            if not feedback:
+                logger.info("Workout — judge failed but gave no feedback; stopping loop")
+                break
+            logger.info("Workout — iteration %d: judge failed, regenerating with feedback", iteration)
+            fixed = self._generate_workout_once(
+                system_prompt, user_profile, preferences, duration_weeks,
+                rag_context, existing_plan, allowed_exercises_str, planning_output,
+                judge_feedback=feedback,
+            )
+            if fixed is not None:
+                plan = fixed
+            else:
+                logger.warning("Workout — fix-pass iteration %d produced invalid output; keeping current plan", iteration)
+                break
+        else:
+            passed, _ = self.judge.judge_workout_plan(plan, user_profile, preferences)
+            logger.info("Workout — max iterations reached, final judge passed=%s", passed)
 
-        return self._validate_workout_plan_response(plan_data)
+        return plan
 
     def ask_coach(
         self,
@@ -1060,7 +202,7 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
         language: str = "auto",
     ) -> str:
         """Answer a free-text fitness or nutrition question with RAG-augmented coaching advice."""
-        query = question
+        tags = ""
         if user_profile:
             tags = " ".join(filter(None, [
                 user_profile.injuries           and f"injuries:{user_profile.injuries}",
@@ -1068,13 +210,10 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
                 user_profile.allergies          and f"allergies:{user_profile.allergies}",
                 user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
             ]))
-            query = f"{question} {tags}"
 
-        logger.info("Ask Coach — question: %s", question)
-        logger.info("Ask Coach — enhanced query: %s", query)
-
+        query       = f"{question} {tags}".strip()
         rag_context = self.vector_db.get_context(query, k=min(self.rag_top_k, 3))
-        rag_context = self._trim_rag_context(rag_context, "ask_coach")
+        rag_context = self.llm.trim_rag_context(rag_context, "ask_coach")
 
         user_context = (
             user_profile.to_context_string() if user_profile
@@ -1086,29 +225,159 @@ CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or aft
             "ar":   "Respond in Arabic (Egyptian dialect preferred).",
         }.get(language, "Respond in English.")
 
-        system_prompt = f"""You are an experienced personal fitness coach with deep knowledge in exercise science and nutrition.
+        system_prompt = (
+            f"You are an experienced personal fitness coach with deep knowledge in exercise science and nutrition.\n\n"
+            f"{language_instruction}\n\n"
+            f"{user_context}\n\n"
+            "YOUR COACHING STYLE:\n"
+            "• Speak as a coach — direct, practical, encouraging.\n"
+            '• Never say "according to the handbook/guide/source" — give advice from YOUR expertise.\n'
+            "• Always account for the user's medical conditions, injuries, and medications.\n"
+            "• Give specific rep ranges, exercise names, food quantities, and timing — not vague guidance.\n"
+            "• Flag any safety concern before giving the main advice.\n"
+            "• End with one clear action the user can take TODAY."
+        )
 
-{language_instruction}
+        user_prompt = (
+            f"Supporting fitness & nutrition knowledge:\n{rag_context}\n\n"
+            f"User question: {question}\n\n"
+            "Give your professional coaching advice. Be specific and practical.\n"
+            "When you reference a specific study or guideline, cite it inline as [SOURCE: title]."
+        )
 
-{user_context}
+        return self.llm.call_llm(system_prompt, user_prompt, json_mode=False)
 
-YOUR COACHING STYLE:
-• Speak as a coach — direct, practical, encouraging.
-• Never say "according to the handbook/guide/source" — give advice from YOUR expertise.
-• Always account for the user's medical conditions, injuries, and medications.
-• Give specific rep ranges, exercise names, food quantities, and timing — not vague guidance.
-• Flag any safety concern before giving the main advice.
-• End with one clear action the user can take TODAY."""
+    # ------------------------------------------------------------------
+    # Private generation helpers
+    # ------------------------------------------------------------------
 
-        user_prompt = f"""Supporting fitness & nutrition knowledge:
-{rag_context}
+    def _generate_nutrition_once(
+        self,
+        system_prompt: str,
+        user_profile: UserProfileDTO,
+        preferences: NutritionPreferencesDTO,
+        duration_weeks: int,
+        rag_context: str,
+        existing_plan: Optional[NutritionPlanDTO],
+        allowed_foods_str: str,
+        planning_output: Optional["PlanningEngineOutput"],
+        judge_feedback: str = "",
+    ) -> Optional[NutritionPlanDTO]:
+        """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
+        is_fix_pass = bool(judge_feedback)
 
-User question: {question}
+        user_prompt = prompt_builder.build_nutrition_prompt(
+            user_profile, preferences, duration_weeks,
+            rag_context, existing_plan, allowed_foods_str,
+            planning_output=planning_output,
+            judge_feedback=judge_feedback,
+        )
 
-Give your professional coaching advice. Be specific and practical.
-When you reference a specific study or guideline, cite it inline as [SOURCE: title]."""
+        response = self.llm.call_llm(system_prompt, user_prompt)
+        logger.info("Nutrition LLM output (first 3000 chars): %s", response[:3000])
 
-        return self._call_llm(system_prompt, user_prompt, json_mode=False)
+        try:
+            plan_data = self.llm.parse_json_response(response)
+        except ValueError as err:
+            if is_fix_pass:
+                logger.warning("Fix-pass nutrition plan not valid JSON — keeping original. %s", err)
+                return None
+            raise ValueError(
+                "Nutrition plan generation failed: model output was not valid JSON. "
+                f"Raw output preview: {response[:1500]!r}"
+            ) from err
+
+        try:
+            return plan_validator.validate_nutrition_plan(plan_data)
+        except ValueError as err:
+            if is_fix_pass:
+                logger.warning("Fix-pass nutrition plan failed schema validation — keeping original. %s", err)
+                return None
+            raise
+
+    def _generate_workout_once(
+        self,
+        system_prompt: str,
+        user_profile: UserProfileDTO,
+        preferences: WorkoutPreferencesDTO,
+        duration_weeks: int,
+        rag_context: str,
+        existing_plan: Optional[WorkoutPlanDTO],
+        allowed_exercises_str: str,
+        planning_output: Optional["PlanningEngineOutput"],
+        judge_feedback: str = "",
+    ) -> Optional[WorkoutPlanDTO]:
+        """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
+        is_fix_pass = bool(judge_feedback)
+
+        user_prompt = prompt_builder.build_workout_prompt(
+            user_profile, preferences, duration_weeks,
+            rag_context, existing_plan, allowed_exercises_str,
+            planning_output=planning_output,
+            judge_feedback=judge_feedback,
+        )
+
+        response = self.llm.call_llm(system_prompt, user_prompt)
+        logger.info("Workout LLM output (first 3000 chars): %s", response[:3000])
+
+        try:
+            plan_data = self.llm.parse_json_response(response)
+        except ValueError as err:
+            if is_fix_pass:
+                logger.warning("Fix-pass workout plan not valid JSON — keeping original. %s", err)
+                return None
+            raise ValueError(
+                "Workout plan generation failed: model output was not valid JSON. "
+                f"Raw output preview: {response[:1500]!r}"
+            ) from err
+
+        try:
+            return plan_validator.validate_workout_plan(plan_data)
+        except ValueError as err:
+            if is_fix_pass:
+                logger.warning("Fix-pass workout plan failed schema validation — keeping original. %s", err)
+                return None
+            raise
+
+    # ------------------------------------------------------------------
+    # RAG helpers
+    # ------------------------------------------------------------------
+
+    def _fetch_nutrition_rag(
+        self,
+        user_profile: UserProfileDTO,
+        preferences: NutritionPreferencesDTO,
+    ) -> str:
+        profile_tags = " ".join(filter(None, [
+            user_profile.allergies          and f"allergies:{user_profile.allergies}",
+            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
+            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
+        ]))
+        query = (
+            f"nutrition meal plan {preferences.cuisine_preference} "
+            f"{preferences.calorie_preference} {profile_tags}"
+        )
+        logger.info("Nutrition RAG query: %s", query)
+        raw = self.vector_db.get_context(query, k=self.rag_top_k, domain="nutrition")
+        return self.llm.trim_rag_context(raw, "nutrition")
+
+    def _fetch_workout_rag(
+        self,
+        user_profile: UserProfileDTO,
+        preferences: WorkoutPreferencesDTO,
+    ) -> str:
+        profile_tags = " ".join(filter(None, [
+            user_profile.injuries           and f"injuries:{user_profile.injuries}",
+            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
+            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
+        ]))
+        query = (
+            f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} "
+            f"{preferences.workout_location} {profile_tags}"
+        )
+        logger.info("Workout RAG query: %s", query)
+        raw = self.vector_db.get_context(query, k=self.rag_top_k, domain="workout")
+        return self.llm.trim_rag_context(raw, "workout")
 
 
 # ---------------------------------------------------------------------------
