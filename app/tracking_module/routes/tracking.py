@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.auth_module.core.dependencies import get_current_verified_user
 from app.auth_module.models.user import User
-from app.tracking_module.core.dependencies import get_tracking_service
+from app.tracking_module.core.dependencies import (
+    get_tracking_service,
+    get_meal_scanner_service_dep,
+    get_voice_transcriber_service_dep,
+)
 from app.tracking_module.schemas.tracking import (
     WorkoutLogCreateText,
     WorkoutLogResponse,
@@ -19,8 +23,22 @@ from app.tracking_module.schemas.tracking import (
     ManualExerciseCreate,
     ManualCentralFoodResponse,
     ManualCentralExerciseResponse,
+    MealScanRequest,
+    MealScanResponse,
+    MealScanLogRequest,
+    MealScanLogResponse,
+    MealVoiceRequest,
+    MealVoiceResponse,
+    MealVoiceLogRequest,
+    MealVoiceLogResponse,
+    WorkoutVoiceRequest,
+    WorkoutVoiceResponse,
+    WorkoutVoiceLogRequest,
+    WorkoutVoiceLogResponse,
 )
 from app.tracking_module.services.tracking_service import TrackingService
+from app.ai_services.meal_scanner.meal_scanner_service import MealScannerService
+from app.ai_services.voice_transcriber.voice_transcriber_service import VoiceTranscriberService
 
 
 tracking_router = APIRouter(prefix="/tracking", tags=["Tracking"])
@@ -208,3 +226,167 @@ def delete_weight_log(
     tracking_service: TrackingService = Depends(get_tracking_service),
 ):
     return tracking_service.delete_weight_log(user_id=current_user.id, log_id=log_id)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Meal Scanner endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.post(
+    "/meals/scan",
+    response_model=MealScanResponse,
+    summary="Scan a meal photo with Qwen2.5-VL — returns nutrition + top-5 vector-matched foods",
+)
+def scan_meal(
+    payload: MealScanRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    scanner: MealScannerService = Depends(get_meal_scanner_service_dep),
+):
+    """
+    Analyse a base64-encoded meal photo using Qwen2.5-VL and return:
+
+    * Full nutritional breakdown (calories, macros, per-item details)
+    * Semantic tags extracted by the VL model
+    * Up to 5 best-matching foods from the central food catalog via pgvector
+      cosine similarity (use their `id` in the `/meals/scan/log` call)
+    """
+    return tracking_service.scan_meal(
+        scanner=scanner,
+        request_payload=payload,
+        user=current_user,
+    )
+
+
+@tracking_router.post(
+    "/meals/scan/log",
+    response_model=MealScanLogResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Scan a meal photo and immediately save it as a meal log",
+)
+def scan_and_log_meal(
+    payload: MealScanLogRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    scanner: MealScannerService = Depends(get_meal_scanner_service_dep),
+):
+    """
+    One-shot endpoint: analyse the photo *and* create a MealLog in a single call.
+
+    * If `central_food_id` is provided, macros are recalculated from that food × servings.
+    * Otherwise the AI-estimated totals are stored directly.
+    * `log_method` is always set to **CAMERA**.
+    """
+    return tracking_service.scan_and_log_meal(
+        scanner=scanner,
+        payload=payload,
+        user=current_user,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Voice Meal endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.post(
+    "/meals/voice",
+    response_model=MealVoiceResponse,
+    summary="Transcribe a meal voice clip — returns parsed nutrition + top-5 matched foods",
+)
+def voice_meal(
+    payload: MealVoiceRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
+):
+    """
+    Whisper transcribes the audio → LLaMA extracts meal name, food items, portions,
+    estimated macros, and semantic tags → pgvector returns top-5 matching central_foods.
+
+    Use the matched `id` values in `/meals/voice/log` to associate a catalogued food.
+    """
+    return tracking_service.voice_meal(
+        transcriber=transcriber,
+        payload=payload,
+        user=current_user,
+    )
+
+
+@tracking_router.post(
+    "/meals/voice/log",
+    response_model=MealVoiceLogResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Transcribe a meal voice clip and immediately save it as a meal log",
+)
+def voice_and_log_meal(
+    payload: MealVoiceLogRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
+):
+    """
+    One-shot: transcribe → parse → log.
+
+    * If `central_food_id` is supplied, macros come from that food × servings.
+    * Otherwise the LLM-estimated macros are saved directly.
+    * `log_method` is always **VOICE**.
+    """
+    return tracking_service.voice_and_log_meal(
+        transcriber=transcriber,
+        payload=payload,
+        user=current_user,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Voice Workout endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.post(
+    "/workouts/voice",
+    response_model=WorkoutVoiceResponse,
+    summary="Transcribe a workout voice clip — returns parsed exercises + per-exercise top-5 matches",
+)
+def voice_workout(
+    payload: WorkoutVoiceRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
+):
+    """
+    Whisper transcribes → LLaMA extracts each exercise with sets/reps/weight → pgvector
+    returns top-5 matching central_exercises per exercise.
+
+    Pass `exercise_overrides` in `/workouts/voice/log` to confirm which exercise IDs to log.
+    """
+    return tracking_service.voice_workout(
+        transcriber=transcriber,
+        payload=payload,
+        user=current_user,
+    )
+
+
+@tracking_router.post(
+    "/workouts/voice/log",
+    response_model=WorkoutVoiceLogResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Transcribe a workout voice clip and log every detected exercise",
+)
+def voice_and_log_workout(
+    payload: WorkoutVoiceLogRequest,
+    current_user: User = Depends(get_current_verified_user),
+    tracking_service: TrackingService = Depends(get_tracking_service),
+    transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
+):
+    """
+    One WorkoutLog row is created per detected exercise.
+
+    * `exercise_overrides` lets the user pin which `central_exercise_id` to attach to each
+      exercise (by index). If omitted, the top vector-similarity match is used.
+    * `log_method` is always **VOICE**.
+    """
+    return tracking_service.voice_and_log_workout(
+        transcriber=transcriber,
+        payload=payload,
+        user=current_user,
+    )

@@ -1,29 +1,26 @@
 """
-Meal Scanner Service
-Handles AI-powered food image analysis using Groq API with vision capabilities.
-This module is completely modular and has NO dependencies on other app modules.
+Meal Scanner Service — Qwen2.5-VL vision recognition + pgvector food matching.
 """
 from app.ai_services.meal_scanner.meal_scanner_service import (
     MealScannerService,
-    get_meal_scanner_service
+    get_meal_scanner_service,
+    embed_text,
 )
 from app.ai_services.meal_scanner.dtos import (
-    # Input DTOs
     MealScanRequestDTO,
-    # Output DTOs
     FoodItemDTO,
     AllergenWarningDTO,
-    MealScanResultDTO
+    MatchedFoodDTO,
+    MealScanResultDTO,
 )
 
 __all__ = [
-    # Service
     "MealScannerService",
     "get_meal_scanner_service",
-    # Input DTOs
+    "embed_text",
     "MealScanRequestDTO",
-    # Output DTOs
     "FoodItemDTO",
     "AllergenWarningDTO",
-    "MealScanResultDTO"
+    "MatchedFoodDTO",
+    "MealScanResultDTO",
 ]

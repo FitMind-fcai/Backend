@@ -4012,6 +4012,725 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Meal Scanner (Camera)",
+          "item": [
+            {
+              "name": "Scan Meal - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Scan returns meal name and macros', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('meal_name');",
+                      "  pm.expect(body).to.have.property('total_calories');",
+                      "  pm.expect(body).to.have.property('tags').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('matched_foods').that.is.an('array');",
+                      "  pm.expect(body.scan_successful).to.eql(true);",
+                      "  if (body.matched_foods.length > 0) {",
+                      "    pm.environment.set('scanMatchedFoodId', body.matched_foods[0].id);",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/scan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "scan"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Scan Meal - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/scan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "scan"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Scan & Log Meal - Success (AI macros)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Response has scan and meal_log', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('scan');",
+                      "  pm.expect(body).to.have.property('meal_log');",
+                      "  pm.expect(body.meal_log).to.have.property('id');",
+                      "  pm.expect(body.meal_log.log_method).to.eql('CAMERA');",
+                      "  pm.environment.set('scanMealLogId', body.meal_log.id);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"servings\": 1.0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "scan",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Scan & Log Meal - With Central Food Override",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Meal log uses selected central food', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.meal_log.central_food_id).to.eql(pm.environment.get('scanMatchedFoodId'));",
+                      "  pm.expect(body.meal_log.log_method).to.eql('CAMERA');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"central_food_id\": {{scanMatchedFoodId}},\n  \"servings\": 1.5\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "scan",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Voice - Meals",
+          "item": [
+            {
+              "name": "Voice Meal - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Voice meal returns parsed food and matches', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('raw_text');",
+                      "  pm.expect(body).to.have.property('food_items').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('tags').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('matched_foods').that.is.an('array');",
+                      "  pm.expect(body.parse_successful).to.eql(true);",
+                      "  if (body.matched_foods.length > 0) {",
+                      "    pm.environment.set('voiceMealMatchedFoodId', body.matched_foods[0].id);",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/voice",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "voice"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice Meal - Arabic",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Parse successful', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.parse_successful).to.eql(true);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64Ar}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"ar\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/voice",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "voice"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Meal - Success (AI macros)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Response has voice and meal_log', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('voice');",
+                      "  pm.expect(body).to.have.property('meal_log');",
+                      "  pm.expect(body.meal_log).to.have.property('id');",
+                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
+                      "  pm.environment.set('voiceMealLogId', body.meal_log.id);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"servings\": 1.0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Meal - With Central Food Override",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Meal log uses selected central food macros', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.meal_log.central_food_id).to.eql(pm.environment.get('voiceMealMatchedFoodId'));",
+                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Dinner\",\n  \"language\": \"en\",\n  \"central_food_id\": {{voiceMealMatchedFoodId}},\n  \"servings\": 2.0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Meal - Missing meal_type (uses detected)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Meal log saved with detected meal type', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.meal_log).to.have.property('meal_type');",
+                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "meals",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Voice - Workouts",
+          "item": [
+            {
+              "name": "Voice Workout - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Voice workout returns parsed exercises', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('raw_text');",
+                      "  pm.expect(body).to.have.property('exercises').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('tags').that.is.an('array');",
+                      "  pm.expect(body.parse_successful).to.eql(true);",
+                      "  if (body.exercises.length > 0 && body.exercises[0].matched_exercises.length > 0) {",
+                      "    pm.environment.set('voiceExerciseMatchId', body.exercises[0].matched_exercises[0].id);",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "workouts",
+                    "voice"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice Workout - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "workouts",
+                    "voice"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Workout - Success (auto-match)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Logged exercises match parsed count', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('voice');",
+                      "  pm.expect(body).to.have.property('logged_exercises').that.is.an('array');",
+                      "  pm.expect(body.logged_exercises.length).to.be.above(0);",
+                      "  body.logged_exercises.forEach(entry => {",
+                      "    pm.expect(entry.workout_log).to.have.property('id');",
+                      "    pm.expect(entry.workout_log.log_method).to.be.undefined;",
+                      "  });",
+                      "  pm.environment.set('voiceWorkoutLogId', body.logged_exercises[0].workout_log.id);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "workouts",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Workout - With Exercise Override",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('First exercise uses overridden central_exercise_id', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.logged_exercises.length).to.be.above(0);",
+                      "  pm.expect(body.logged_exercises[0].workout_log.central_exercise_id)",
+                      "    .to.eql(pm.environment.get('voiceExerciseMatchId'));",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\",\n  \"exercise_overrides\": [\n    {\n      \"exercise_index\": 0,\n      \"central_exercise_id\": {{voiceExerciseMatchId}}\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "workouts",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Voice & Log Workout - Multi-exercise",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Multiple workout log entries created', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.logged_exercises.length).to.be.above(1);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"audio_base64\": \"{{audioBase64Multi}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "workouts",
+                    "voice",
+                    "log"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
         }
       ]
     }

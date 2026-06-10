@@ -1,94 +1,104 @@
 import os
 import json
 import logging
-from typing import Optional, Dict, Any
-from groq import Groq
+from typing import Optional, Dict, Any, List
 
+from openai import OpenAI
+
+from app.ai_services.embedding_utils import embed_text, vec_to_pg_str  # noqa: F401 – re-exported
 from app.ai_services.meal_scanner.dtos import (
     MealScanRequestDTO,
     MealScanResultDTO,
     FoodItemDTO,
-    AllergenWarningDTO
+    AllergenWarningDTO,
+    MatchedFoodDTO,
 )
 
-# Configure logger
 logger = logging.getLogger(__name__)
+
+# Qwen2.5-VL served via Together AI (OpenAI-compatible endpoint).
+# Set TOGETHER_API_KEY and optionally QWEN_VL_API_BASE + QWEN_VL_MODEL in env.
+DEFAULT_API_BASE = "https://api.together.xyz/v1"
+DEFAULT_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
 
 
 class MealScannerService:
     """
-    AI-powered meal scanner service using vision models.
-    Analyzes food images to estimate nutritional content.
+    Vision-language meal scanner backed by Qwen2.5-VL.
+
+    Vision inference is delegated to Together AI's OpenAI-compatible API.
+    After recognition the service generates semantic tags, which are then
+    embedded and used for pgvector similarity search against central_foods.
     """
-    
-    # LLM Configuration - Using Llama 4 Scout for vision capabilities
-    DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
-    DEFAULT_TEMPERATURE = 0.1  # Low temperature for consistent nutrition estimates
-    DEFAULT_MAX_TOKENS = 2000
-    
+
+    DEFAULT_TEMPERATURE = 0.1
+    DEFAULT_MAX_TOKENS = 2048
+
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: Optional[str] = None
+        api_base: Optional[str] = None,
+        model: Optional[str] = None,
     ):
-        """
-        Initialize the Meal Scanner Service.
-        
-        Args:
-            api_key: Groq API key (falls back to GROQ_API_KEY env variable)
-            model: Vision model to use
-        """
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        self.api_key = api_key or os.getenv("TOGETHER_API_KEY") or os.getenv("QWEN_VL_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "Groq API key not provided. Set GROQ_API_KEY environment variable "
-                "or pass api_key parameter."
+                "No API key found for Qwen2.5-VL. "
+                "Set TOGETHER_API_KEY or QWEN_VL_API_KEY environment variable."
             )
-        
-        self.model = model or self.DEFAULT_MODEL
-        self.client = Groq(api_key=self.api_key)
-    
-    def _build_scan_prompt(
-        self,
-        request: MealScanRequestDTO
-    ) -> str:
-        """Build the prompt for meal scanning."""
-        
-        dietary_context = ""
-        if request.user_dietary_preference:
-            dietary_context = f"\nUser's Dietary Preference: {request.user_dietary_preference}"
-        
-        allergen_context = ""
-        if request.user_allergies:
-            allergen_context = f"\nUser's Known Allergies: {request.user_allergies} - IMPORTANT: Flag any items that may contain these allergens!"
-        
-        language_instruction = ""
-        if request.language == "ar":
-            language_instruction = "\nProvide the meal_name and health_notes in Arabic."
-        
-        return f"""Analyze this food image and estimate the nutritional content.
-{dietary_context}{allergen_context}{language_instruction}
+        self.api_base = api_base or os.getenv("QWEN_VL_API_BASE", DEFAULT_API_BASE)
+        self.model = model or os.getenv("QWEN_VL_MODEL", DEFAULT_MODEL)
+        self.client = OpenAI(api_key=self.api_key, base_url=self.api_base)
 
-Identify each food item visible in the image and estimate:
-1. The portion size (be specific: cups, grams, pieces, etc.)
+    # ------------------------------------------------------------------
+    # Prompt building
+    # ------------------------------------------------------------------
+
+    def _build_scan_prompt(self, request: MealScanRequestDTO) -> str:
+        dietary_ctx = (
+            f"\nUser's Dietary Preference: {request.user_dietary_preference}"
+            if request.user_dietary_preference
+            else ""
+        )
+        allergen_ctx = (
+            f"\nUser's Known Allergies: {request.user_allergies} — flag any item that may contain these!"
+            if request.user_allergies
+            else ""
+        )
+        lang_instruction = (
+            "\nProvide meal_name and health_notes in Arabic."
+            if request.language == "ar"
+            else ""
+        )
+
+        return f"""Analyze this food image and estimate its nutritional content.
+{dietary_ctx}{allergen_ctx}{lang_instruction}
+
+For every visible food item estimate:
+1. Portion size (specific: cups / grams / pieces)
 2. Calories
-3. Macronutrients (protein, carbs, fats)
+3. Protein, carbs, fats (grams)
 4. Fiber (if applicable)
 
 Also determine:
-- Overall meal name (descriptive)
-- Meal type (Breakfast, Lunch, Dinner, or Snack)
-- Any allergen warnings based on user's allergies
-- Health notes (e.g., "High in protein", "Good source of fiber", "High sodium - be mindful")
+- Overall meal name
+- Meal type: Breakfast / Lunch / Dinner / Snack
+- Allergen warnings (based on user allergies above)
+- Health notes (e.g. "High protein", "Good source of fiber")
+- Semantic tags: 5-10 short English keywords describing the meal
+  (cooking method, main ingredients, cuisine, nutritional profile).
+  These tags will be used for vector search — be specific and consistent.
+  Example tags: ["grilled", "chicken", "rice", "mediterranean", "high-protein", "low-fat"]
 
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON — no markdown, no extra text:
 {{
     "meal_name": "Descriptive meal name",
-    "meal_type": "Breakfast/Lunch/Dinner/Snack",
+    "meal_type": "Breakfast|Lunch|Dinner|Snack",
+    "tags": ["tag1", "tag2", "tag3"],
     "food_items": [
         {{
             "name": "Food item name",
-            "portion_size": "e.g., 1 cup, 150g",
+            "portion_size": "e.g. 1 cup, 150g",
             "calories": 200,
             "protein_g": 10.0,
             "carbs_g": 25.0,
@@ -108,199 +118,233 @@ Return ONLY valid JSON in this exact format:
             "severity": "warning"
         }}
     ],
-    "health_notes": "Brief health observation about the meal",
+    "health_notes": "Brief health observation",
     "confidence_score": 0.85
 }}
 
-CRITICAL INSTRUCTIONS:
-- Return ONLY valid JSON, no additional text or markdown
-- Be conservative with estimates - it's better to slightly overestimate calories
-- If you cannot identify a food item clearly, give it a lower confidence score
-- Always sum up totals from individual items
-- Confidence score should reflect how clearly you can see and identify the food"""
-    
+CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
+
+    # ------------------------------------------------------------------
+    # Vision LLM call
+    # ------------------------------------------------------------------
+
     def _call_vision_llm(
         self,
         system_prompt: str,
         user_prompt: str,
         image_base64: str,
-        image_format: str = "jpeg"
+        image_format: str = "jpeg",
     ) -> str:
-        """
-        Call the Groq Vision LLM with image.
-        
-        Args:
-            system_prompt: System instruction for the LLM
-            user_prompt: User prompt/query
-            image_base64: Base64 encoded image
-            image_format: Image format (jpeg, png, webp)
-            
-        Returns:
-            LLM response content
-        """
-        # Construct the image URL for base64 data
         image_url = f"data:image/{image_format};base64,{image_base64}"
-        
-        chat_completion = self.client.chat.completions.create(
+        completion = self.client.chat.completions.create(
+            model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
                     "role": "user",
                     "content": [
                         {"type": "text", "text": user_prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_url}
-                        }
-                    ]
-                }
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                    ],
+                },
             ],
-            model=self.model,
             temperature=self.DEFAULT_TEMPERATURE,
-            max_tokens=self.DEFAULT_MAX_TOKENS
+            max_tokens=self.DEFAULT_MAX_TOKENS,
         )
-        
-        return chat_completion.choices[0].message.content
-    
-    def _parse_json_response(self, response: str) -> Dict[str, Any]:
-        """
-        Parse JSON response from LLM, handling potential formatting issues.
-        
-        Args:
-            response: Raw LLM response
-            
-        Returns:
-            Parsed JSON dictionary
-        """
-        # Clean up response - remove markdown code blocks if present
+        return completion.choices[0].message.content
+
+    # ------------------------------------------------------------------
+    # JSON parsing
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_json(response: str) -> Dict[str, Any]:
         cleaned = response.strip()
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
+        for fence in ("```json", "```"):
+            if cleaned.startswith(fence):
+                cleaned = cleaned[len(fence):]
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
-        
         return json.loads(cleaned.strip())
-    
-    def scan_meal(self, request: MealScanRequestDTO) -> MealScanResultDTO:
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def scan_meal(
+        self,
+        request: MealScanRequestDTO,
+        db=None,
+    ) -> MealScanResultDTO:
         """
-        Scan a meal image and return nutritional analysis.
-        
+        Analyse a meal image and return nutrition + tags + vector-matched foods.
+
         Args:
-            request: MealScanRequestDTO with image and context
-            
-        Returns:
-            MealScanResultDTO with nutritional analysis
+            request: MealScanRequestDTO with base64 image and user context.
+            db: Optional SQLAlchemy session. When provided, performs pgvector
+                similarity search against central_foods and populates
+                matched_foods in the result.
         """
-        logger.info(f"📸 Scanning meal image (format: {request.image_format})")
-        
+        logger.info("Scanning meal image with Qwen2.5-VL (format=%s)", request.image_format)
+
         try:
-            # Build prompt
+            system_prompt = (
+                "You are an expert nutritionist with deep knowledge of food composition, "
+                "regional cuisines, and portion sizes. Analyse food images and return "
+                "accurate nutritional estimates as valid JSON only."
+            )
             user_prompt = self._build_scan_prompt(request)
-            
-            system_prompt = """You are an expert nutritionist with extensive knowledge of food composition and portion sizes.
-Your task is to analyze food images and provide accurate nutritional estimates.
-Always return valid JSON only. Be thorough but conservative in your estimates.
-Consider regional cuisines and cooking methods when estimating nutrition."""
-            
-            # Call vision model
-            response = self._call_vision_llm(
+            raw = self._call_vision_llm(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 image_base64=request.image_base64,
-                image_format=request.image_format
+                image_format=request.image_format,
             )
-            
-            # Parse response
-            scan_data = self._parse_json_response(response)
-            
-            # Convert to DTOs
+            data = self._parse_json(raw)
+
             food_items = [
                 FoodItemDTO(
                     name=item.get("name", "Unknown"),
                     portion_size=item.get("portion_size", "1 serving"),
                     calories=item.get("calories", 0),
-                    protein_g=item.get("protein_g", 0),
-                    carbs_g=item.get("carbs_g", 0),
-                    fats_g=item.get("fats_g", 0),
+                    protein_g=item.get("protein_g", 0.0),
+                    carbs_g=item.get("carbs_g", 0.0),
+                    fats_g=item.get("fats_g", 0.0),
                     fiber_g=item.get("fiber_g"),
-                    confidence=item.get("confidence", 0.5)
+                    confidence=item.get("confidence", 0.5),
                 )
-                for item in scan_data.get("food_items", [])
+                for item in data.get("food_items", [])
             ]
-            
             allergen_warnings = [
                 AllergenWarningDTO(
-                    allergen=warning.get("allergen", "Unknown"),
-                    food_item=warning.get("food_item", "Unknown"),
-                    severity=warning.get("severity", "warning")
+                    allergen=w.get("allergen", "Unknown"),
+                    food_item=w.get("food_item", "Unknown"),
+                    severity=w.get("severity", "warning"),
                 )
-                for warning in scan_data.get("allergen_warnings", [])
+                for w in data.get("allergen_warnings", [])
             ]
-            
-            logger.info(f"✅ Meal scan successful: {scan_data.get('meal_name')} - {scan_data.get('total_calories')} kcal")
-            
+            tags: List[str] = data.get("tags", [])
+
+            # Vector search — requires pgvector-enabled DB session.
+            matched_foods: List[MatchedFoodDTO] = []
+            if db is not None and tags:
+                matched_foods = self._find_similar_foods(tags, db)
+
+            meal_name = data.get("meal_name", "Unidentified Meal")
+            logger.info(
+                "Meal scan OK: %s — %s kcal, tags=%s, matches=%d",
+                meal_name,
+                data.get("total_calories"),
+                tags,
+                len(matched_foods),
+            )
+
             return MealScanResultDTO(
-                meal_name=scan_data.get("meal_name", "Unidentified Meal"),
-                meal_type=scan_data.get("meal_type", "Snack"),
+                meal_name=meal_name,
+                meal_type=data.get("meal_type", "Snack"),
                 food_items=food_items,
-                total_calories=scan_data.get("total_calories", 0),
-                total_protein_g=scan_data.get("total_protein_g", 0),
-                total_carbs_g=scan_data.get("total_carbs_g", 0),
-                total_fats_g=scan_data.get("total_fats_g", 0),
+                total_calories=data.get("total_calories", 0),
+                total_protein_g=data.get("total_protein_g", 0.0),
+                total_carbs_g=data.get("total_carbs_g", 0.0),
+                total_fats_g=data.get("total_fats_g", 0.0),
                 allergen_warnings=allergen_warnings,
-                health_notes=scan_data.get("health_notes"),
-                confidence_score=scan_data.get("confidence_score", 0.5),
+                health_notes=data.get("health_notes"),
+                confidence_score=data.get("confidence_score", 0.5),
+                tags=tags,
+                matched_foods=matched_foods,
                 scan_successful=True,
-                error_message=None
-            )
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse meal scan response: {e}")
-            return MealScanResultDTO(
-                meal_name="Scan Failed",
-                meal_type="Unknown",
-                food_items=[],
-                total_calories=0,
-                total_protein_g=0,
-                total_carbs_g=0,
-                total_fats_g=0,
-                allergen_warnings=[],
-                health_notes=None,
-                confidence_score=0,
-                scan_successful=False,
-                error_message=f"Failed to parse AI response: {str(e)}"
-            )
-        except Exception as e:
-            logger.error(f"❌ Meal scan failed: {e}")
-            return MealScanResultDTO(
-                meal_name="Scan Failed",
-                meal_type="Unknown",
-                food_items=[],
-                total_calories=0,
-                total_protein_g=0,
-                total_carbs_g=0,
-                total_fats_g=0,
-                allergen_warnings=[],
-                health_notes=None,
-                confidence_score=0,
-                scan_successful=False,
-                error_message=str(e)
             )
 
+        except json.JSONDecodeError as exc:
+            logger.error("Failed to parse Qwen2.5-VL response: %s", exc)
+            return self._error_result(f"Failed to parse AI response: {exc}")
+        except Exception as exc:
+            logger.error("Meal scan failed: %s", exc)
+            return self._error_result(str(exc))
 
-# Singleton instance
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _find_similar_foods(self, tags: List[str], db) -> List[MatchedFoodDTO]:
+        """Embed *tags* and run cosine similarity search against central_foods."""
+        try:
+            from sqlalchemy import text
+
+            embedding = embed_text(" ".join(tags))
+            vec_str = vec_to_pg_str(embedding)
+
+            rows = db.execute(
+                text("""
+                    SELECT
+                        id,
+                        food_name,
+                        food_category,
+                        calories_per_100g,
+                        protein_per_100g,
+                        carbs_per_100g,
+                        fats_per_100g,
+                        fiber_per_100g,
+                        serving_size_g,
+                        serving_description,
+                        1 - (name_embedding <=> :vec::vector) AS similarity
+                    FROM central_foods
+                    WHERE is_active = true
+                      AND name_embedding IS NOT NULL
+                    ORDER BY name_embedding <=> :vec::vector
+                    LIMIT 5
+                """),
+                {"vec": vec_str},
+            ).fetchall()
+
+            return [
+                MatchedFoodDTO(
+                    id=r.id,
+                    food_name=r.food_name,
+                    food_category=r.food_category,
+                    calories_per_100g=r.calories_per_100g,
+                    protein_per_100g=r.protein_per_100g,
+                    carbs_per_100g=r.carbs_per_100g,
+                    fats_per_100g=r.fats_per_100g,
+                    fiber_per_100g=r.fiber_per_100g,
+                    serving_size_g=r.serving_size_g,
+                    serving_description=r.serving_description,
+                    similarity_score=float(r.similarity),
+                )
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.warning("Vector search failed (returning empty list): %s", exc)
+            return []
+
+    @staticmethod
+    def _error_result(message: str) -> MealScanResultDTO:
+        return MealScanResultDTO(
+            meal_name="Scan Failed",
+            meal_type="Unknown",
+            food_items=[],
+            total_calories=0,
+            total_protein_g=0.0,
+            total_carbs_g=0.0,
+            total_fats_g=0.0,
+            allergen_warnings=[],
+            health_notes=None,
+            confidence_score=0.0,
+            tags=[],
+            matched_foods=[],
+            scan_successful=False,
+            error_message=message,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Singleton
+# ---------------------------------------------------------------------------
+
 _meal_scanner_service: Optional[MealScannerService] = None
 
 
 def get_meal_scanner_service() -> MealScannerService:
-    """
-    Get the singleton MealScannerService instance.
-    
-    Returns:
-        MealScannerService instance
-    """
     global _meal_scanner_service
     if _meal_scanner_service is None:
         _meal_scanner_service = MealScannerService()

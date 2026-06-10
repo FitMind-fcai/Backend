@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, ForeignKey, Float, Text, JSON # type: ignore
 from sqlalchemy.sql import func # type: ignore
 from sqlalchemy.orm import relationship # type: ignore
-from app.db.database import Base 
+from pgvector.sqlalchemy import Vector # type: ignore
+from app.db.database import Base
 from app.planning_module.models.enums import (
     PlanType,
     WorkoutLocation,
@@ -39,6 +40,7 @@ class CentralExercise(Base):
     is_public = Column(Boolean, nullable=False, default=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    name_embedding = Column(Vector(384), nullable=True, comment="BAAI/bge-small-en-v1.5 embedding of name for vector similarity search")
 
     # Relationships
     exercises = relationship("WorkoutDayExercise", back_populates="central_exercise")
@@ -66,6 +68,7 @@ class CentralFood(Base):
     # Metadata
     dietary_tags = Column(JSON, nullable=True, default=list)
     usda_fdc_id = Column(Integer, nullable=True, index=True)
+    name_embedding = Column(Vector(384), nullable=True, comment="BAAI/bge-small-en-v1.5 embedding of food_name for vector similarity search")
     created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     is_verified = Column(Boolean, nullable=False, default=True, index=True)
     is_public = Column(Boolean, nullable=False, default=True, index=True)
