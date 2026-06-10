@@ -8,6 +8,8 @@ from app.tracking_module.repositories.weight_log_repository import WeightLogRepo
 from app.tracking_module.services.tracking_service import TrackingService
 from app.shared.repositories.central_food_repository import CentralFoodRepository
 from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.ai_services.meal_scanner.meal_scanner_service import MealScannerService, get_meal_scanner_service
+from app.ai_services.voice_transcriber.voice_transcriber_service import VoiceTranscriberService, get_voice_transcriber_service
 
 
 def get_workout_log_repository(db: Session = Depends(get_db)) -> WorkoutLogRepository:
@@ -28,6 +30,14 @@ def get_central_food_repository(db: Session = Depends(get_db)) -> CentralFoodRep
 
 def get_central_exercise_repository(db: Session = Depends(get_db)) -> CentralExerciseRepository:
     return CentralExerciseRepository(db)
+
+
+def get_meal_scanner_service_dep() -> MealScannerService:
+    return get_meal_scanner_service()
+
+
+def get_voice_transcriber_service_dep() -> VoiceTranscriberService:
+    return get_voice_transcriber_service()
 
 
 def get_tracking_service(

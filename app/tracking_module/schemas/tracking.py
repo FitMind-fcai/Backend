@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -194,3 +194,208 @@ class ManualCentralExerciseResponse(BaseModel):
     source: str
     is_verified: bool
     is_public: bool
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Meal Scanner schemas
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MealScanRequest(BaseModel):
+    """Image + optional context for meal scanning."""
+    image_base64: str = Field(..., description="Base64-encoded meal photo")
+    image_format: str = Field(default="jpeg", description="Image format: jpeg | png | webp")
+    meal_type: Optional[str] = Field(default=None, description="Hint for the scanner (Breakfast/Lunch/Dinner/Snack)")
+    language: str = Field(default="en", description="Response language: en | ar")
+
+
+class MatchedFoodResponse(BaseModel):
+    """A central_food row returned by vector similarity search."""
+    id: int
+    food_name: str
+    food_category: Optional[str] = None
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fats_per_100g: float
+    fiber_per_100g: Optional[float] = None
+    serving_size_g: Optional[float] = None
+    serving_description: Optional[str] = None
+    similarity_score: float = Field(..., description="Cosine similarity 0–1 (higher = more similar)")
+
+
+class ScannedFoodItemResponse(BaseModel):
+    name: str
+    portion_size: str
+    calories: int
+    protein_g: float
+    carbs_g: float
+    fats_g: float
+    fiber_g: Optional[float] = None
+    confidence: float
+
+
+class MealScanResponse(BaseModel):
+    """Full scan result returned to the client."""
+    meal_name: str
+    meal_type: str
+    food_items: List[ScannedFoodItemResponse]
+    total_calories: int
+    total_protein_g: float
+    total_carbs_g: float
+    total_fats_g: float
+    tags: List[str]
+    health_notes: Optional[str] = None
+    confidence_score: float
+    matched_foods: List[MatchedFoodResponse]
+    allergen_warnings: List[dict] = Field(default_factory=list)
+    scan_successful: bool
+    error_message: Optional[str] = None
+
+
+class MealScanLogRequest(BaseModel):
+    """Scan an image *and* immediately save the meal log."""
+    image_base64: str = Field(..., description="Base64-encoded meal photo")
+    image_format: str = Field(default="jpeg", description="jpeg | png | webp")
+    log_date: date
+    meal_type: str = Field(..., min_length=2, max_length=50, description="Breakfast / Lunch / Dinner / Snack")
+    language: str = Field(default="en")
+    # Optional: user picks a matched food; otherwise AI totals are used directly.
+    central_food_id: Optional[int] = Field(
+        default=None,
+        description="If provided, macros are taken from this central_food × servings instead of AI estimates.",
+    )
+    servings: float = Field(default=1.0, gt=0)
+
+
+class MealScanLogResponse(BaseModel):
+    """Scan result + the newly created MealLog."""
+    scan: MealScanResponse
+    meal_log: MealLogResponse
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Voice Transcription schemas
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MatchedExerciseResponse(BaseModel):
+    """A central_exercise matched via vector similarity."""
+    id: int
+    name: str
+    exercise_type: str
+    primary_muscle_group: str
+    secondary_muscles: Optional[str] = None
+    equipment_required: str
+    difficulty_level: str
+    location: str
+    similarity_score: float = Field(..., description="Cosine similarity 0–1")
+
+
+# --- Meal voice ---
+
+class MealVoiceRequest(BaseModel):
+    """Audio + optional context for meal voice logging."""
+    audio_base64: str = Field(..., description="Base64-encoded audio clip")
+    audio_format: str = Field(default="mp3", description="mp3 | wav | m4a | webm | ogg | flac")
+    language: Optional[str] = Field(default=None, description="Language code (auto-detected if omitted)")
+
+
+class MealVoiceResponse(BaseModel):
+    """Transcription + parsed meal data + top-5 vector-matched foods."""
+    raw_text: str
+    meal_name: Optional[str] = None
+    meal_type: Optional[str] = None
+    food_items: List[str]
+    portions: List[str]
+    tags: List[str]
+    estimated_calories: Optional[float] = None
+    estimated_protein_g: Optional[float] = None
+    estimated_carbs_g: Optional[float] = None
+    estimated_fats_g: Optional[float] = None
+    matched_foods: List[MatchedFoodResponse]
+    parse_successful: bool
+    notes: Optional[str] = None
+
+
+class MealVoiceLogRequest(BaseModel):
+    """Transcribe audio and immediately save as a MealLog."""
+    audio_base64: str
+    audio_format: str = Field(default="mp3")
+    log_date: date
+    meal_type: Optional[str] = Field(
+        default=None,
+        description="Override detected meal type (Breakfast/Lunch/Dinner/Snack).",
+    )
+    language: Optional[str] = None
+    # User selects a specific matched food to use for macros (optional).
+    central_food_id: Optional[int] = Field(
+        default=None,
+        description="If set, macros are calculated from this central_food × servings.",
+    )
+    servings: float = Field(default=1.0, gt=0)
+
+
+class MealVoiceLogResponse(BaseModel):
+    voice: MealVoiceResponse
+    meal_log: MealLogResponse
+
+
+# --- Workout voice ---
+
+class ParsedExerciseResponse(BaseModel):
+    """A single exercise parsed from the workout voice log."""
+    name: str
+    sets: Optional[int] = None
+    reps: Optional[int] = None
+    weight_str: Optional[str] = None
+    weight_kg: Optional[float] = None
+    duration_seconds: Optional[int] = None
+    matched_exercises: List[MatchedExerciseResponse]
+
+
+class WorkoutVoiceRequest(BaseModel):
+    audio_base64: str = Field(..., description="Base64-encoded audio clip")
+    audio_format: str = Field(default="mp3")
+    language: Optional[str] = None
+
+
+class WorkoutVoiceResponse(BaseModel):
+    """Transcription + parsed exercises + per-exercise top-5 vector-matched exercises."""
+    raw_text: str
+    exercises: List[ParsedExerciseResponse]
+    duration_mentioned: Optional[str] = None
+    tags: List[str]
+    parse_successful: bool
+    notes: Optional[str] = None
+
+
+class WorkoutExerciseOverride(BaseModel):
+    """Override which central_exercise to use for a specific parsed exercise index."""
+    exercise_index: int = Field(..., ge=0, description="Index in the parsed exercises list")
+    central_exercise_id: int
+
+
+class WorkoutVoiceLogRequest(BaseModel):
+    """Transcribe audio and save one WorkoutLog per detected exercise."""
+    audio_base64: str
+    audio_format: str = Field(default="mp3")
+    log_date: date
+    language: Optional[str] = None
+    # Optional: user confirms which central_exercise to use per entry.
+    exercise_overrides: Optional[List[WorkoutExerciseOverride]] = Field(
+        default=None,
+        description=(
+            "Per-exercise central_exercise_id overrides. "
+            "If omitted, the top vector match is used for each exercise."
+        ),
+    )
+
+
+class LoggedWorkoutEntry(BaseModel):
+    """One created WorkoutLog with the parsed exercise that generated it."""
+    parsed_exercise: ParsedExerciseResponse
+    workout_log: WorkoutLogResponse
+
+
+class WorkoutVoiceLogResponse(BaseModel):
+    voice: WorkoutVoiceResponse
+    logged_exercises: List[LoggedWorkoutEntry]

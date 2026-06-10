@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -15,7 +15,28 @@ from app.tracking_module.schemas.tracking import (
     WeightLogCreateText,
     ManualFoodCreate,
     ManualExerciseCreate,
+    MealScanRequest,
+    MealScanLogRequest,
+    MealScanResponse,
+    MealScanLogResponse,
+    MatchedFoodResponse,
+    ScannedFoodItemResponse,
+    MealLogResponse,
+    WorkoutLogResponse,
+    MealVoiceRequest,
+    MealVoiceLogRequest,
+    MealVoiceResponse,
+    MealVoiceLogResponse,
+    WorkoutVoiceRequest,
+    WorkoutVoiceLogRequest,
+    WorkoutVoiceResponse,
+    WorkoutVoiceLogResponse,
+    MatchedExerciseResponse,
+    ParsedExerciseResponse,
+    LoggedWorkoutEntry,
 )
+from app.ai_services.meal_scanner.dtos import MealScanRequestDTO
+from app.ai_services.voice_transcriber.dtos import TranscriptionRequestDTO, TranscriptionContextType
 
 
 class TrackingService:
@@ -214,3 +235,334 @@ class TrackingService:
             "image_url": None,
         }
         return self.central_exercise_repo.create_manual_exercise(user_id=user_id, exercise_data=exercise_data)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Meal Scanner
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def scan_meal(self, scanner, request_payload: MealScanRequest, user) -> MealScanResponse:
+        """Run Qwen2.5-VL on the image; return nutrition + top-5 matched foods."""
+        dto = MealScanRequestDTO(
+            image_base64=request_payload.image_base64,
+            image_format=request_payload.image_format,
+            user_dietary_preference=getattr(user, "dietary_preference", None),
+            user_allergies=getattr(user, "allergies", None),
+            language=request_payload.language,
+        )
+        result = scanner.scan_meal(dto, db=self.meal_repo.db)
+
+        matched = [
+            MatchedFoodResponse(
+                id=m.id,
+                food_name=m.food_name,
+                food_category=m.food_category,
+                calories_per_100g=m.calories_per_100g,
+                protein_per_100g=m.protein_per_100g,
+                carbs_per_100g=m.carbs_per_100g,
+                fats_per_100g=m.fats_per_100g,
+                fiber_per_100g=m.fiber_per_100g,
+                serving_size_g=m.serving_size_g,
+                serving_description=m.serving_description,
+                similarity_score=m.similarity_score,
+            )
+            for m in result.matched_foods
+        ]
+        food_items = [
+            ScannedFoodItemResponse(
+                name=fi.name,
+                portion_size=fi.portion_size,
+                calories=fi.calories,
+                protein_g=fi.protein_g,
+                carbs_g=fi.carbs_g,
+                fats_g=fi.fats_g,
+                fiber_g=fi.fiber_g,
+                confidence=fi.confidence,
+            )
+            for fi in result.food_items
+        ]
+        return MealScanResponse(
+            meal_name=result.meal_name,
+            meal_type=request_payload.meal_type or result.meal_type,
+            food_items=food_items,
+            total_calories=result.total_calories,
+            total_protein_g=result.total_protein_g,
+            total_carbs_g=result.total_carbs_g,
+            total_fats_g=result.total_fats_g,
+            tags=result.tags,
+            health_notes=result.health_notes,
+            confidence_score=result.confidence_score,
+            matched_foods=matched,
+            allergen_warnings=[w.model_dump() for w in result.allergen_warnings],
+            scan_successful=result.scan_successful,
+            error_message=result.error_message,
+        )
+
+    def scan_and_log_meal(self, scanner, payload: MealScanLogRequest, user) -> MealScanLogResponse:
+        """Scan image with Qwen2.5-VL then immediately persist a MealLog."""
+        scan_request = MealScanRequest(
+            image_base64=payload.image_base64,
+            image_format=payload.image_format,
+            meal_type=payload.meal_type,
+            language=payload.language,
+        )
+        scan_response = self.scan_meal(scanner=scanner, request_payload=scan_request, user=user)
+
+        if not scan_response.scan_successful:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Meal scan failed: {scan_response.error_message}",
+            )
+
+        # Determine macros: prefer selected central_food over AI estimates.
+        calories = float(scan_response.total_calories)
+        protein_g = scan_response.total_protein_g
+        carbs_g = scan_response.total_carbs_g
+        fats_g = scan_response.total_fats_g
+        serving_size_g_snapshot = None
+        serving_description_snapshot = "AI-estimated serving"
+
+        if payload.central_food_id is not None:
+            food = self.central_food_repo.get_by_id(payload.central_food_id)
+            if not food:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Central food not found.")
+            serving_size_g_snapshot = float(food.serving_size_g or 100.0)
+            serving_description_snapshot = food.serving_description or f"{serving_size_g_snapshot:g} g"
+            grams = serving_size_g_snapshot * payload.servings
+            multiplier = grams / 100.0
+            calories = (food.calories_per_100g or 0) * multiplier
+            protein_g = (food.protein_per_100g or 0) * multiplier
+            carbs_g = (food.carbs_per_100g or 0) * multiplier
+            fats_g = (food.fats_per_100g or 0) * multiplier
+
+        meal_log = self.meal_repo.create_log(
+            user_id=user.id,
+            central_food_id=payload.central_food_id,
+            log_date=payload.log_date,
+            meal_type=payload.meal_type,
+            meal_name=scan_response.meal_name,
+            servings=payload.servings,
+            serving_size_g_snapshot=serving_size_g_snapshot,
+            serving_description_snapshot=serving_description_snapshot,
+            calories=round(calories, 2),
+            protein_g=round(protein_g, 2),
+            carbs_g=round(carbs_g, 2),
+            fats_g=round(fats_g, 2),
+            log_method=LogMethod.CAMERA.value,
+            image_url=None,
+        )
+
+        return MealScanLogResponse(
+            scan=scan_response,
+            meal_log=MealLogResponse.model_validate(meal_log),
+        )
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Voice — meals
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _build_meal_voice_response(self, parsed) -> MealVoiceResponse:
+        """Convert MealLogTranscriptionDTO → MealVoiceResponse."""
+        matched = [
+            MatchedFoodResponse(
+                id=m.id, food_name=m.food_name, food_category=m.food_category,
+                calories_per_100g=m.calories_per_100g, protein_per_100g=m.protein_per_100g,
+                carbs_per_100g=m.carbs_per_100g, fats_per_100g=m.fats_per_100g,
+                fiber_per_100g=m.fiber_per_100g, serving_size_g=m.serving_size_g,
+                serving_description=m.serving_description, similarity_score=m.similarity_score,
+            )
+            for m in parsed.matched_foods
+        ]
+        return MealVoiceResponse(
+            raw_text=parsed.raw_text,
+            meal_name=parsed.meal_name,
+            meal_type=parsed.meal_type,
+            food_items=parsed.food_items,
+            portions=parsed.portions,
+            tags=parsed.tags,
+            estimated_calories=parsed.estimated_calories,
+            estimated_protein_g=parsed.estimated_protein_g,
+            estimated_carbs_g=parsed.estimated_carbs_g,
+            estimated_fats_g=parsed.estimated_fats_g,
+            matched_foods=matched,
+            parse_successful=parsed.parse_successful,
+            notes=parsed.notes,
+        )
+
+    def voice_meal(self, transcriber, payload: MealVoiceRequest, user) -> MealVoiceResponse:
+        """Transcribe + parse meal voice, return matches (no logging)."""
+        req = TranscriptionRequestDTO(
+            audio_base64=payload.audio_base64,
+            audio_format=payload.audio_format,
+            language=payload.language,
+            context_type=TranscriptionContextType.MEAL_LOG,
+        )
+        parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
+        return self._build_meal_voice_response(parsed)
+
+    def voice_and_log_meal(self, transcriber, payload: MealVoiceLogRequest, user) -> MealVoiceLogResponse:
+        """Transcribe + parse meal voice + persist MealLog."""
+        req = TranscriptionRequestDTO(
+            audio_base64=payload.audio_base64,
+            audio_format=payload.audio_format,
+            language=payload.language,
+            context_type=TranscriptionContextType.MEAL_LOG,
+        )
+        parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
+        voice_resp = self._build_meal_voice_response(parsed)
+
+        if not parsed.parse_successful:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Voice parsing failed: {parsed.notes}",
+            )
+
+        meal_type = payload.meal_type or parsed.meal_type or "Snack"
+        meal_name = parsed.meal_name or ", ".join(parsed.food_items) or "Voice meal"
+
+        calories = float(parsed.estimated_calories or 0)
+        protein_g = float(parsed.estimated_protein_g or 0)
+        carbs_g = float(parsed.estimated_carbs_g or 0)
+        fats_g = float(parsed.estimated_fats_g or 0)
+        serving_size_g_snapshot = None
+        serving_description_snapshot = "voice-estimated serving"
+
+        if payload.central_food_id is not None:
+            food = self.central_food_repo.get_by_id(payload.central_food_id)
+            if not food:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Central food not found.")
+            serving_size_g_snapshot = float(food.serving_size_g or 100.0)
+            serving_description_snapshot = food.serving_description or f"{serving_size_g_snapshot:g} g"
+            grams = serving_size_g_snapshot * payload.servings
+            multiplier = grams / 100.0
+            calories = (food.calories_per_100g or 0) * multiplier
+            protein_g = (food.protein_per_100g or 0) * multiplier
+            carbs_g = (food.carbs_per_100g or 0) * multiplier
+            fats_g = (food.fats_per_100g or 0) * multiplier
+
+        meal_log = self.meal_repo.create_log(
+            user_id=user.id,
+            central_food_id=payload.central_food_id,
+            log_date=payload.log_date,
+            meal_type=meal_type,
+            meal_name=meal_name,
+            servings=payload.servings,
+            serving_size_g_snapshot=serving_size_g_snapshot,
+            serving_description_snapshot=serving_description_snapshot,
+            calories=round(calories, 2),
+            protein_g=round(protein_g, 2),
+            carbs_g=round(carbs_g, 2),
+            fats_g=round(fats_g, 2),
+            log_method=LogMethod.VOICE.value,
+            image_url=None,
+        )
+        return MealVoiceLogResponse(
+            voice=voice_resp,
+            meal_log=MealLogResponse.model_validate(meal_log),
+        )
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Voice — workouts
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _build_workout_voice_response(self, parsed) -> WorkoutVoiceResponse:
+        """Convert WorkoutLogTranscriptionDTO → WorkoutVoiceResponse."""
+        exercises = []
+        for ex in parsed.exercises:
+            matched = [
+                MatchedExerciseResponse(
+                    id=m.id, name=m.name, exercise_type=m.exercise_type,
+                    primary_muscle_group=m.primary_muscle_group,
+                    secondary_muscles=m.secondary_muscles,
+                    equipment_required=m.equipment_required,
+                    difficulty_level=m.difficulty_level, location=m.location,
+                    similarity_score=m.similarity_score,
+                )
+                for m in ex.matched_exercises
+            ]
+            exercises.append(
+                ParsedExerciseResponse(
+                    name=ex.name, sets=ex.sets, reps=ex.reps,
+                    weight_str=ex.weight_str, weight_kg=ex.weight_kg,
+                    duration_seconds=ex.duration_seconds,
+                    matched_exercises=matched,
+                )
+            )
+        return WorkoutVoiceResponse(
+            raw_text=parsed.raw_text,
+            exercises=exercises,
+            duration_mentioned=parsed.duration_mentioned,
+            tags=parsed.tags,
+            parse_successful=parsed.parse_successful,
+            notes=parsed.notes,
+        )
+
+    def voice_workout(self, transcriber, payload: WorkoutVoiceRequest, user) -> WorkoutVoiceResponse:
+        """Transcribe + parse workout voice, return matches (no logging)."""
+        req = TranscriptionRequestDTO(
+            audio_base64=payload.audio_base64,
+            audio_format=payload.audio_format,
+            language=payload.language,
+            context_type=TranscriptionContextType.WORKOUT_LOG,
+        )
+        parsed = transcriber.transcribe_and_parse_workout_log(req, db=self.workout_repo.db)
+        return self._build_workout_voice_response(parsed)
+
+    def voice_and_log_workout(self, transcriber, payload: WorkoutVoiceLogRequest, user) -> WorkoutVoiceLogResponse:
+        """Transcribe + parse workout voice + persist one WorkoutLog per exercise."""
+        req = TranscriptionRequestDTO(
+            audio_base64=payload.audio_base64,
+            audio_format=payload.audio_format,
+            language=payload.language,
+            context_type=TranscriptionContextType.WORKOUT_LOG,
+        )
+        parsed = transcriber.transcribe_and_parse_workout_log(req, db=self.workout_repo.db)
+        voice_resp = self._build_workout_voice_response(parsed)
+
+        if not parsed.parse_successful:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Voice parsing failed: {parsed.notes}",
+            )
+        if not parsed.exercises:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No exercises detected in the voice clip.",
+            )
+
+        # Build override lookup: {exercise_index: central_exercise_id}
+        overrides: dict = {}
+        if payload.exercise_overrides:
+            for ov in payload.exercise_overrides:
+                overrides[ov.exercise_index] = ov.central_exercise_id
+
+        logged_entries: list = []
+        for idx, (ex_resp, ex_parsed) in enumerate(
+            zip(voice_resp.exercises, parsed.exercises)
+        ):
+            # Determine central_exercise_id: override → top vector match → None
+            central_exercise_id = overrides.get(idx)
+            if central_exercise_id is None and ex_resp.matched_exercises:
+                central_exercise_id = ex_resp.matched_exercises[0].id
+
+            weight_kg = ex_parsed.weight_kg
+            sets = ex_parsed.sets or 1
+            reps = ex_parsed.reps or 1
+
+            workout_log = self.workout_repo.create_log(
+                user_id=user.id,
+                central_exercise_id=central_exercise_id,
+                log_date=payload.log_date,
+                sets_completed=sets,
+                reps_completed=reps,
+                weight_used=weight_kg,
+                duration_seconds=ex_parsed.duration_seconds,
+                notes=None,
+            )
+            logged_entries.append(
+                LoggedWorkoutEntry(
+                    parsed_exercise=ex_resp,
+                    workout_log=WorkoutLogResponse.model_validate(workout_log),
+                )
+            )
+
+        return WorkoutVoiceLogResponse(voice=voice_resp, logged_exercises=logged_entries)
