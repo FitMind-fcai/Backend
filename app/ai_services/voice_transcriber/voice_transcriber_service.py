@@ -57,37 +57,27 @@ class VoiceTranscriberService:
         self.whisper_model = whisper_model or self.WHISPER_MODEL
         self.client = Groq(api_key=groq_key)
 
-        # --- LLM parser client ---
-        # Prefer OpenRouter/AI_API_KEY so users with a single OpenRouter key
-        # don't need a Groq key just for text parsing.
-        parser_api_key = (
-            os.getenv("OPENROUTER_API_KEY")
-            or os.getenv("AI_API_KEY")
-        )
+        # --- LLM parser client (OpenRouter, same AI_API_KEY as the AI Coach) ---
+        parser_api_key = os.getenv("AI_API_KEY")
 
         if parser_api_key:
-            parser_base = os.getenv("LLM_PARSER_API_BASE", _OPENROUTER_BASE)
-            default_model = _OPENROUTER_PARSER_MODEL
-            extra_headers: dict = {}
-            if "openrouter" in parser_base:
-                extra_headers = {
-                    "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
-                    "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
-                }
             self._parser_client = OpenAI(
                 api_key=parser_api_key,
-                base_url=parser_base,
-                default_headers=extra_headers or None,
+                base_url=_OPENROUTER_BASE,
+                default_headers={
+                    "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
+                    "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+                },
             )
-            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", default_model)
+            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", _OPENROUTER_PARSER_MODEL)
             self._parser_uses_openai_compat = True
-            logger.info("LLM parser: OpenAI-compat at %s — %s", parser_base, self.parser_model)
+            logger.info("LLM parser: OpenRouter — %s", self.parser_model)
         else:
-            # Fall back to Groq for both Whisper and LLM parsing.
-            self._parser_client = None  # use self.client (Groq)
+            # Fall back to Groq when AI_API_KEY is not set.
+            self._parser_client = None
             self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", self.GROQ_PARSER_MODEL)
             self._parser_uses_openai_compat = False
-            logger.info("LLM parser: Groq — %s", self.parser_model)
+            logger.info("LLM parser: Groq fallback — %s", self.parser_model)
 
     # ------------------------------------------------------------------
     # Whisper transcription

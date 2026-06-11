@@ -13,6 +13,7 @@ class WorkoutLogCreateText(BaseModel):
     weight_used: Optional[float] = Field(default=None, ge=0)
     duration_seconds: Optional[int] = Field(default=None, ge=1)
     notes: Optional[str] = None
+    log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
 
 
 class WorkoutLogResponse(BaseModel):
@@ -43,6 +44,7 @@ class MealLogCreateText(BaseModel):
     protein_g: Optional[float] = Field(default=None, ge=0)
     carbs_g: Optional[float] = Field(default=None, ge=0)
     fats_g: Optional[float] = Field(default=None, ge=0)
+    log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
 
     @model_validator(mode="after")
     def validate_meal_input_mode(self):
@@ -197,7 +199,7 @@ class ManualCentralExerciseResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Meal Scanner schemas
+# AI · Meal Scanner
 # ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -228,7 +230,11 @@ class ScannedFoodItemResponse(BaseModel):
 
 
 class MealScanResponse(BaseModel):
-    """Full scan result returned to the client."""
+    """
+    Result of scanning a meal photo.
+    `matched_foods` contains top-5 catalog suggestions — pick one and pass its `id`
+    as `central_food_id` when calling `POST /tracking/meals` to save the log.
+    """
     meal_name: str
     meal_type: str
     food_items: List[ScannedFoodItemResponse]
@@ -245,15 +251,10 @@ class MealScanResponse(BaseModel):
     error_message: Optional[str] = None
 
 
-class MealScanLogResponse(BaseModel):
-    """Scan result + the newly created MealLog."""
-    scan: MealScanResponse
-    meal_log: MealLogResponse
-
-
 # ──────────────────────────────────────────────────────────────────────────────
-# Voice Transcription schemas
+# AI · Voice
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class MatchedExerciseResponse(BaseModel):
     """A central_exercise matched via vector similarity."""
@@ -268,11 +269,12 @@ class MatchedExerciseResponse(BaseModel):
     similarity_score: float = Field(..., description="Cosine similarity 0–1")
 
 
-# --- Meal voice ---
-
-
 class MealVoiceResponse(BaseModel):
-    """Transcription + parsed meal data + top-5 vector-matched foods."""
+    """
+    Result of transcribing a meal voice clip.
+    `matched_foods` contains top-5 catalog suggestions — pick one and pass its `id`
+    as `central_food_id` when calling `POST /tracking/meals` to save the log.
+    """
     raw_text: str
     meal_name: Optional[str] = None
     meal_type: Optional[str] = None
@@ -288,15 +290,8 @@ class MealVoiceResponse(BaseModel):
     notes: Optional[str] = None
 
 
-class MealVoiceLogResponse(BaseModel):
-    voice: MealVoiceResponse
-    meal_log: MealLogResponse
-
-
-# --- Workout voice ---
-
 class ParsedExerciseResponse(BaseModel):
-    """A single exercise parsed from the workout voice log."""
+    """A single exercise parsed from the workout voice clip."""
     name: str
     sets: Optional[int] = None
     reps: Optional[int] = None
@@ -306,32 +301,15 @@ class ParsedExerciseResponse(BaseModel):
     matched_exercises: List[MatchedExerciseResponse]
 
 
-
-
 class WorkoutVoiceResponse(BaseModel):
-    """Transcription + parsed exercises + per-exercise top-5 vector-matched exercises."""
+    """
+    Result of transcribing a workout voice clip.
+    Each `exercises[i].matched_exercises` contains top-5 catalog suggestions —
+    pick `central_exercise_id` values and call `POST /tracking/workouts` once per exercise to save.
+    """
     raw_text: str
     exercises: List[ParsedExerciseResponse]
     duration_mentioned: Optional[str] = None
     tags: List[str]
     parse_successful: bool
     notes: Optional[str] = None
-
-
-class WorkoutExerciseOverride(BaseModel):
-    """Override which central_exercise to use for a specific parsed exercise index."""
-    exercise_index: int = Field(..., ge=0, description="Index in the parsed exercises list")
-    central_exercise_id: int
-
-
-
-
-class LoggedWorkoutEntry(BaseModel):
-    """One created WorkoutLog with the parsed exercise that generated it."""
-    parsed_exercise: ParsedExerciseResponse
-    workout_log: WorkoutLogResponse
-
-
-class WorkoutVoiceLogResponse(BaseModel):
-    voice: WorkoutVoiceResponse
-    logged_exercises: List[LoggedWorkoutEntry]

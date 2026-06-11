@@ -4046,15 +4046,32 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "image_format",
+                      "value": "jpeg",
+                      "type": "text"
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "Lunch",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/scan",
@@ -4086,15 +4103,21 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
+                "header": [],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "image_format",
+                      "value": "jpeg",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/scan",
@@ -4138,15 +4161,42 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"servings\": 1.0\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "image_format",
+                      "value": "jpeg",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "Lunch",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "servings",
+                      "value": "1.0",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
@@ -4188,15 +4238,47 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"image_base64\": \"{{mealImageBase64}}\",\n  \"image_format\": \"jpeg\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"central_food_id\": {{scanMatchedFoodId}},\n  \"servings\": 1.5\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "image_format",
+                      "value": "jpeg",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "Lunch",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "servings",
+                      "value": "1.5",
+                      "type": "text"
+                    },
+                    {
+                      "key": "central_food_id",
+                      "value": "{{scanMatchedFoodId}}",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
@@ -4249,15 +4331,27 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"en\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/voice",
@@ -4297,15 +4391,27 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64Ar}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"ar\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "ar",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/voice",
@@ -4349,15 +4455,42 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Lunch\",\n  \"language\": \"en\",\n  \"servings\": 1.0\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "Lunch",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "servings",
+                      "value": "1.0",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
@@ -4399,15 +4532,47 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"meal_type\": \"Dinner\",\n  \"language\": \"en\",\n  \"central_food_id\": {{voiceMealMatchedFoodId}},\n  \"servings\": 2.0\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "Dinner",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "servings",
+                      "value": "2.0",
+                      "type": "text"
+                    },
+                    {
+                      "key": "central_food_id",
+                      "value": "{{voiceMealMatchedFoodId}}",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
@@ -4449,15 +4614,37 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "servings",
+                      "value": "1.0",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
@@ -4509,15 +4696,27 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"language\": \"en\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/workouts/voice",
@@ -4549,15 +4748,21 @@
               ],
               "request": {
                 "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
+                "header": [],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\"\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/workouts/voice",
@@ -4655,15 +4860,37 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
                   }
                 ],
                 "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\",\n  \"exercise_overrides\": [\n    {\n      \"exercise_index\": 0,\n      \"central_exercise_id\": {{voiceExerciseMatchId}}\n    }\n  ]\n}"
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "audio_format",
+                      "value": "mp3",
+                      "type": "text"
+                    },
+                    {
+                      "key": "log_date",
+                      "value": "2026-06-11",
+                      "type": "text"
+                    },
+                    {
+                      "key": "language",
+                      "value": "en",
+                      "type": "text"
+                    },
+                    {
+                      "key": "exercise_overrides",
+                      "value": "[{\"exercise_index\":0,\"central_exercise_id\":{{voiceExerciseMatchId}}}]",
+                      "type": "text"
+                    }
+                  ]
                 },
                 "url": {
                   "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
