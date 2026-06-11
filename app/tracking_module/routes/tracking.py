@@ -1,7 +1,8 @@
+import json
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
 from app.auth_module.core.dependencies import get_current_verified_user
 from app.auth_module.models.user import User
@@ -23,18 +24,13 @@ from app.tracking_module.schemas.tracking import (
     ManualExerciseCreate,
     ManualCentralFoodResponse,
     ManualCentralExerciseResponse,
-    MealScanRequest,
     MealScanResponse,
-    MealScanLogRequest,
     MealScanLogResponse,
-    MealVoiceRequest,
     MealVoiceResponse,
-    MealVoiceLogRequest,
     MealVoiceLogResponse,
-    WorkoutVoiceRequest,
     WorkoutVoiceResponse,
-    WorkoutVoiceLogRequest,
     WorkoutVoiceLogResponse,
+    WorkoutExerciseOverride,
 )
 from app.tracking_module.services.tracking_service import TrackingService
 from app.ai_services.meal_scanner.meal_scanner_service import MealScannerService
@@ -237,23 +233,22 @@ def delete_weight_log(
     response_model=MealScanResponse,
     summary="Scan a meal photo with Qwen2.5-VL — returns nutrition + top-5 vector-matched foods",
 )
-def scan_meal(
-    payload: MealScanRequest,
+async def scan_meal(
+    file: UploadFile = File(..., description="Meal photo (jpeg / png / webp)"),
+    image_format: str = Form(default="jpeg", description="jpeg | png | webp"),
+    meal_type: Optional[str] = Form(default=None, description="Breakfast / Lunch / Dinner / Snack"),
+    language: str = Form(default="en", description="Response language: en | ar"),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     scanner: MealScannerService = Depends(get_meal_scanner_service_dep),
 ):
-    """
-    Analyse a base64-encoded meal photo using Qwen2.5-VL and return:
-
-    * Full nutritional breakdown (calories, macros, per-item details)
-    * Semantic tags extracted by the VL model
-    * Up to 5 best-matching foods from the central food catalog via pgvector
-      cosine similarity (use their `id` in the `/meals/scan/log` call)
-    """
+    image_bytes = await file.read()
     return tracking_service.scan_meal(
         scanner=scanner,
-        request_payload=payload,
+        image_bytes=image_bytes,
+        image_format=image_format,
+        meal_type=meal_type,
+        language=language,
         user=current_user,
     )
 
@@ -264,22 +259,28 @@ def scan_meal(
     status_code=status.HTTP_201_CREATED,
     summary="Scan a meal photo and immediately save it as a meal log",
 )
-def scan_and_log_meal(
-    payload: MealScanLogRequest,
+async def scan_and_log_meal(
+    file: UploadFile = File(..., description="Meal photo (jpeg / png / webp)"),
+    image_format: str = Form(default="jpeg"),
+    log_date: date = Form(...),
+    meal_type: str = Form(..., description="Breakfast / Lunch / Dinner / Snack"),
+    language: str = Form(default="en"),
+    central_food_id: Optional[int] = Form(default=None, description="Pin a central_food for macro calculation"),
+    servings: float = Form(default=1.0, gt=0),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     scanner: MealScannerService = Depends(get_meal_scanner_service_dep),
 ):
-    """
-    One-shot endpoint: analyse the photo *and* create a MealLog in a single call.
-
-    * If `central_food_id` is provided, macros are recalculated from that food × servings.
-    * Otherwise the AI-estimated totals are stored directly.
-    * `log_method` is always set to **CAMERA**.
-    """
+    image_bytes = await file.read()
     return tracking_service.scan_and_log_meal(
         scanner=scanner,
-        payload=payload,
+        image_bytes=image_bytes,
+        image_format=image_format,
+        log_date=log_date,
+        meal_type=meal_type,
+        language=language,
+        central_food_id=central_food_id,
+        servings=servings,
         user=current_user,
     )
 
@@ -293,21 +294,20 @@ def scan_and_log_meal(
     response_model=MealVoiceResponse,
     summary="Transcribe a meal voice clip — returns parsed nutrition + top-5 matched foods",
 )
-def voice_meal(
-    payload: MealVoiceRequest,
+async def voice_meal(
+    file: UploadFile = File(..., description="Audio clip (mp3 / wav / m4a / webm / ogg / flac)"),
+    audio_format: str = Form(default="mp3", description="mp3 | wav | m4a | webm | ogg | flac"),
+    language: Optional[str] = Form(default=None, description="Language code — auto-detected if omitted"),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
 ):
-    """
-    Whisper transcribes the audio → LLaMA extracts meal name, food items, portions,
-    estimated macros, and semantic tags → pgvector returns top-5 matching central_foods.
-
-    Use the matched `id` values in `/meals/voice/log` to associate a catalogued food.
-    """
+    audio_bytes = await file.read()
     return tracking_service.voice_meal(
         transcriber=transcriber,
-        payload=payload,
+        audio_bytes=audio_bytes,
+        audio_format=audio_format,
+        language=language,
         user=current_user,
     )
 
@@ -318,22 +318,28 @@ def voice_meal(
     status_code=status.HTTP_201_CREATED,
     summary="Transcribe a meal voice clip and immediately save it as a meal log",
 )
-def voice_and_log_meal(
-    payload: MealVoiceLogRequest,
+async def voice_and_log_meal(
+    file: UploadFile = File(..., description="Audio clip (mp3 / wav / m4a / webm / ogg / flac)"),
+    audio_format: str = Form(default="mp3"),
+    log_date: date = Form(...),
+    meal_type: Optional[str] = Form(default=None, description="Breakfast / Lunch / Dinner / Snack"),
+    language: Optional[str] = Form(default=None),
+    central_food_id: Optional[int] = Form(default=None, description="Pin a central_food for macro calculation"),
+    servings: float = Form(default=1.0, gt=0),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
 ):
-    """
-    One-shot: transcribe → parse → log.
-
-    * If `central_food_id` is supplied, macros come from that food × servings.
-    * Otherwise the LLM-estimated macros are saved directly.
-    * `log_method` is always **VOICE**.
-    """
+    audio_bytes = await file.read()
     return tracking_service.voice_and_log_meal(
         transcriber=transcriber,
-        payload=payload,
+        audio_bytes=audio_bytes,
+        audio_format=audio_format,
+        log_date=log_date,
+        meal_type=meal_type,
+        language=language,
+        central_food_id=central_food_id,
+        servings=servings,
         user=current_user,
     )
 
@@ -347,21 +353,20 @@ def voice_and_log_meal(
     response_model=WorkoutVoiceResponse,
     summary="Transcribe a workout voice clip — returns parsed exercises + per-exercise top-5 matches",
 )
-def voice_workout(
-    payload: WorkoutVoiceRequest,
+async def voice_workout(
+    file: UploadFile = File(..., description="Audio clip (mp3 / wav / m4a / webm / ogg / flac)"),
+    audio_format: str = Form(default="mp3"),
+    language: Optional[str] = Form(default=None),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
 ):
-    """
-    Whisper transcribes → LLaMA extracts each exercise with sets/reps/weight → pgvector
-    returns top-5 matching central_exercises per exercise.
-
-    Pass `exercise_overrides` in `/workouts/voice/log` to confirm which exercise IDs to log.
-    """
+    audio_bytes = await file.read()
     return tracking_service.voice_workout(
         transcriber=transcriber,
-        payload=payload,
+        audio_bytes=audio_bytes,
+        audio_format=audio_format,
+        language=language,
         user=current_user,
     )
 
@@ -372,21 +377,33 @@ def voice_workout(
     status_code=status.HTTP_201_CREATED,
     summary="Transcribe a workout voice clip and log every detected exercise",
 )
-def voice_and_log_workout(
-    payload: WorkoutVoiceLogRequest,
+async def voice_and_log_workout(
+    file: UploadFile = File(..., description="Audio clip (mp3 / wav / m4a / webm / ogg / flac)"),
+    audio_format: str = Form(default="mp3"),
+    log_date: date = Form(...),
+    language: Optional[str] = Form(default=None),
+    exercise_overrides: Optional[str] = Form(
+        default=None,
+        description='JSON array of overrides, e.g. [{"exercise_index":0,"central_exercise_id":5}]',
+    ),
     current_user: User = Depends(get_current_verified_user),
     tracking_service: TrackingService = Depends(get_tracking_service),
     transcriber: VoiceTranscriberService = Depends(get_voice_transcriber_service_dep),
 ):
-    """
-    One WorkoutLog row is created per detected exercise.
+    audio_bytes = await file.read()
+    parsed_overrides: Optional[List[WorkoutExerciseOverride]] = None
+    if exercise_overrides:
+        try:
+            parsed_overrides = [WorkoutExerciseOverride(**item) for item in json.loads(exercise_overrides)]
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid exercise_overrides JSON: {exc}")
 
-    * `exercise_overrides` lets the user pin which `central_exercise_id` to attach to each
-      exercise (by index). If omitted, the top vector-similarity match is used.
-    * `log_method` is always **VOICE**.
-    """
     return tracking_service.voice_and_log_workout(
         transcriber=transcriber,
-        payload=payload,
+        audio_bytes=audio_bytes,
+        audio_format=audio_format,
+        log_date=log_date,
+        language=language,
+        exercise_overrides=parsed_overrides,
         user=current_user,
     )

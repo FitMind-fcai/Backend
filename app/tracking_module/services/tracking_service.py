@@ -15,20 +15,14 @@ from app.tracking_module.schemas.tracking import (
     WeightLogCreateText,
     ManualFoodCreate,
     ManualExerciseCreate,
-    MealScanRequest,
-    MealScanLogRequest,
     MealScanResponse,
     MealScanLogResponse,
     MatchedFoodResponse,
     ScannedFoodItemResponse,
     MealLogResponse,
     WorkoutLogResponse,
-    MealVoiceRequest,
-    MealVoiceLogRequest,
     MealVoiceResponse,
     MealVoiceLogResponse,
-    WorkoutVoiceRequest,
-    WorkoutVoiceLogRequest,
     WorkoutVoiceResponse,
     WorkoutVoiceLogResponse,
     MatchedExerciseResponse,
@@ -240,14 +234,16 @@ class TrackingService:
     # Meal Scanner
     # ──────────────────────────────────────────────────────────────────────────
 
-    def scan_meal(self, scanner, request_payload: MealScanRequest, user) -> MealScanResponse:
+    def scan_meal(
+        self, scanner, image_bytes: bytes, image_format: str, meal_type, language: str, user
+    ) -> MealScanResponse:
         """Run Qwen2.5-VL on the image; return nutrition + top-5 matched foods."""
         dto = MealScanRequestDTO(
-            image_base64=request_payload.image_base64,
-            image_format=request_payload.image_format,
+            image_bytes=image_bytes,
+            image_format=image_format,
             user_dietary_preference=getattr(user, "dietary_preference", None),
             user_allergies=getattr(user, "allergies", None),
-            language=request_payload.language,
+            language=language,
         )
         result = scanner.scan_meal(dto, db=self.meal_repo.db)
 
@@ -282,7 +278,7 @@ class TrackingService:
         ]
         return MealScanResponse(
             meal_name=result.meal_name,
-            meal_type=request_payload.meal_type or result.meal_type,
+            meal_type=meal_type or result.meal_type,
             food_items=food_items,
             total_calories=result.total_calories,
             total_protein_g=result.total_protein_g,
@@ -297,15 +293,20 @@ class TrackingService:
             error_message=result.error_message,
         )
 
-    def scan_and_log_meal(self, scanner, payload: MealScanLogRequest, user) -> MealScanLogResponse:
+    def scan_and_log_meal(
+        self, scanner, image_bytes: bytes, image_format: str,
+        log_date, meal_type: str, language: str,
+        central_food_id, servings: float, user,
+    ) -> MealScanLogResponse:
         """Scan image with Qwen2.5-VL then immediately persist a MealLog."""
-        scan_request = MealScanRequest(
-            image_base64=payload.image_base64,
-            image_format=payload.image_format,
-            meal_type=payload.meal_type,
-            language=payload.language,
+        scan_response = self.scan_meal(
+            scanner=scanner,
+            image_bytes=image_bytes,
+            image_format=image_format,
+            meal_type=meal_type,
+            language=language,
+            user=user,
         )
-        scan_response = self.scan_meal(scanner=scanner, request_payload=scan_request, user=user)
 
         if not scan_response.scan_successful:
             raise HTTPException(
@@ -321,13 +322,13 @@ class TrackingService:
         serving_size_g_snapshot = None
         serving_description_snapshot = "AI-estimated serving"
 
-        if payload.central_food_id is not None:
-            food = self.central_food_repo.get_by_id(payload.central_food_id)
+        if central_food_id is not None:
+            food = self.central_food_repo.get_by_id(central_food_id)
             if not food:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Central food not found.")
             serving_size_g_snapshot = float(food.serving_size_g or 100.0)
             serving_description_snapshot = food.serving_description or f"{serving_size_g_snapshot:g} g"
-            grams = serving_size_g_snapshot * payload.servings
+            grams = serving_size_g_snapshot * servings
             multiplier = grams / 100.0
             calories = (food.calories_per_100g or 0) * multiplier
             protein_g = (food.protein_per_100g or 0) * multiplier
@@ -336,11 +337,11 @@ class TrackingService:
 
         meal_log = self.meal_repo.create_log(
             user_id=user.id,
-            central_food_id=payload.central_food_id,
-            log_date=payload.log_date,
-            meal_type=payload.meal_type,
+            central_food_id=central_food_id,
+            log_date=log_date,
+            meal_type=meal_type,
             meal_name=scan_response.meal_name,
-            servings=payload.servings,
+            servings=servings,
             serving_size_g_snapshot=serving_size_g_snapshot,
             serving_description_snapshot=serving_description_snapshot,
             calories=round(calories, 2),
@@ -388,23 +389,28 @@ class TrackingService:
             notes=parsed.notes,
         )
 
-    def voice_meal(self, transcriber, payload: MealVoiceRequest, user) -> MealVoiceResponse:
+    def voice_meal(
+        self, transcriber, audio_bytes: bytes, audio_format: str, language, user
+    ) -> MealVoiceResponse:
         """Transcribe + parse meal voice, return matches (no logging)."""
         req = TranscriptionRequestDTO(
-            audio_base64=payload.audio_base64,
-            audio_format=payload.audio_format,
-            language=payload.language,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
             context_type=TranscriptionContextType.MEAL_LOG,
         )
         parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
         return self._build_meal_voice_response(parsed)
 
-    def voice_and_log_meal(self, transcriber, payload: MealVoiceLogRequest, user) -> MealVoiceLogResponse:
+    def voice_and_log_meal(
+        self, transcriber, audio_bytes: bytes, audio_format: str,
+        log_date, meal_type, language, central_food_id, servings: float, user,
+    ) -> MealVoiceLogResponse:
         """Transcribe + parse meal voice + persist MealLog."""
         req = TranscriptionRequestDTO(
-            audio_base64=payload.audio_base64,
-            audio_format=payload.audio_format,
-            language=payload.language,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
             context_type=TranscriptionContextType.MEAL_LOG,
         )
         parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
@@ -416,7 +422,7 @@ class TrackingService:
                 detail=f"Voice parsing failed: {parsed.notes}",
             )
 
-        meal_type = payload.meal_type or parsed.meal_type or "Snack"
+        resolved_meal_type = meal_type or parsed.meal_type or "Snack"
         meal_name = parsed.meal_name or ", ".join(parsed.food_items) or "Voice meal"
 
         calories = float(parsed.estimated_calories or 0)
@@ -426,13 +432,13 @@ class TrackingService:
         serving_size_g_snapshot = None
         serving_description_snapshot = "voice-estimated serving"
 
-        if payload.central_food_id is not None:
-            food = self.central_food_repo.get_by_id(payload.central_food_id)
+        if central_food_id is not None:
+            food = self.central_food_repo.get_by_id(central_food_id)
             if not food:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Central food not found.")
             serving_size_g_snapshot = float(food.serving_size_g or 100.0)
             serving_description_snapshot = food.serving_description or f"{serving_size_g_snapshot:g} g"
-            grams = serving_size_g_snapshot * payload.servings
+            grams = serving_size_g_snapshot * servings
             multiplier = grams / 100.0
             calories = (food.calories_per_100g or 0) * multiplier
             protein_g = (food.protein_per_100g or 0) * multiplier
@@ -441,11 +447,11 @@ class TrackingService:
 
         meal_log = self.meal_repo.create_log(
             user_id=user.id,
-            central_food_id=payload.central_food_id,
-            log_date=payload.log_date,
-            meal_type=meal_type,
+            central_food_id=central_food_id,
+            log_date=log_date,
+            meal_type=resolved_meal_type,
             meal_name=meal_name,
-            servings=payload.servings,
+            servings=servings,
             serving_size_g_snapshot=serving_size_g_snapshot,
             serving_description_snapshot=serving_description_snapshot,
             calories=round(calories, 2),
@@ -496,23 +502,28 @@ class TrackingService:
             notes=parsed.notes,
         )
 
-    def voice_workout(self, transcriber, payload: WorkoutVoiceRequest, user) -> WorkoutVoiceResponse:
+    def voice_workout(
+        self, transcriber, audio_bytes: bytes, audio_format: str, language, user
+    ) -> WorkoutVoiceResponse:
         """Transcribe + parse workout voice, return matches (no logging)."""
         req = TranscriptionRequestDTO(
-            audio_base64=payload.audio_base64,
-            audio_format=payload.audio_format,
-            language=payload.language,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
             context_type=TranscriptionContextType.WORKOUT_LOG,
         )
         parsed = transcriber.transcribe_and_parse_workout_log(req, db=self.workout_repo.db)
         return self._build_workout_voice_response(parsed)
 
-    def voice_and_log_workout(self, transcriber, payload: WorkoutVoiceLogRequest, user) -> WorkoutVoiceLogResponse:
+    def voice_and_log_workout(
+        self, transcriber, audio_bytes: bytes, audio_format: str,
+        log_date, language, exercise_overrides, user,
+    ) -> WorkoutVoiceLogResponse:
         """Transcribe + parse workout voice + persist one WorkoutLog per exercise."""
         req = TranscriptionRequestDTO(
-            audio_base64=payload.audio_base64,
-            audio_format=payload.audio_format,
-            language=payload.language,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
             context_type=TranscriptionContextType.WORKOUT_LOG,
         )
         parsed = transcriber.transcribe_and_parse_workout_log(req, db=self.workout_repo.db)
@@ -531,8 +542,8 @@ class TrackingService:
 
         # Build override lookup: {exercise_index: central_exercise_id}
         overrides: dict = {}
-        if payload.exercise_overrides:
-            for ov in payload.exercise_overrides:
+        if exercise_overrides:
+            for ov in exercise_overrides:
                 overrides[ov.exercise_index] = ov.central_exercise_id
 
         logged_entries: list = []
@@ -551,7 +562,7 @@ class TrackingService:
             workout_log = self.workout_repo.create_log(
                 user_id=user.id,
                 central_exercise_id=central_exercise_id,
-                log_date=payload.log_date,
+                log_date=log_date,
                 sets_completed=sets,
                 reps_completed=reps,
                 weight_used=weight_kg,

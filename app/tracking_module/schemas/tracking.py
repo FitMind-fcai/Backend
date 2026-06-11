@@ -200,13 +200,6 @@ class ManualCentralExerciseResponse(BaseModel):
 # Meal Scanner schemas
 # ──────────────────────────────────────────────────────────────────────────────
 
-class MealScanRequest(BaseModel):
-    """Image + optional context for meal scanning."""
-    image_base64: str = Field(..., description="Base64-encoded meal photo")
-    image_format: str = Field(default="jpeg", description="Image format: jpeg | png | webp")
-    meal_type: Optional[str] = Field(default=None, description="Hint for the scanner (Breakfast/Lunch/Dinner/Snack)")
-    language: str = Field(default="en", description="Response language: en | ar")
-
 
 class MatchedFoodResponse(BaseModel):
     """A central_food row returned by vector similarity search."""
@@ -252,21 +245,6 @@ class MealScanResponse(BaseModel):
     error_message: Optional[str] = None
 
 
-class MealScanLogRequest(BaseModel):
-    """Scan an image *and* immediately save the meal log."""
-    image_base64: str = Field(..., description="Base64-encoded meal photo")
-    image_format: str = Field(default="jpeg", description="jpeg | png | webp")
-    log_date: date
-    meal_type: str = Field(..., min_length=2, max_length=50, description="Breakfast / Lunch / Dinner / Snack")
-    language: str = Field(default="en")
-    # Optional: user picks a matched food; otherwise AI totals are used directly.
-    central_food_id: Optional[int] = Field(
-        default=None,
-        description="If provided, macros are taken from this central_food × servings instead of AI estimates.",
-    )
-    servings: float = Field(default=1.0, gt=0)
-
-
 class MealScanLogResponse(BaseModel):
     """Scan result + the newly created MealLog."""
     scan: MealScanResponse
@@ -292,12 +270,6 @@ class MatchedExerciseResponse(BaseModel):
 
 # --- Meal voice ---
 
-class MealVoiceRequest(BaseModel):
-    """Audio + optional context for meal voice logging."""
-    audio_base64: str = Field(..., description="Base64-encoded audio clip")
-    audio_format: str = Field(default="mp3", description="mp3 | wav | m4a | webm | ogg | flac")
-    language: Optional[str] = Field(default=None, description="Language code (auto-detected if omitted)")
-
 
 class MealVoiceResponse(BaseModel):
     """Transcription + parsed meal data + top-5 vector-matched foods."""
@@ -314,24 +286,6 @@ class MealVoiceResponse(BaseModel):
     matched_foods: List[MatchedFoodResponse]
     parse_successful: bool
     notes: Optional[str] = None
-
-
-class MealVoiceLogRequest(BaseModel):
-    """Transcribe audio and immediately save as a MealLog."""
-    audio_base64: str
-    audio_format: str = Field(default="mp3")
-    log_date: date
-    meal_type: Optional[str] = Field(
-        default=None,
-        description="Override detected meal type (Breakfast/Lunch/Dinner/Snack).",
-    )
-    language: Optional[str] = None
-    # User selects a specific matched food to use for macros (optional).
-    central_food_id: Optional[int] = Field(
-        default=None,
-        description="If set, macros are calculated from this central_food × servings.",
-    )
-    servings: float = Field(default=1.0, gt=0)
 
 
 class MealVoiceLogResponse(BaseModel):
@@ -352,10 +306,6 @@ class ParsedExerciseResponse(BaseModel):
     matched_exercises: List[MatchedExerciseResponse]
 
 
-class WorkoutVoiceRequest(BaseModel):
-    audio_base64: str = Field(..., description="Base64-encoded audio clip")
-    audio_format: str = Field(default="mp3")
-    language: Optional[str] = None
 
 
 class WorkoutVoiceResponse(BaseModel):
@@ -374,20 +324,6 @@ class WorkoutExerciseOverride(BaseModel):
     central_exercise_id: int
 
 
-class WorkoutVoiceLogRequest(BaseModel):
-    """Transcribe audio and save one WorkoutLog per detected exercise."""
-    audio_base64: str
-    audio_format: str = Field(default="mp3")
-    log_date: date
-    language: Optional[str] = None
-    # Optional: user confirms which central_exercise to use per entry.
-    exercise_overrides: Optional[List[WorkoutExerciseOverride]] = Field(
-        default=None,
-        description=(
-            "Per-exercise central_exercise_id overrides. "
-            "If omitted, the top vector match is used for each exercise."
-        ),
-    )
 
 
 class LoggedWorkoutEntry(BaseModel):

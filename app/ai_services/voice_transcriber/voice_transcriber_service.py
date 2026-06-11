@@ -1,11 +1,11 @@
 import os
 import json
-import base64
 import logging
 import tempfile
 from typing import Optional, Dict, Any, List
 
 from groq import Groq
+from openai import OpenAI
 
 from app.ai_services.embedding_utils import embed_text, embed_texts, vec_to_pg_str
 from app.ai_services.voice_transcriber.dtos import (
@@ -22,18 +22,24 @@ from app.ai_services.voice_transcriber.dtos import (
 logger = logging.getLogger(__name__)
 
 
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+_OPENROUTER_PARSER_MODEL = "meta-llama/llama-3.3-70b-instruct"
+
+
 class VoiceTranscriberService:
     """
     Voice transcription + structured parsing service.
 
     Pipeline:
-    1. Groq Whisper  — speech → raw text
-    2. Groq LLaMA   — raw text → structured JSON (macros / exercise data / tags)
-    3. pgvector      — embed tags → top-5 central_foods or per-exercise top-5 central_exercises
+    1. Groq Whisper          — speech → raw text  (always Groq; no alternative)
+    2. LLM parser            — raw text → structured JSON
+       • OpenRouter/OpenAI-compatible if AI_API_KEY or OPENROUTER_API_KEY is set
+       • Falls back to Groq LLaMA otherwise
+    3. pgvector              — embed tags → top-5 central_foods or central_exercises
     """
 
     WHISPER_MODEL = "whisper-large-v3"
-    PARSER_MODEL = "llama-3.3-70b-versatile"
+    GROQ_PARSER_MODEL = "llama-3.3-70b-versatile"
     PARSER_TEMPERATURE = 0.0
     PARSER_MAX_TOKENS = 1500
     SUPPORTED_FORMATS = {"mp3", "wav", "m4a", "webm", "ogg", "flac"}
@@ -44,12 +50,44 @@ class VoiceTranscriberService:
         whisper_model: Optional[str] = None,
         parser_model: Optional[str] = None,
     ):
-        self.api_key = api_key or os.getenv("GROQ_API_KEY")
-        if not self.api_key:
-            raise ValueError("GROQ_API_KEY not set.")
+        # --- Whisper client (Groq, mandatory) ---
+        groq_key = api_key or os.getenv("GROQ_API_KEY")
+        if not groq_key:
+            raise ValueError("GROQ_API_KEY not set — required for Whisper transcription.")
         self.whisper_model = whisper_model or self.WHISPER_MODEL
-        self.parser_model = parser_model or self.PARSER_MODEL
-        self.client = Groq(api_key=self.api_key)
+        self.client = Groq(api_key=groq_key)
+
+        # --- LLM parser client ---
+        # Prefer OpenRouter/AI_API_KEY so users with a single OpenRouter key
+        # don't need a Groq key just for text parsing.
+        parser_api_key = (
+            os.getenv("OPENROUTER_API_KEY")
+            or os.getenv("AI_API_KEY")
+        )
+
+        if parser_api_key:
+            parser_base = os.getenv("LLM_PARSER_API_BASE", _OPENROUTER_BASE)
+            default_model = _OPENROUTER_PARSER_MODEL
+            extra_headers: dict = {}
+            if "openrouter" in parser_base:
+                extra_headers = {
+                    "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
+                    "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+                }
+            self._parser_client = OpenAI(
+                api_key=parser_api_key,
+                base_url=parser_base,
+                default_headers=extra_headers or None,
+            )
+            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", default_model)
+            self._parser_uses_openai_compat = True
+            logger.info("LLM parser: OpenAI-compat at %s — %s", parser_base, self.parser_model)
+        else:
+            # Fall back to Groq for both Whisper and LLM parsing.
+            self._parser_client = None  # use self.client (Groq)
+            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", self.GROQ_PARSER_MODEL)
+            self._parser_uses_openai_compat = False
+            logger.info("LLM parser: Groq — %s", self.parser_model)
 
     # ------------------------------------------------------------------
     # Whisper transcription
@@ -81,7 +119,7 @@ class VoiceTranscriberService:
             prompt = f"{prompt}, {request.prompt_hint}" if prompt else request.prompt_hint
 
         try:
-            audio_bytes = base64.b64decode(request.audio_base64)
+            audio_bytes = request.audio_bytes
             suffix = f".{request.audio_format.lower()}"
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                 tmp.write(audio_bytes)
@@ -122,7 +160,8 @@ class VoiceTranscriberService:
     # ------------------------------------------------------------------
 
     def _llm(self, system: str, user: str) -> str:
-        resp = self.client.chat.completions.create(
+        client = self._parser_client if self._parser_uses_openai_compat else self.client
+        resp = client.chat.completions.create(
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             model=self.parser_model,
             temperature=self.PARSER_TEMPERATURE,

@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import logging
 from typing import Optional, Dict, Any, List
 
@@ -18,8 +19,20 @@ logger = logging.getLogger(__name__)
 
 # Qwen2.5-VL served via Together AI (OpenAI-compatible endpoint).
 # Set TOGETHER_API_KEY and optionally QWEN_VL_API_BASE + QWEN_VL_MODEL in env.
-DEFAULT_API_BASE = "https://api.together.xyz/v1"
-DEFAULT_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
+# Provider base URLs
+_PROVIDER_BASES = {
+    "together":   "https://api.together.xyz/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+}
+
+# Qwen2.5-VL model IDs per provider
+_PROVIDER_MODELS = {
+    "together":   "Qwen/Qwen2.5-VL-72B-Instruct",
+    "openrouter": "qwen/qwen2.5-vl-72b-instruct",
+}
+
+DEFAULT_API_BASE = _PROVIDER_BASES["together"]
+DEFAULT_MODEL = _PROVIDER_MODELS["together"]
 
 
 class MealScannerService:
@@ -40,15 +53,50 @@ class MealScannerService:
         api_base: Optional[str] = None,
         model: Optional[str] = None,
     ):
-        self.api_key = api_key or os.getenv("TOGETHER_API_KEY") or os.getenv("QWEN_VL_API_KEY")
+        # Key resolution order:
+        #   1. explicit constructor arg
+        #   2. QWEN_VL_API_KEY  (provider-agnostic override)
+        #   3. OPENROUTER_API_KEY / AI_API_KEY  (if provider is openrouter)
+        #   4. TOGETHER_API_KEY  (legacy default)
+        provider = os.getenv("QWEN_VL_PROVIDER", "").lower()  # "openrouter" | "together" | ""
+
+        self.api_key = (
+            api_key
+            or os.getenv("QWEN_VL_API_KEY")
+            or (os.getenv("OPENROUTER_API_KEY") or os.getenv("AI_API_KEY") if provider == "openrouter" else None)
+            or os.getenv("TOGETHER_API_KEY")
+            or os.getenv("OPENROUTER_API_KEY")   # fallback: use OpenRouter key if nothing else set
+            or os.getenv("AI_API_KEY")
+        )
         if not self.api_key:
             raise ValueError(
-                "No API key found for Qwen2.5-VL. "
-                "Set TOGETHER_API_KEY or QWEN_VL_API_KEY environment variable."
+                "No API key found for the vision model. Set one of:\n"
+                "  OPENROUTER_API_KEY  (recommended — OpenRouter)\n"
+                "  TOGETHER_API_KEY    (Together AI)\n"
+                "  QWEN_VL_API_KEY     (any OpenAI-compatible provider)\n"
+                "Also set QWEN_VL_PROVIDER=openrouter (or together) to pick defaults automatically."
             )
-        self.api_base = api_base or os.getenv("QWEN_VL_API_BASE", DEFAULT_API_BASE)
-        self.model = model or os.getenv("QWEN_VL_MODEL", DEFAULT_MODEL)
-        self.client = OpenAI(api_key=self.api_key, base_url=self.api_base)
+
+        # Resolve base URL and model, respecting explicit overrides first.
+        default_base  = _PROVIDER_BASES.get(provider, DEFAULT_API_BASE)
+        default_model = _PROVIDER_MODELS.get(provider, DEFAULT_MODEL)
+
+        self.api_base = api_base or os.getenv("QWEN_VL_API_BASE", default_base)
+        self.model    = model    or os.getenv("QWEN_VL_MODEL",    default_model)
+
+        # OpenRouter requires these headers for rate-limit attribution.
+        extra_headers: dict = {}
+        if "openrouter" in self.api_base:
+            extra_headers = {
+                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
+                "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+            }
+
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base,
+            default_headers=extra_headers or None,
+        )
 
     # ------------------------------------------------------------------
     # Prompt building
@@ -132,10 +180,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
         self,
         system_prompt: str,
         user_prompt: str,
-        image_base64: str,
+        image_bytes: bytes,
         image_format: str = "jpeg",
     ) -> str:
-        image_url = f"data:image/{image_format};base64,{image_base64}"
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        image_url = f"data:image/{image_format};base64,{image_b64}"
         completion = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -197,7 +246,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
             raw = self._call_vision_llm(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                image_base64=request.image_base64,
+                image_bytes=request.image_bytes,
                 image_format=request.image_format,
             )
             data = self._parse_json(raw)
