@@ -10,7 +10,7 @@ from typing import Optional, List
 # ========================================
 
 class MealScanRequestDTO(BaseModel):
-    image_base64: str = Field(..., description="Base64 encoded image of the meal")
+    image_bytes: bytes = Field(..., description="Raw image bytes")
     image_format: str = Field(default="jpeg", description="Image format (jpeg, png, webp)")
     user_dietary_preference: Optional[str] = Field(None, description="User's dietary preference for context")
     user_allergies: Optional[str] = Field(None, description="User's allergies for warnings")

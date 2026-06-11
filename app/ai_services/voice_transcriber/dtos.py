@@ -17,11 +17,13 @@ class TranscriptionContextType(str, Enum):
 # ========================================
 
 class TranscriptionRequestDTO(BaseModel):
-    audio_base64: str = Field(..., description="Base64-encoded audio file")
+    audio_bytes: bytes = Field(..., description="Raw audio bytes")
     audio_format: str = Field(default="mp3", description="mp3 | wav | m4a | webm | ogg | flac")
     language: Optional[str] = Field(None, description="Language code (auto-detected if omitted)")
     context_type: TranscriptionContextType = Field(default=TranscriptionContextType.GENERAL)
     prompt_hint: Optional[str] = Field(None, description="Optional Whisper prompt hint")
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 # ========================================

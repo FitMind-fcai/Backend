@@ -1,11 +1,12 @@
 import os
 import json
+import base64
 import logging
 from typing import Optional, Dict, Any, List
 
 from openai import OpenAI
 
-from app.ai_services.embedding_utils import embed_text, vec_to_pg_str  # noqa: F401 – re-exported
+from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 from app.ai_services.meal_scanner.dtos import (
     MealScanRequestDTO,
     MealScanResultDTO,
@@ -16,39 +17,45 @@ from app.ai_services.meal_scanner.dtos import (
 
 logger = logging.getLogger(__name__)
 
-# Qwen2.5-VL served via Together AI (OpenAI-compatible endpoint).
-# Set TOGETHER_API_KEY and optionally QWEN_VL_API_BASE + QWEN_VL_MODEL in env.
-DEFAULT_API_BASE = "https://api.together.xyz/v1"
-DEFAULT_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+_DEFAULT_MODEL   = "qwen/qwen2.5-vl-72b-instruct"
 
 
 class MealScannerService:
     """
-    Vision-language meal scanner backed by Qwen2.5-VL.
+    Vision-language meal scanner backed by Qwen2.5-VL via OpenRouter.
 
-    Vision inference is delegated to Together AI's OpenAI-compatible API.
-    After recognition the service generates semantic tags, which are then
-    embedded and used for pgvector similarity search against central_foods.
+    Uses the same AI_API_KEY as the AI Coach — no extra keys required.
+    After recognition the service generates semantic tags which are embedded
+    and used for pgvector similarity search against central_foods.
     """
 
     DEFAULT_TEMPERATURE = 0.1
-    DEFAULT_MAX_TOKENS = 2048
+    DEFAULT_MAX_TOKENS  = 2048
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        api_base: Optional[str] = None,
         model: Optional[str] = None,
     ):
-        self.api_key = api_key or os.getenv("TOGETHER_API_KEY") or os.getenv("QWEN_VL_API_KEY")
+        self.api_key = api_key or os.getenv("AI_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "No API key found for Qwen2.5-VL. "
-                "Set TOGETHER_API_KEY or QWEN_VL_API_KEY environment variable."
+                "AI_API_KEY is not set. "
+                "This key is shared by the AI Coach and the Meal Scanner (OpenRouter)."
             )
-        self.api_base = api_base or os.getenv("QWEN_VL_API_BASE", DEFAULT_API_BASE)
-        self.model = model or os.getenv("QWEN_VL_MODEL", DEFAULT_MODEL)
-        self.client = OpenAI(api_key=self.api_key, base_url=self.api_base)
+
+        self.model = model or os.getenv("QWEN_VL_MODEL", _DEFAULT_MODEL)
+
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=_OPENROUTER_BASE,
+            default_headers={
+                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
+                "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+            },
+        )
+        logger.info("MealScannerService ready — model=%s", self.model)
 
     # ------------------------------------------------------------------
     # Prompt building
@@ -57,18 +64,15 @@ class MealScannerService:
     def _build_scan_prompt(self, request: MealScanRequestDTO) -> str:
         dietary_ctx = (
             f"\nUser's Dietary Preference: {request.user_dietary_preference}"
-            if request.user_dietary_preference
-            else ""
+            if request.user_dietary_preference else ""
         )
         allergen_ctx = (
             f"\nUser's Known Allergies: {request.user_allergies} — flag any item that may contain these!"
-            if request.user_allergies
-            else ""
+            if request.user_allergies else ""
         )
         lang_instruction = (
             "\nProvide meal_name and health_notes in Arabic."
-            if request.language == "ar"
-            else ""
+            if request.language == "ar" else ""
         )
 
         return f"""Analyze this food image and estimate its nutritional content.
@@ -132,10 +136,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
         self,
         system_prompt: str,
         user_prompt: str,
-        image_base64: str,
+        image_bytes: bytes,
         image_format: str = "jpeg",
     ) -> str:
-        image_url = f"data:image/{image_format};base64,{image_base64}"
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        image_url = f"data:image/{image_format};base64,{image_b64}"
         completion = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -143,7 +148,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": user_prompt},
+                        {"type": "text",      "text": user_prompt},
                         {"type": "image_url", "image_url": {"url": image_url}},
                     ],
                 },
@@ -171,21 +176,13 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # Public API
     # ------------------------------------------------------------------
 
-    def scan_meal(
-        self,
-        request: MealScanRequestDTO,
-        db=None,
-    ) -> MealScanResultDTO:
+    def scan_meal(self, request: MealScanRequestDTO, db=None) -> MealScanResultDTO:
         """
         Analyse a meal image and return nutrition + tags + vector-matched foods.
 
-        Args:
-            request: MealScanRequestDTO with base64 image and user context.
-            db: Optional SQLAlchemy session. When provided, performs pgvector
-                similarity search against central_foods and populates
-                matched_foods in the result.
+        db: optional SQLAlchemy session for pgvector similarity search.
         """
-        logger.info("Scanning meal image with Qwen2.5-VL (format=%s)", request.image_format)
+        logger.info("Scanning meal image — format=%s model=%s", request.image_format, self.model)
 
         try:
             system_prompt = (
@@ -193,11 +190,10 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 "regional cuisines, and portion sizes. Analyse food images and return "
                 "accurate nutritional estimates as valid JSON only."
             )
-            user_prompt = self._build_scan_prompt(request)
             raw = self._call_vision_llm(
                 system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                image_base64=request.image_base64,
+                user_prompt=self._build_scan_prompt(request),
+                image_bytes=request.image_bytes,
                 image_format=request.image_format,
             )
             data = self._parse_json(raw)
@@ -225,7 +221,6 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
             ]
             tags: List[str] = data.get("tags", [])
 
-            # Vector search — requires pgvector-enabled DB session.
             matched_foods: List[MatchedFoodDTO] = []
             if db is not None and tags:
                 matched_foods = self._find_similar_foods(tags, db)
@@ -233,10 +228,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
             meal_name = data.get("meal_name", "Unidentified Meal")
             logger.info(
                 "Meal scan OK: %s — %s kcal, tags=%s, matches=%d",
-                meal_name,
-                data.get("total_calories"),
-                tags,
-                len(matched_foods),
+                meal_name, data.get("total_calories"), tags, len(matched_foods),
             )
 
             return MealScanResultDTO(
@@ -267,30 +259,19 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # ------------------------------------------------------------------
 
     def _find_similar_foods(self, tags: List[str], db) -> List[MatchedFoodDTO]:
-        """Embed *tags* and run cosine similarity search against central_foods."""
+        """Embed tags and run cosine similarity search against central_foods."""
         try:
             from sqlalchemy import text
 
-            embedding = embed_text(" ".join(tags))
-            vec_str = vec_to_pg_str(embedding)
-
+            vec_str = vec_to_pg_str(embed_text(" ".join(tags)))
             rows = db.execute(
                 text("""
-                    SELECT
-                        id,
-                        food_name,
-                        food_category,
-                        calories_per_100g,
-                        protein_per_100g,
-                        carbs_per_100g,
-                        fats_per_100g,
-                        fiber_per_100g,
-                        serving_size_g,
-                        serving_description,
-                        1 - (name_embedding <=> :vec::vector) AS similarity
+                    SELECT id, food_name, food_category,
+                           calories_per_100g, protein_per_100g, carbs_per_100g,
+                           fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
+                           1 - (name_embedding <=> :vec::vector) AS similarity
                     FROM central_foods
-                    WHERE is_active = true
-                      AND name_embedding IS NOT NULL
+                    WHERE is_active = true AND name_embedding IS NOT NULL
                     ORDER BY name_embedding <=> :vec::vector
                     LIMIT 5
                 """),
@@ -299,17 +280,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
 
             return [
                 MatchedFoodDTO(
-                    id=r.id,
-                    food_name=r.food_name,
-                    food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g,
-                    protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g,
-                    fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g,
-                    serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description,
-                    similarity_score=float(r.similarity),
+                    id=r.id, food_name=r.food_name, food_category=r.food_category,
+                    calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
+                    carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
+                    fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
+                    serving_description=r.serving_description, similarity_score=float(r.similarity),
                 )
                 for r in rows
             ]
@@ -320,20 +295,12 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     @staticmethod
     def _error_result(message: str) -> MealScanResultDTO:
         return MealScanResultDTO(
-            meal_name="Scan Failed",
-            meal_type="Unknown",
-            food_items=[],
-            total_calories=0,
-            total_protein_g=0.0,
-            total_carbs_g=0.0,
-            total_fats_g=0.0,
-            allergen_warnings=[],
-            health_notes=None,
-            confidence_score=0.0,
-            tags=[],
-            matched_foods=[],
-            scan_successful=False,
-            error_message=message,
+            meal_name="Scan Failed", meal_type="Unknown",
+            food_items=[], total_calories=0,
+            total_protein_g=0.0, total_carbs_g=0.0, total_fats_g=0.0,
+            allergen_warnings=[], health_notes=None,
+            confidence_score=0.0, tags=[], matched_foods=[],
+            scan_successful=False, error_message=message,
         )
 
 
