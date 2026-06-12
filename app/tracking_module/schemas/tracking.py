@@ -1,80 +1,12 @@
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Any, List, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class WorkoutLogCreateText(BaseModel):
-    central_exercise_id: Optional[int] = None
-    workout_day_exercise_id: Optional[int] = None
-    log_date: date
-    sets_completed: int = Field(..., ge=1)
-    reps_completed: int = Field(..., ge=1)
-    weight_used: Optional[float] = Field(default=None, ge=0)
-    duration_seconds: Optional[int] = Field(default=None, ge=1)
-    notes: Optional[str] = None
-    log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
-
-
-class WorkoutLogResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    user_id: int
-    central_exercise_id: Optional[int]
-    workout_day_exercise_id: Optional[int]
-    log_date: date
-    sets_completed: int
-    reps_completed: int
-    weight_used: Optional[float]
-    duration_seconds: Optional[int]
-    notes: Optional[str]
-    created_at: datetime
-
-
-class MealLogCreateText(BaseModel):
-    central_food_id: Optional[int] = None
-    log_date: date
-    meal_type: str = Field(..., min_length=2, max_length=50)
-    meal_name: Optional[str] = Field(default=None, min_length=2, max_length=255)
-    servings: float = Field(default=1.0, gt=0)
-    serving_size_g_snapshot: Optional[float] = Field(default=None, gt=0)
-    serving_description_snapshot: Optional[str] = Field(default=None, max_length=100)
-    calories: Optional[float] = Field(default=None, ge=0)
-    protein_g: Optional[float] = Field(default=None, ge=0)
-    carbs_g: Optional[float] = Field(default=None, ge=0)
-    fats_g: Optional[float] = Field(default=None, ge=0)
-    log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
-
-    @model_validator(mode="after")
-    def validate_meal_input_mode(self):
-        if self.central_food_id is not None:
-            if any(v is not None for v in [self.calories, self.protein_g, self.carbs_g, self.fats_g]):
-                raise ValueError(
-                    "When central_food_id is provided, do not send macros. "
-                    "Macros are calculated automatically from central food and servings."
-                )
-            return self
-
-        missing_fields = []
-        if not self.meal_name:
-            missing_fields.append("meal_name")
-        if self.calories is None:
-            missing_fields.append("calories")
-        if self.protein_g is None:
-            missing_fields.append("protein_g")
-        if self.carbs_g is None:
-            missing_fields.append("carbs_g")
-        if self.fats_g is None:
-            missing_fields.append("fats_g")
-
-        if missing_fields:
-            raise ValueError(
-                "For manual meal logs without central_food_id, required fields are missing: "
-                + ", ".join(missing_fields)
-            )
-        return self
-
+# ──────────────────────────────────────────────────────────────────────────────
+# Log response schemas  (returned after saving)
+# ──────────────────────────────────────────────────────────────────────────────
 
 class MealLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -97,10 +29,20 @@ class MealLogResponse(BaseModel):
     created_at: datetime
 
 
-class WeightLogCreateText(BaseModel):
+class WorkoutLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    central_exercise_id: Optional[int]
+    workout_day_exercise_id: Optional[int]
     log_date: date
-    weight: float = Field(..., gt=0)
-    notes: Optional[str] = None
+    sets_completed: int
+    reps_completed: int
+    weight_used: Optional[float]
+    duration_seconds: Optional[int]
+    notes: Optional[str]
+    created_at: datetime
 
 
 class WeightLogResponse(BaseModel):
@@ -114,31 +56,91 @@ class WeightLogResponse(BaseModel):
     created_at: datetime
 
 
-class FoodSearchResult(BaseModel):
-    id: int
-    food_name: str
-    food_category: Optional[str] = None
-    serving_size_g: float
-    serving_description: str
-    calories_per_serving: float
-    protein_g_per_serving: float
-    carbs_g_per_serving: float
-    fats_g_per_serving: float
-    fiber_g_per_serving: float
-    source: str
+# ──────────────────────────────────────────────────────────────────────────────
+# Unified save endpoint schemas
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MealLogEntry(BaseModel):
+    """One meal item to log. Use central_food_id (from search) for accurate macros."""
+    central_food_id: Optional[int] = None
+    meal_type: str = Field(..., min_length=2, max_length=50, description="Breakfast | Lunch | Dinner | Snack")
+    meal_name: Optional[str] = Field(default=None, max_length=255)
+    servings: float = Field(default=1.0, gt=0)
+    serving_size_g_snapshot: Optional[float] = Field(default=None, gt=0)
+    serving_description_snapshot: Optional[str] = Field(default=None, max_length=100)
+    # Fallback macros — ignored when central_food_id is set
+    calories: Optional[float] = Field(default=None, ge=0)
+    protein_g: Optional[float] = Field(default=None, ge=0)
+    carbs_g: Optional[float] = Field(default=None, ge=0)
+    fats_g: Optional[float] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def check_macros(self):
+        if self.central_food_id is None:
+            missing = [f for f in ["calories", "protein_g", "carbs_g", "fats_g"]
+                       if getattr(self, f) is None]
+            if missing:
+                raise ValueError(
+                    "When central_food_id is not provided, the following macro fields are required: "
+                    + ", ".join(missing)
+                )
+        return self
 
 
-class ExerciseSearchResult(BaseModel):
-    id: int
-    name: str
-    exercise_type: str
-    primary_muscle_group: str
-    secondary_muscles: Optional[str] = None
-    equipment_required: str
-    difficulty_level: str
-    location: str
-    instructions: Optional[str] = None
+class WorkoutLogEntry(BaseModel):
+    """One exercise set to log. Use central_exercise_id (from search) for structured tracking."""
+    central_exercise_id: Optional[int] = None
+    workout_day_exercise_id: Optional[int] = None
+    sets_completed: int = Field(..., ge=1)
+    reps_completed: int = Field(..., ge=1)
+    weight_used: Optional[float] = Field(default=None, ge=0)
+    duration_seconds: Optional[int] = Field(default=None, ge=1)
+    notes: Optional[str] = None
 
+
+class WeightLogEntry(BaseModel):
+    """One body-weight measurement to log."""
+    weight: float = Field(..., gt=0, description="Body weight in kilograms")
+    notes: Optional[str] = None
+
+
+class SaveLogsRequest(BaseModel):
+    """
+    Unified log-save request for all categories.
+
+    Set `category` to `meal`, `workout`, or `weight` and populate the
+    matching `*_entries` field. Multiple entries are saved in one call.
+
+    **`log_method`:** `TEXT` (default) | `VOICE` | `CAMERA`
+    """
+    category: Literal["meal", "workout", "weight"]
+    log_date: date
+    log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
+    meal_entries: Optional[List[MealLogEntry]] = None
+    workout_entries: Optional[List[WorkoutLogEntry]] = None
+    weight_entries: Optional[List[WeightLogEntry]] = None
+
+    @model_validator(mode="after")
+    def check_entries_present(self):
+        field = f"{self.category}_entries"
+        if not getattr(self, field):
+            raise ValueError(
+                f"'{field}' is required and cannot be empty when category='{self.category}'."
+            )
+        return self
+
+
+class SaveLogsResponse(BaseModel):
+    category: str
+    saved_count: int
+    meal_logs: List[MealLogResponse] = Field(default_factory=list)
+    workout_logs: List[WorkoutLogResponse] = Field(default_factory=list)
+    weight_logs: List[WeightLogResponse] = Field(default_factory=list)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Catalog  (manual entries)
+# ──────────────────────────────────────────────────────────────────────────────
 
 class ManualFoodCreate(BaseModel):
     food_name: str = Field(..., min_length=2, max_length=255)
@@ -199,12 +201,14 @@ class ManualCentralExerciseResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# AI · Meal Scanner
+# Search result schemas  (returned by search + AI endpoints)
 # ──────────────────────────────────────────────────────────────────────────────
 
-
 class MatchedFoodResponse(BaseModel):
-    """A central_food row returned by vector similarity search."""
+    """
+    A food from the central catalog matched by vector similarity.
+    Use `id` as `central_food_id` in `SaveLogsRequest.meal_entries`.
+    """
     id: int
     food_name: str
     food_category: Optional[str] = None
@@ -217,6 +221,26 @@ class MatchedFoodResponse(BaseModel):
     serving_description: Optional[str] = None
     similarity_score: float = Field(..., description="Cosine similarity 0–1 (higher = more similar)")
 
+
+class MatchedExerciseResponse(BaseModel):
+    """
+    An exercise from the central catalog matched by vector similarity.
+    Use `id` as `central_exercise_id` in `SaveLogsRequest.workout_entries`.
+    """
+    id: int
+    name: str
+    exercise_type: str
+    primary_muscle_group: str
+    secondary_muscles: Optional[str] = None
+    equipment_required: str
+    difficulty_level: str
+    location: str
+    similarity_score: float = Field(..., description="Cosine similarity 0–1")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AI · Scanner schemas
+# ──────────────────────────────────────────────────────────────────────────────
 
 class ScannedFoodItemResponse(BaseModel):
     name: str
@@ -231,9 +255,8 @@ class ScannedFoodItemResponse(BaseModel):
 
 class MealScanResponse(BaseModel):
     """
-    Result of scanning a meal photo.
-    `matched_foods` contains top-5 catalog suggestions — pick one and pass its `id`
-    as `central_food_id` when calling `POST /tracking/meals` to save the log.
+    Image scan result. `matched_foods` contains top-5 catalog suggestions.
+    Pick one and pass its `id` as `central_food_id` in `POST /tracking/logs`.
     """
     meal_name: str
     meal_type: str
@@ -252,28 +275,13 @@ class MealScanResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# AI · Voice
+# AI · Voice schemas
 # ──────────────────────────────────────────────────────────────────────────────
-
-
-class MatchedExerciseResponse(BaseModel):
-    """A central_exercise matched via vector similarity."""
-    id: int
-    name: str
-    exercise_type: str
-    primary_muscle_group: str
-    secondary_muscles: Optional[str] = None
-    equipment_required: str
-    difficulty_level: str
-    location: str
-    similarity_score: float = Field(..., description="Cosine similarity 0–1")
-
 
 class MealVoiceResponse(BaseModel):
     """
-    Result of transcribing a meal voice clip.
-    `matched_foods` contains top-5 catalog suggestions — pick one and pass its `id`
-    as `central_food_id` when calling `POST /tracking/meals` to save the log.
+    Meal voice transcription result. `matched_foods` contains top-5 catalog suggestions.
+    Pick one and pass its `id` as `central_food_id` in `POST /tracking/logs`.
     """
     raw_text: str
     meal_name: Optional[str] = None
@@ -291,7 +299,7 @@ class MealVoiceResponse(BaseModel):
 
 
 class ParsedExerciseResponse(BaseModel):
-    """A single exercise parsed from the workout voice clip."""
+    """One exercise parsed from a workout voice clip."""
     name: str
     sets: Optional[int] = None
     reps: Optional[int] = None
@@ -303,9 +311,10 @@ class ParsedExerciseResponse(BaseModel):
 
 class WorkoutVoiceResponse(BaseModel):
     """
-    Result of transcribing a workout voice clip.
-    Each `exercises[i].matched_exercises` contains top-5 catalog suggestions —
-    pick `central_exercise_id` values and call `POST /tracking/workouts` once per exercise to save.
+    Workout voice transcription result. Each exercise in `exercises` contains
+    `matched_exercises` — top-5 catalog suggestions.
+    Pick `id` values and pass them as `central_exercise_id` in `POST /tracking/logs`
+    (one request per exercise, or batch them all in one request's `workout_entries`).
     """
     raw_text: str
     exercises: List[ParsedExerciseResponse]
@@ -313,3 +322,14 @@ class WorkoutVoiceResponse(BaseModel):
     tags: List[str]
     parse_successful: bool
     notes: Optional[str] = None
+
+
+class WeightVoiceResponse(BaseModel):
+    """
+    Weight voice transcription result.
+    Pass `extracted_weight_kg` directly to `POST /tracking/logs` as the `weight` field.
+    """
+    raw_text: str
+    extracted_weight_kg: Optional[float] = None
+    notes: Optional[str] = None
+    parse_successful: bool

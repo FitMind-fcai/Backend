@@ -111,3 +111,11 @@ class WorkoutLogTranscriptionDTO(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Semantic workout tags (muscle groups, equipment, etc.)")
     parse_successful: bool = True
     notes: Optional[str] = None
+
+
+class WeightLogTranscriptionDTO(BaseModel):
+    """Weight value extracted from a voice recording."""
+    raw_text: str
+    extracted_weight_kg: Optional[float] = Field(None, ge=0, description="Weight in kg (lbs auto-converted)")
+    notes: Optional[str] = None
+    parse_successful: bool = True
