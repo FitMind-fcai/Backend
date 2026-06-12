@@ -111,7 +111,7 @@ v1_router.include_router(profileRouter, tags=["Profiles"])
 v1_router.include_router(plan_generation_router, tags=["Plan Generation"])
 v1_router.include_router(workout_router, tags=["Workout Plans"])
 v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
-v1_router.include_router(tracking_router, tags=["Tracking"])
+v1_router.include_router(tracking_router)  # tags are set per-endpoint
 
 app.include_router(v1_router)
 

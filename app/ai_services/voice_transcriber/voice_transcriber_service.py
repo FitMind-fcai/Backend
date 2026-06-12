@@ -14,6 +14,7 @@ from app.ai_services.voice_transcriber.dtos import (
     TranscriptionContextType,
     MealLogTranscriptionDTO,
     WorkoutLogTranscriptionDTO,
+    WeightLogTranscriptionDTO,
     MatchedFoodDTO,
     MatchedExerciseDTO,
     ParsedExerciseDTO,
@@ -423,6 +424,68 @@ Rules:
             tags=data.get("tags", []),
             parse_successful=True,
             notes=data.get("notes"),
+        )
+
+
+    # ------------------------------------------------------------------
+    # Weight parsing
+    # ------------------------------------------------------------------
+
+    def transcribe_and_parse_weight_log(
+        self,
+        request: TranscriptionRequestDTO,
+    ) -> WeightLogTranscriptionDTO:
+        """
+        Whisper → LLM weight extractor.
+
+        Extracts a numeric weight value (kg) from a voice recording such as
+        "I weigh 75 kilos" or "just hit 165 pounds".
+        """
+        request.context_type = TranscriptionContextType.GENERAL
+        transcription = self.transcribe(request)
+
+        if not transcription.transcription_successful:
+            return WeightLogTranscriptionDTO(
+                raw_text="",
+                parse_successful=False,
+                notes=transcription.error_message,
+            )
+
+        try:
+            system = (
+                "You are a weight-tracking assistant. "
+                "Extract a numeric body weight from the user's voice input. "
+                "Return ONLY valid JSON, no extra text."
+            )
+            user = f"""Extract the body weight from this transcription.
+
+Transcription: "{transcription.text}"
+
+Return JSON:
+{{
+    "extracted_weight_kg": 75.5,
+    "notes": "any relevant context or null"
+}}
+
+Rules:
+- extracted_weight_kg: numeric kg value; convert lbs × 0.453592 if needed; null if no weight found
+- Return ONLY valid JSON"""
+
+            data = self._parse_json(self._llm(system, user))
+        except Exception as exc:
+            logger.error("Weight parse failed: %s", exc)
+            return WeightLogTranscriptionDTO(
+                raw_text=transcription.text,
+                parse_successful=False,
+                notes=f"Parse error: {exc}",
+            )
+
+        weight = data.get("extracted_weight_kg")
+        return WeightLogTranscriptionDTO(
+            raw_text=transcription.text,
+            extracted_weight_kg=float(weight) if weight is not None else None,
+            notes=data.get("notes"),
+            parse_successful=weight is not None,
         )
 
 
