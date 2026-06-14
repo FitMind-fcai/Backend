@@ -26,6 +26,7 @@ from app.planning_module.services.converters import (
     nutrition_plan_model_to_dto
 )
 from app.ai_services.ai_coach import get_ai_coach_service
+from app.planning_module.core.planning_engine import PlanningEngine
 
 
 class PlanGenerationService:
@@ -34,11 +35,11 @@ class PlanGenerationService:
         self.db = db
         self.workout_service = WorkoutPlanService(db)
         self.nutrition_service = NutritionPlanService(db)
-        # Repositories for creating plans
         self.workout_repo = WorkoutPlanRepository(db)
         self.central_exercise_repo = CentralExerciseRepository(db)
         self.nutrition_repo = NutritionPlanRepository(db)
         self.central_food_repo = CentralFoodRepository(db)
+        self.planning_engine = PlanningEngine()
     
     def generate_workout_plan(
         self,
@@ -205,33 +206,49 @@ class PlanGenerationService:
         update_plan_id: int = None
     ) -> dict:
         """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
-        profile_dto = profile_to_dto(profile)
+        profile_dto     = profile_to_dto(profile)
         preferences_dto = workout_preferences_to_dto(preferences)
 
-        # Get strict allowed exercises string based on user's equipment and difficulty
+        # Phase 1 — Planning Engine computes targets before the LLM is called
+        planning_output = self.planning_engine.compute(
+            weight_kg=float(profile.weight or 70),
+            height_cm=float(profile.height or 170),
+            age=int(profile.age or 25),
+            gender=profile.gender,
+            activity_level=profile.activity_level,
+            fitness_goal=profile.fitness_goal,
+            training_days_per_week=int(preferences.workout_days_per_week or 4),
+            session_duration_minutes=int(preferences.session_duration_minutes or 60),
+        )
+
+        # Phase 2 — Ranked exercise retrieval (goal + injury aware)
         allowed_exercises_str = self.central_exercise_repo.get_equipment_friendly_exercises_for_ai(
             equipment_availability=preferences.equipment_availability,
             workout_difficulty=preferences.workout_difficulty,
             focus_areas=preferences.focus_areas,
-            limit=60
+            limit=60,
+            goal=planning_output.goal,
+            injuries=str(profile.injuries or ""),
         )
 
+        # Phase 5+6 — LLM refinement layer receives the structured draft
         ai_coach = get_ai_coach_service()
         workout_plan_dto = ai_coach.generate_workout_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
             duration_weeks=duration_weeks,
             existing_plan=existing_plan,
-            allowed_exercises_str=allowed_exercises_str
+            allowed_exercises_str=allowed_exercises_str,
+            planning_output=planning_output,
         )
 
-        plan_create = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
+        plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
         preferences_dict = preferences.model_dump()
 
         return {
             "draft_plan": plan_create,
             "generated_from_preferences": preferences_dict,
-            "update_plan_id": update_plan_id
+            "update_plan_id": update_plan_id,
         }
     
     def _generate_nutrition_plan(
@@ -242,54 +259,55 @@ class PlanGenerationService:
         existing_plan=None,
         update_plan_id: int = None
     ) -> dict:
-        """
-        Generate a new nutrition plan using AI Coach service.
-        
-        Args:
-            profile: User's profile model
-            preferences: Nutrition preferences from request
-            duration_weeks: Plan duration in weeks
-            existing_plan: Optional existing plan DTO for regeneration
-            
-        Returns:
-            Created NutritionPlan model
-        """
-        # Convert to DTOs for AI Coach
-        profile_dto = profile_to_dto(profile)
+        """Internal: call AI and return NutritionPlanCreate draft dict (no DB writes)."""
+        profile_dto     = profile_to_dto(profile)
         preferences_dto = nutrition_preferences_to_dto(preferences)
-        
-        # Get strict allowed foods string based on user's selected diet preference
-        allowed_foods_str = self.central_food_repo.get_diet_friendly_foods_for_ai(
-            diet_type=profile.dietary_preference if hasattr(profile, 'dietary_preference') else "balanced",
-            allergies=getattr(profile, 'allergies', ''),
-            exclude_ingredients=getattr(preferences, 'exclude_ingredients', []),
-            limit=50
+
+        # Phase 1 — Planning Engine computes macro targets before the LLM is called
+        planning_output = self.planning_engine.compute(
+            weight_kg=float(profile.weight or 70),
+            height_cm=float(profile.height or 170),
+            age=int(profile.age or 25),
+            gender=profile.gender,
+            activity_level=profile.activity_level,
+            fitness_goal=profile.fitness_goal,
+            custom_calorie_target=getattr(preferences, "custom_calorie_target", None),
+            meals_per_day=int(getattr(preferences, "meals_per_day", 3) or 3),
         )
 
-        # Generate plan via AI Coach (with existing plan if regenerating)
+        # Phase 3 — Scored food retrieval (goal + calorie/protein target aware)
+        allowed_foods_str = self.central_food_repo.get_diet_friendly_foods_for_ai(
+            diet_type=profile.dietary_preference if hasattr(profile, "dietary_preference") else "balanced",
+            allergies=getattr(profile, "allergies", ""),
+            exclude_ingredients=getattr(preferences, "exclude_ingredients", []),
+            limit=50,
+            goal=planning_output.goal,
+            target_calories=planning_output.nutrition.calories,
+            target_protein_g=planning_output.nutrition.protein_g,
+        )
+
+        # Phase 5+6 — LLM refinement layer receives the structured draft
         ai_coach = get_ai_coach_service()
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
             duration_weeks=duration_weeks,
             existing_plan=existing_plan,
-            allowed_foods_str=allowed_foods_str
+            allowed_foods_str=allowed_foods_str,
+            planning_output=planning_output,
         )
-        
-        # Convert DTO to create schema
+
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
 
-        # Authoritative nutrition numbers are always computed on server from ingredients.
+        # Authoritative macro numbers are always recomputed from DB ingredient records.
         self._hydrate_nutrition_macros_from_ingredients(plan_create)
-        
-        # Store preferences used for generation
+
         preferences_dict = preferences.model_dump()
-        
-        # Return the generated plan CREATE structure as a DRAFT.
+
         return {
             "draft_plan": plan_create,
             "generated_from_preferences": preferences_dict,
-            "update_plan_id": update_plan_id
+            "update_plan_id": update_plan_id,
         }
 
     def _hydrate_nutrition_macros_from_ingredients(self, nutrition_plan):

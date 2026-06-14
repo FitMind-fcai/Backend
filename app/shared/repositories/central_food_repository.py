@@ -90,11 +90,14 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         return q.limit(limit).all()
 
     def get_diet_friendly_foods_for_ai(
-        self, 
-        diet_type: str = "balanced", 
-        allergies: str = "", 
-        exclude_ingredients: List[str] = None, 
-        limit: int = 50
+        self,
+        diet_type: str = "balanced",
+        allergies: str = "",
+        exclude_ingredients: List[str] = None,
+        limit: int = 50,
+        goal: str = "maintain",
+        target_calories: Optional[int] = None,
+        target_protein_g: Optional[int] = None,
     ) -> str:
         """
         Fetch a diverse list of foods matching a diet type while strictly EXCLUDING allergens,
@@ -149,22 +152,124 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             
         # Deterministic retrieval: avoid random() so core ingredient families are consistently present.
         foods_pool = query.order_by(CentralFood.food_name.asc()).limit(max(limit * 12, 240)).all()
-        foods = self._select_balanced_foods_for_prompt(foods_pool, limit)
-        
+
+        # Phase 3: Score each food for goal alignment before bucket selection
+        goal_norm = (goal or "maintain").lower().replace(" ", "_")
+        scored_pool = self._score_foods_for_goal(
+            foods_pool,
+            goal=goal_norm,
+            target_calories=target_calories,
+            target_protein_g=target_protein_g,
+        )
+        foods = self._select_balanced_foods_for_prompt(scored_pool, limit)
+
         if not foods:
             return "Note: No strict food constraints applied due to overly restrictive filters. Generate generic healthy meals."
 
         prompt_str = f"=== MANDATORY FOOD DATABASE ({len(foods)} ITEMS) ===\n"
         prompt_str += "You MUST ONLY generate meals using the exact foods and IDs from this list below. Do not invent new foods.\n"
         prompt_str += "Select foods creatively to form balanced meals.\n\n"
-        
+
         for f in foods:
             prompt_str += (
                 f"- [ID: {f.id}] {f.food_name} "
                 f"(Per 100g: {f.calories_per_100g} kcal | P:{f.protein_per_100g}g | C:{f.carbs_per_100g}g | F:{f.fats_per_100g}g)\n"
             )
-        
+
         return prompt_str
+
+    def _score_foods_for_goal(
+        self,
+        foods: List[CentralFood],
+        goal: str = "maintain",
+        target_calories: Optional[int] = None,
+        target_protein_g: Optional[int] = None,
+    ) -> List[CentralFood]:
+        """
+        Score and sort foods by goal alignment so that the best candidates
+        appear first when _select_balanced_foods_for_prompt fills quotas.
+
+        Scoring factors (matching the architecture upgrade plan):
+          Calorie Match  — High  (30 pts)
+          Protein Match  — High  (30 pts)
+          Goal Match     — High  (30 pts)
+          Food Quality   — Medium (10 pts)
+          Variety Signal — handled downstream by bucket selection
+        """
+        if not foods:
+            return foods
+
+        def _score(f: CentralFood) -> float:
+            s = 0.0
+            calories = float(f.calories_per_100g or 0)
+            protein  = float(f.protein_per_100g or 0)
+            carbs    = float(f.carbs_per_100g or 0)
+            fiber    = float(f.fiber_per_100g or 0)
+            name     = (f.food_name or "").lower()
+
+            # ── Protein Match (30 pts) — always valuable across all goals ───
+            if protein >= 25:
+                s += 30
+            elif protein >= 18:
+                s += 22
+            elif protein >= 12:
+                s += 14
+            elif protein >= 7:
+                s += 7
+
+            # ── Goal Match (30 pts) ──────────────────────────────────────────
+            if goal == "build_muscle":
+                # Dense, protein-rich foods; moderate-to-high calorie per 100 g
+                if protein >= 20 and calories >= 100:
+                    s += 30
+                elif protein >= 15:
+                    s += 20
+                if calories >= 200:
+                    s += 8   # calorie-dense foods useful for surplus
+            elif goal == "lose_weight":
+                # Low-calorie, high-fiber, high-satiety foods
+                if calories <= 80 and protein >= 8:
+                    s += 30
+                elif calories <= 120 and fiber >= 2:
+                    s += 22
+                if fiber >= 4:
+                    s += 10
+                if calories <= 50:
+                    s += 8
+            elif goal == "improve_fitness":
+                # Balance of protein + complex carbs + fibre
+                if protein >= 12 and carbs >= 10:
+                    s += 25
+                if fiber >= 3:
+                    s += 10
+            else:  # maintain
+                if protein >= 12:
+                    s += 20
+                if fiber >= 2:
+                    s += 8
+
+            # ── Calorie Match (30 pts) — reward density fit for the goal ────
+            if target_calories:
+                # Ideal per-100g density: target_calories / (meals * avg_serving_factor)
+                # A rough heuristic: foods between 80–300 kcal/100 g are most versatile
+                if goal == "build_muscle" and 120 <= calories <= 400:
+                    s += 20
+                elif goal == "lose_weight" and 30 <= calories <= 120:
+                    s += 20
+                elif 50 <= calories <= 300:
+                    s += 10
+
+            # ── Quality Signals (10 pts) ─────────────────────────────────────
+            quality_boost  = ["whole", "brown", "natural", "fresh", "raw", "oat"]
+            quality_penalty = ["processed", "refined", "instant", "flavored", "sweetened"]
+            if any(k in name for k in quality_boost):
+                s += 5
+            if any(k in name for k in quality_penalty):
+                s -= 5
+
+            return s
+
+        return sorted(foods, key=lambda f: (_score(f), f.food_name), reverse=True)
 
     def _select_balanced_foods_for_prompt(self, foods: List[CentralFood], limit: int) -> List[CentralFood]:
         """Build a deterministic, balanced food set for AI prompts."""

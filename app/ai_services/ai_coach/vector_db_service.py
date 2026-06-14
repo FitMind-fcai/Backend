@@ -10,193 +10,305 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 
-# Configure logger
 logger = logging.getLogger(__name__)
 
 
 class VectorDBService:
-    
+
     # Default paths
     BASE_DIR = os.path.dirname(__file__)
     DEFAULT_PERSIST_DIR = os.path.join(BASE_DIR, "chroma_db")
     DEFAULT_PDF_PATH = os.path.join(BASE_DIR, "fitness-handbook.pdf")
-    # Path to scraped documents (from scraper script)
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
     DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
-    
+
     # Embedding model configuration
     EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
     COLLECTION_NAME = "fitness_knowledge"
 
+    # Reranker model (Phase 4 — cross-encoder)
+    RERANKER_MODEL_NAME = "BAAI/bge-reranker-base"
+
     # Retrieval layers / sectioning
     WORKOUT_KEYWORDS = {
-        "programming": ["programming", "guideline", "program design", "periodization", "prescription", "resistance training"],
+        "programming":      ["programming", "guideline", "program design", "periodization", "prescription", "resistance training"],
         "exercise_library": ["exercise database", "exercise directory", "exercise anatomy", "kinesiology", "muscle directory"],
-        "periodization": ["periodization", "hypertrophy", "strength", "power", "endurance"],
-        "cardio": ["cardio", "aerobic", "hiit", "interval", "endurance"],
-        "core": ["core", "stability", "plank", "anti-rotation"],
-        "books": ["handbook", "manual", "book", "guide"],
+        "periodization":    ["periodization", "hypertrophy", "strength", "power", "endurance"],
+        "cardio":           ["cardio", "aerobic", "hiit", "interval", "endurance"],
+        "core":             ["core", "stability", "plank", "anti-rotation"],
+        "books":            ["handbook", "manual", "book", "guide"],
     }
     NUTRITION_KEYWORDS = {
-        "guidelines": ["nutrition", "diet", "healthy diet", "nutrition guidelines"],
-        "database": ["fooddata central", "food database", "nutrient database", "usda"],
+        "guidelines":     ["nutrition", "diet", "healthy diet", "nutrition guidelines"],
+        "database":       ["fooddata central", "food database", "nutrient database", "usda"],
         "sports_nutrition": ["sports nutrition", "supplement", "nutrient timing", "protein"],
-        "macros_tdee": ["macro", "tdee", "calorie", "macronutrient", "energy expenditure"],
-        "books": ["guide", "handbook", "book", "manual"],
+        "macros_tdee":    ["macro", "tdee", "calorie", "macronutrient", "energy expenditure"],
+        "books":          ["guide", "handbook", "book", "manual"],
     }
-    
+
     # Text splitting configuration
-    # 2200 chars is a practical approximation for ~512 tokens in English text.
-    CHUNK_SIZE = 2200
-    CHUNK_OVERLAP = 200
-    MAX_CONTEXT_CHARS = 3600
-    LEXICAL_TOP_K = 24
+    CHUNK_SIZE            = 2200
+    CHUNK_OVERLAP         = 200
+    MAX_CONTEXT_CHARS     = 3600
+    LEXICAL_TOP_K         = 24
     SEMANTIC_TOP_K_MULTIPLIER = 4
-    
+
+    # Phase 4 — retrieval constants
+    BM25_TOP_K   = 20
+    DENSE_TOP_K  = 20
+    RRF_K        = 60          # RRF constant (standard value)
+    RERANK_TOP_N = 5           # final top-n after reranking
+
     def __init__(
         self,
         persist_directory: Optional[str] = None,
-        collection_name: Optional[str] = None
+        collection_name: Optional[str] = None,
+        use_reranker: bool = True,
     ):
-        """
-        Initialize the VectorDBService.
-        
-        Args:
-            persist_directory: Directory to store the ChromaDB data
-            collection_name: Name of the Chroma collection
-        """
         self.persist_directory = persist_directory or self.DEFAULT_PERSIST_DIR
-        self.collection_name = collection_name or self.COLLECTION_NAME
-        self._embeddings = None
-        self._vectorstore = None
-    
+        self.collection_name   = collection_name   or self.COLLECTION_NAME
+        self.use_reranker      = use_reranker
+
+        self._embeddings   = None
+        self._vectorstore  = None
+        self._bm25_index   = None   # Phase 4: BM25 index
+        self._bm25_docs: List[Dict[str, Any]] = []   # parallel list to BM25 corpus
+        self._reranker     = None   # Phase 4: cross-encoder reranker
+
+    # ------------------------------------------------------------------
+    # Lazy-loaded properties
+    # ------------------------------------------------------------------
+
     @property
     def embeddings(self) -> HuggingFaceEmbeddings:
-        """Lazy load embeddings model."""
         if self._embeddings is None:
-            self._embeddings = HuggingFaceEmbeddings(
-                model_name=self.EMBEDDING_MODEL_NAME
-            )
+            self._embeddings = HuggingFaceEmbeddings(model_name=self.EMBEDDING_MODEL_NAME)
         return self._embeddings
-    
+
     @property
     def vectorstore(self) -> Chroma:
-        """
-        Lazy load or create the vector store.
-        Returns existing vectorstore if already loaded.
-        """
         if self._vectorstore is None:
             self._vectorstore = self._load_vectorstore()
         return self._vectorstore
-    
+
+    @property
+    def bm25_index(self):
+        """Lazy-load BM25 index built from all ChromaDB documents (Phase 4)."""
+        if self._bm25_index is None:
+            self._build_bm25_index()
+        return self._bm25_index
+
+    @property
+    def reranker(self):
+        """Lazy-load cross-encoder reranker (Phase 4)."""
+        if self._reranker is None and self.use_reranker:
+            try:
+                from sentence_transformers import CrossEncoder
+                self._reranker = CrossEncoder(self.RERANKER_MODEL_NAME)
+                logger.info("Cross-encoder reranker loaded: %s", self.RERANKER_MODEL_NAME)
+            except Exception as exc:
+                logger.warning("Could not load reranker (%s) — reranking disabled: %s", self.RERANKER_MODEL_NAME, exc)
+                self.use_reranker = False
+        return self._reranker
+
+    # ------------------------------------------------------------------
+    # Phase 4 — BM25 index
+    # ------------------------------------------------------------------
+
+    def _build_bm25_index(self) -> None:
+        """Build BM25 index from all documents stored in ChromaDB."""
+        try:
+            from rank_bm25 import BM25Okapi
+        except ImportError:
+            logger.warning("rank_bm25 not installed — BM25 retrieval disabled. Run: pip install rank-bm25")
+            return
+
+        try:
+            collection = self.vectorstore._collection
+            result     = collection.get(include=["documents", "metadatas"])
+        except Exception as exc:
+            logger.warning("Could not load documents from ChromaDB for BM25 indexing: %s", exc)
+            return
+
+        docs    = result.get("documents") or []
+        metas   = result.get("metadatas") or []
+        ids     = result.get("ids") or []
+
+        if not docs:
+            logger.warning("ChromaDB collection is empty — BM25 index will be empty.")
+            return
+
+        self._bm25_docs = [
+            {"text": text, "metadata": meta, "chroma_id": cid}
+            for text, meta, cid in zip(docs, metas, ids)
+        ]
+
+        tokenized = [self._tokenize(d["text"]) for d in self._bm25_docs]
+        self._bm25_index = BM25Okapi(tokenized)
+        logger.info("BM25 index built with %d document chunks", len(self._bm25_docs))
+
+    def _bm25_search(
+        self,
+        query: str,
+        k: int,
+        domain_filter: Optional[str] = None,
+    ) -> List[Tuple[int, float]]:
+        """
+        Return (doc_index, score) pairs for top-k BM25 results.
+        Optionally filter by domain metadata.
+        """
+        if self.bm25_index is None or not self._bm25_docs:
+            return []
+
+        tokens = self._tokenize(query)
+        scores = self.bm25_index.get_scores(tokens)
+
+        candidates: List[Tuple[int, float]] = []
+        for idx, score in enumerate(scores):
+            if score <= 0:
+                continue
+            if domain_filter:
+                doc_domain = (self._bm25_docs[idx].get("metadata") or {}).get("domain", "")
+                if doc_domain and doc_domain != domain_filter:
+                    continue
+            candidates.append((idx, float(score)))
+
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        return candidates[:k]
+
+    # ------------------------------------------------------------------
+    # Phase 4 — RRF Fusion
+    # ------------------------------------------------------------------
+
+    def _rrf_fusion(
+        self,
+        dense_docs: List[Document],
+        bm25_hits: List[Tuple[int, float]],
+    ) -> List[Document]:
+        """
+        Reciprocal Rank Fusion of dense-retrieval results and BM25 results.
+
+        RRF score for document d:
+            rrf(d) = Σ_ranker  1 / (RRF_K + rank_of_d_in_ranker)
+
+        Documents that appear in both lists receive a higher combined score.
+        """
+        rrf_scores: Dict[str, float] = {}
+        key_to_doc:  Dict[str, Document] = {}
+
+        def _doc_key(content: str) -> str:
+            return content[:300]
+
+        # Dense ranking contribution
+        for rank, doc in enumerate(dense_docs):
+            key = _doc_key(doc.page_content)
+            rrf_scores[key]  = rrf_scores.get(key, 0.0) + 1.0 / (self.RRF_K + rank + 1)
+            key_to_doc[key] = doc
+
+        # BM25 ranking contribution
+        for rank, (idx, _score) in enumerate(bm25_hits):
+            d    = self._bm25_docs[idx]
+            key  = _doc_key(d["text"])
+            rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (self.RRF_K + rank + 1)
+            if key not in key_to_doc:
+                key_to_doc[key] = Document(
+                    page_content=d["text"],
+                    metadata=d.get("metadata") or {},
+                )
+
+        ranked = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+        return [key_to_doc[k] for k, _ in ranked if k in key_to_doc]
+
+    # ------------------------------------------------------------------
+    # Phase 4 — Cross-Encoder Reranker
+    # ------------------------------------------------------------------
+
+    def _rerank(self, query: str, docs: List[Document], top_k: int) -> List[Document]:
+        """Score (query, passage) pairs with the cross-encoder and return top-k."""
+        if not self.use_reranker or self.reranker is None or not docs:
+            return docs[:top_k]
+        try:
+            pairs  = [(query, doc.page_content) for doc in docs]
+            scores = self.reranker.predict(pairs)
+            ranked = sorted(zip(scores, docs), key=lambda x: x[0], reverse=True)
+            return [doc for _, doc in ranked[:top_k]]
+        except Exception as exc:
+            logger.warning("Reranker failed — falling back to RRF order: %s", exc)
+            return docs[:top_k]
+
+    # ------------------------------------------------------------------
+    # Vectorstore helpers
+    # ------------------------------------------------------------------
+
     def _load_vectorstore(self) -> Chroma:
-        """Load existing vectorstore from disk."""
         if not os.path.exists(self.persist_directory):
             raise FileNotFoundError(
                 f"Vector database not found at {self.persist_directory}. "
                 "Please run create_vector_db() first."
             )
-        
         return Chroma(
             collection_name=self.collection_name,
             embedding_function=self.embeddings,
-            persist_directory=self.persist_directory
+            persist_directory=self.persist_directory,
         )
 
     def _infer_domain(self, text: str) -> str:
-        """Infer a high-level domain from content or query text."""
         lowered = (text or "").lower()
-        nutrition_signals = [
-            "nutrition", "diet", "meal", "food", "calorie", "macro",
-            "tdee", "protein", "carb", "fat", "supplement",
-        ]
-        workout_signals = [
-            "workout", "exercise", "training", "strength", "cardio", "program",
-            "periodization", "core", "mobility", "resistance",
-        ]
-
-        nutrition_score = sum(1 for term in nutrition_signals if term in lowered)
-        workout_score = sum(1 for term in workout_signals if term in lowered)
-
-        if nutrition_score > workout_score:
+        nutrition_signals = ["nutrition", "diet", "meal", "food", "calorie", "macro", "tdee", "protein", "carb", "fat", "supplement"]
+        workout_signals   = ["workout", "exercise", "training", "strength", "cardio", "program", "periodization", "core", "mobility", "resistance"]
+        n = sum(1 for t in nutrition_signals if t in lowered)
+        w = sum(1 for t in workout_signals   if t in lowered)
+        if n > w:
             return "nutrition"
-        if workout_score > nutrition_score:
+        if w > n:
             return "workout"
         return "general"
 
     def _infer_topic(self, domain: str, text: str) -> str:
-        """Infer a narrower topic within a domain for layered filtering."""
-        lowered = (text or "").lower()
+        lowered      = (text or "").lower()
         keywords_map = self.NUTRITION_KEYWORDS if domain == "nutrition" else self.WORKOUT_KEYWORDS
-
         for topic, keywords in keywords_map.items():
             if any(keyword in lowered for keyword in keywords):
                 return topic
         return "general"
 
     def _cleanup_existing_store(self) -> None:
-        """Remove the existing vector DB directory before a forced rebuild."""
         if os.path.exists(self.persist_directory):
             shutil.rmtree(self.persist_directory)
-            logger.info("🧹 Removed existing vector DB at %s", self.persist_directory)
+            logger.info("Removed existing vector DB at %s", self.persist_directory)
 
     def _clean_text(self, text: str) -> str:
-        """Normalize scraped text before chunking and embedding."""
         if not text:
             return ""
-
         cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
-        cleaned = re.sub(r"\u00a0", " ", cleaned)
+        cleaned = re.sub(r" ", " ", cleaned)
         return cleaned.strip()
 
     def _is_low_quality_document(self, text: str) -> bool:
-        """Heuristic filter for navigation-heavy or boilerplate-only pages."""
-        lowered = (text or "").lower()
+        lowered    = (text or "").lower()
         word_count = len(lowered.split())
         if word_count < 60:
             return True
-
         boilerplate_markers = [
-            "about nsca",
-            "membership overview",
-            "contact us",
-            "privacy policy",
-            "terms of use",
-            "become a member",
-            "report ceus",
-            "login",
-            "shop",
-            "donate",
-            "all rights reserved",
+            "about nsca", "membership overview", "contact us", "privacy policy",
+            "terms of use", "become a member", "report ceus", "login", "shop",
+            "donate", "all rights reserved",
         ]
-        
-        low_quality_markers = [
-            "calculator result",
-            "blog post",
-            "read more articles",
-            "leave a comment",
-        ]
-        
-        marker_hits = sum(1 for marker in boilerplate_markers if marker in lowered)
-        if marker_hits >= 5:
+        low_quality_markers = ["calculator result", "blog post", "read more articles", "leave a comment"]
+        if sum(1 for m in boilerplate_markers if m in lowered) >= 5:
             return True
-            
-        spam_hits = sum(1 for marker in low_quality_markers if marker in lowered)
-        if spam_hits >= 2:
+        if sum(1 for m in low_quality_markers  if m in lowered) >= 2:
             return True
-
-        unique_tokens = set(self._tokenize(lowered))
+        unique_tokens   = set(self._tokenize(lowered))
         lexical_diversity = len(unique_tokens) / max(word_count, 1)
         if word_count > 300 and lexical_diversity < 0.08:
             return True
-
         return False
 
     def _extract_keywords(self, text: str, max_keywords: int = 8) -> List[str]:
-        """Extract simple keywords for retrieval diagnostics and prompt grounding."""
-        tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9\-]{2,}", (text or "").lower())
+        tokens    = re.findall(r"[a-zA-Z][a-zA-Z0-9\-]{2,}", (text or "").lower())
         stop_words = {
             "the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are",
             "was", "were", "have", "has", "had", "not", "can", "may", "will", "about", "their",
@@ -205,62 +317,39 @@ class VectorDBService:
         }
         counts: Dict[str, int] = {}
         for token in tokens:
-            if token in stop_words:
-                continue
-            counts[token] = counts.get(token, 0) + 1
-
+            if token not in stop_words:
+                counts[token] = counts.get(token, 0) + 1
         ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
         return [token for token, _ in ranked[:max_keywords]]
 
     def _summarize_text(self, text: str) -> str:
-        """Create a compact two-line summary for metadata and context rendering."""
         if not text:
             return ""
         sentences = re.split(r"(?<=[.!?])\s+", text)
-        summary = " ".join([s.strip() for s in sentences if s.strip()][:2])
+        summary   = " ".join([s.strip() for s in sentences if s.strip()][:2])
         return summary[:260]
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"[a-zA-Z0-9\-]{3,}", (text or "").lower())
 
-    def _lexical_overlap_score(self, query: str, content: str) -> float:
-        query_tokens = set(self._tokenize(query))
-        if not query_tokens:
-            return 0.0
-        content_tokens = set(self._tokenize(content))
-        if not content_tokens:
-            return 0.0
-        overlap = len(query_tokens.intersection(content_tokens))
-        return overlap / max(len(query_tokens), 1)
-
     def _expand_query(self, query: str) -> List[str]:
-        """Generate retrieval-oriented query variants (lightweight query transformation)."""
         base = (query or "").strip()
         if not base:
             return []
-
         variants = [base]
-        short_query = len(base.split()) <= 8
-        if short_query:
-            variants.append(f"{base} guidelines")
-            variants.append(f"{base} best practices")
-            variants.append(f"{base} safety recommendations")
+        if len(base.split()) <= 8:
+            variants += [f"{base} guidelines", f"{base} best practices", f"{base} safety recommendations"]
         else:
-            variants.append(f"summary of {base}")
-            variants.append(f"evidence for {base}")
-
+            variants += [f"summary of {base}", f"evidence for {base}"]
+        seen: set = set()
         deduped: List[str] = []
-        seen = set()
-        for variant in variants:
-            key = variant.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            deduped.append(variant)
+        for v in variants:
+            if v.lower() not in seen:
+                seen.add(v.lower())
+                deduped.append(v)
         return deduped
 
     def _format_filters(self, filters: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        """Format filters for ChromaDB query methods."""
         if not filters:
             return None
         if len(filters) > 1:
@@ -268,11 +357,11 @@ class VectorDBService:
         return filters
 
     def _build_context_block(self, document: Document) -> str:
-        source = document.metadata.get("source", "Unknown")
-        title = document.metadata.get("title", "Unknown")
-        summary = document.metadata.get("chunk_summary", "")
+        source   = document.metadata.get("source",        "Unknown")
+        title    = document.metadata.get("title",         "Unknown")
+        summary  = document.metadata.get("chunk_summary", "")
         keywords = document.metadata.get("chunk_keywords", "")
-        text = (document.page_content or "").strip()
+        text     = (document.page_content or "").strip()
         if len(text) > 900:
             text = text[:900].rstrip() + "..."
         return (
@@ -281,178 +370,143 @@ class VectorDBService:
             f"Keywords: {keywords}\n"
             f"Content: {text}"
         )
-    
+
+    # ------------------------------------------------------------------
+    # Document loading (unchanged from original)
+    # ------------------------------------------------------------------
+
     def _load_scraped_documents(self, json_path: str) -> List[Document]:
-        """
-        Load scraped documents from JSON file.
-        
-        Args:
-            json_path: Path to scraped_documents.json
-            
-        Returns:
-            List of LangChain Document objects
-        """
         if not os.path.exists(json_path):
             raise FileNotFoundError(f"Scraped documents not found at {json_path}")
-        
-        print(f"📄 Loading scraped documents from: {json_path}")
-        with open(json_path, 'r', encoding='utf-8') as f:
+        print(f"Loading scraped documents from: {json_path}")
+        with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
-        # Handle both list format (from scraper) and dict format
-        scraped_docs = data if isinstance(data, list) else data.get('documents', [])
-        
-        documents = []
-        seen_signatures = set()
+        scraped_docs = data if isinstance(data, list) else data.get("documents", [])
+        documents    = []
+        seen_sigs: set = set()
         for doc in scraped_docs:
-            domain = self._infer_domain(
-                " ".join([
-                    doc.get("category", ""),
-                    doc.get("resource_name", doc.get("title", "")),
-                    doc.get("description", ""),
-                    doc.get("content", "")[:1000],
-                ])
-            )
-            topic = self._infer_topic(
-                domain,
-                " ".join([
-                    doc.get("category", ""),
-                    doc.get("resource_name", doc.get("title", "")),
-                    doc.get("key_features", ""),
-                    doc.get("description", ""),
-                ])
-            )
-
-            # Create LangChain Document with metadata
-            content = self._clean_text(doc.get('content', ''))
+            domain = self._infer_domain(" ".join([
+                doc.get("category", ""),
+                doc.get("resource_name", doc.get("title", "")),
+                doc.get("description", ""),
+                doc.get("content", "")[:1000],
+            ]))
+            topic = self._infer_topic(domain, " ".join([
+                doc.get("category", ""),
+                doc.get("resource_name", doc.get("title", "")),
+                doc.get("key_features", ""),
+                doc.get("description", ""),
+            ]))
+            content = self._clean_text(doc.get("content", ""))
             if len(content) < 120:
                 continue
             if self._is_low_quality_document(content):
                 continue
-
-            signature = hash(content[:2000])
-            if signature in seen_signatures:
+            sig = hash(content[:2000])
+            if sig in seen_sigs:
                 continue
-            seen_signatures.add(signature)
-
+            seen_sigs.add(sig)
             documents.append(Document(
                 page_content=content,
                 metadata={
-                    'source': doc['url'],
-                    'title': doc.get('resource_name', doc.get('title', 'Unknown')),
-                    'category': doc.get('category', 'Unknown'),
-                    'section': doc.get('section', 'Unknown'),
-                    'domain': domain,
-                    'topic': topic,
-                    'organization': doc.get('organization', 'Unknown'),
-                    'scraped_at': doc.get('scraped_at', '')
-                }
+                    "source":       doc["url"],
+                    "title":        doc.get("resource_name", doc.get("title", "Unknown")),
+                    "category":     doc.get("category",     "Unknown"),
+                    "section":      doc.get("section",      "Unknown"),
+                    "domain":       domain,
+                    "topic":        topic,
+                    "organization": doc.get("organization", "Unknown"),
+                    "scraped_at":   doc.get("scraped_at",   ""),
+                },
             ))
-        
-        print(f"✓ Loaded {len(documents)} documents from JSON")
+        print(f"Loaded {len(documents)} documents from JSON")
         return documents
-    
+
     def _load_pdf_documents(self, pdf_path: str) -> List[Document]:
-        """
-        Load documents from PDF file (legacy method).
-        
-        Args:
-            pdf_path: Path to PDF file
-            
-        Returns:
-            List of LangChain Document objects
-        """
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found at {pdf_path}")
-        
-        print(f"📄 Loading PDF file: {pdf_path}")
-        loader = PyPDFLoader(pdf_path)
+        print(f"Loading PDF file: {pdf_path}")
+        loader    = PyPDFLoader(pdf_path)
         documents = loader.load()
-        print(f"✓ Loaded {len(documents)} pages from PDF")
+        print(f"Loaded {len(documents)} pages from PDF")
         return documents
-    
+
+    # ------------------------------------------------------------------
+    # Vector DB creation
+    # ------------------------------------------------------------------
+
     def create_vector_db(
         self,
         source_path: Optional[str] = None,
-        source_type: str = "scraped",  # "scraped" or "pdf"
-        force_recreate: bool = False
+        source_type: str = "scraped",
+        force_recreate: bool = False,
     ) -> dict:
-        """
-        Create the vector database from scraped documents or PDF file.
-        
-        Args:
-            source_path: Path to source file (JSON for scraped, PDF for pdf)
-            source_type: Type of source - "scraped" (default) or "pdf"
-            force_recreate: If True, recreate even if DB exists
-            
-        Returns:
-            Dictionary with creation statistics
-        """
-        # Check if database already exists
         if os.path.exists(self.persist_directory) and not force_recreate:
             return {
                 "status": "exists",
                 "message": f"Vector database already exists at {self.persist_directory}",
-                "persist_directory": self.persist_directory
+                "persist_directory": self.persist_directory,
             }
-
         if force_recreate:
             self._cleanup_existing_store()
-        
-        # Load documents based on source type
+
         if source_type == "scraped":
             source_path = source_path or self.DEFAULT_SCRAPED_PATH
-            documents = self._load_scraped_documents(source_path)
+            documents   = self._load_scraped_documents(source_path)
         elif source_type == "pdf":
             source_path = source_path or self.DEFAULT_PDF_PATH
-            documents = self._load_pdf_documents(source_path)
+            documents   = self._load_pdf_documents(source_path)
         else:
             raise ValueError(f"Invalid source_type: {source_type}. Must be 'scraped' or 'pdf'")
-        
-        # Split documents into chunks
-        print("✂️ Splitting documents into chunks...")
+
+        print("Splitting documents into chunks...")
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.CHUNK_SIZE,
             chunk_overlap=self.CHUNK_OVERLAP,
-            separators=["\n\n", "\n", " ", ""]
+            separators=["\n\n", "\n", " ", ""],
         )
         split_docs = text_splitter.split_documents(documents)
 
         texts: List[Document] = []
         for idx, doc in enumerate(split_docs):
-            cleaned_content = self._clean_text(doc.page_content)
-            if len(cleaned_content) < 80:
+            cleaned = self._clean_text(doc.page_content)
+            if len(cleaned) < 80:
                 continue
-            doc.page_content = cleaned_content
-            doc.metadata = dict(doc.metadata or {})
-            doc.metadata["chunk_index"] = idx
-            doc.metadata["chunk_summary"] = self._summarize_text(cleaned_content)
-            doc.metadata["chunk_keywords"] = ", ".join(self._extract_keywords(cleaned_content))
+            doc.page_content          = cleaned
+            doc.metadata              = dict(doc.metadata or {})
+            doc.metadata["chunk_index"]   = idx
+            doc.metadata["chunk_summary"] = self._summarize_text(cleaned)
+            doc.metadata["chunk_keywords"] = ", ".join(self._extract_keywords(cleaned))
             texts.append(doc)
 
-        print(f"📝 Created {len(texts)} text chunks")
-        
-        # Create vector store
-        print("🔧 Creating and saving vector store...")
+        print(f"Created {len(texts)} text chunks")
+        print("Creating and saving vector store...")
         self._vectorstore = Chroma.from_documents(
             documents=texts,
             embedding=self.embeddings,
             collection_name=self.collection_name,
-            persist_directory=self.persist_directory
+            persist_directory=self.persist_directory,
         )
-        print(f"✅ Vector store saved in: {self.persist_directory}")
-        
+        # Invalidate BM25 index so it gets rebuilt on next retrieval
+        self._bm25_index = None
+        self._bm25_docs  = []
+        print(f"Vector store saved in: {self.persist_directory}")
+
         return {
-            "status": "created",
-            "message": "Vector database created successfully",
-            "source_type": source_type,
-            "source_path": source_path,
-            "documents_loaded": len(documents),
-            "chunks_created": len(texts),
+            "status":            "created",
+            "message":           "Vector database created successfully",
+            "source_type":       source_type,
+            "source_path":       source_path,
+            "documents_loaded":  len(documents),
+            "chunks_created":    len(texts),
             "persist_directory": self.persist_directory,
-            "collection_name": self.collection_name
+            "collection_name":   self.collection_name,
         }
-    
+
+    # ------------------------------------------------------------------
+    # Phase 4 — Hybrid retrieval: Dense + BM25 + RRF + Reranker
+    # ------------------------------------------------------------------
+
     def similarity_search(
         self,
         query: str,
@@ -460,106 +514,79 @@ class VectorDBService:
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Document]:
         """
-        Search for similar documents in the vector store.
-        
-        Args:
-            query: Search query
-            k: Number of results to return
-            filters: Dictionary of filters applying to metadata
-            
-        Returns:
-            List of relevant document contents
+        Hybrid retrieval pipeline (Phase 4):
+          1. Dense retrieval  — top DENSE_TOP_K results per query variant
+          2. BM25 retrieval   — top BM25_TOP_K results
+          3. RRF Fusion       — combine both ranked lists
+          4. Cross-Encoder    — rerank the fused candidates → final top-k
         """
         formatted_filter = self._format_filters(filters)
+        domain_filter    = (filters or {}).get("domain") if filters else None
 
-        query_variants = self._expand_query(query)
-        semantic_k = max(k * self.SEMANTIC_TOP_K_MULTIPLIER, k + 4)
-        lexical_k = max(k * 3, self.LEXICAL_TOP_K)
-
-        candidate_scores: Dict[str, Tuple[float, Document]] = {}
+        # ── Step 1: Dense retrieval across query variants ──────────────
+        query_variants  = self._expand_query(query)
+        dense_seen: Dict[str, Tuple[float, Document]] = {}
 
         def _doc_key(doc: Document) -> str:
-            source = doc.metadata.get("source", "")
-            title = doc.metadata.get("title", "")
-            chunk_index = doc.metadata.get("chunk_index", "")
-            return f"{source}|{title}|{chunk_index}|{hash(doc.page_content)}"
+            src   = doc.metadata.get("source",      "")
+            title = doc.metadata.get("title",        "")
+            cidx  = doc.metadata.get("chunk_index",  "")
+            return f"{src}|{title}|{cidx}|{hash(doc.page_content)}"
+
+        semantic_k = max(k * self.SEMANTIC_TOP_K_MULTIPLIER, self.DENSE_TOP_K)
 
         for variant in query_variants:
-            semantic_results = self.vectorstore.similarity_search_with_relevance_scores(
+            results = self.vectorstore.similarity_search_with_relevance_scores(
                 variant,
                 k=semantic_k,
                 filter=formatted_filter,
             )
-            for doc, semantic_score in semantic_results:
-                lexical_score = self._lexical_overlap_score(query, doc.page_content)
-                combined_score = (semantic_score * 0.70) + (lexical_score * 0.30)
-                
-                # Boost gold tier sources, penalize general blogs/calculators
-                title = doc.metadata.get("title", "").lower()
+            for doc, score in results:
+                # Gold-source boost / blog penalty
+                title  = doc.metadata.get("title",  "").lower()
                 source = doc.metadata.get("source", "").lower()
-                
-                gold_sources = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
-                if any(org in title or org in source for org in gold_sources):
-                    combined_score += 0.15
-                    
+                gold   = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
+                if any(g in title or g in source for g in gold):
+                    score += 0.15
                 if "blog" in source or "calculator" in source or "blog" in title:
-                    combined_score -= 0.20
-                    
+                    score -= 0.20
                 key = _doc_key(doc)
-                previous = candidate_scores.get(key)
-                if previous is None or combined_score > previous[0]:
-                    candidate_scores[key] = (combined_score, doc)
+                if key not in dense_seen or score > dense_seen[key][0]:
+                    dense_seen[key] = (score, doc)
 
-            lexical_candidates = self.vectorstore.similarity_search(
-                variant,
-                k=lexical_k,
-                filter=formatted_filter,
-            )
-            for doc in lexical_candidates:
-                lexical_score = self._lexical_overlap_score(query, doc.page_content)
-                if lexical_score <= 0:
-                    continue
-                semantic_hint = 0.45
-                combined_score = (semantic_hint * 0.70) + (lexical_score * 0.30)
-                
-                title = doc.metadata.get("title", "").lower()
-                source = doc.metadata.get("source", "").lower()
-                gold_sources = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
-                if any(org in title or org in source for org in gold_sources):
-                    combined_score += 0.15
-                    
-                if "blog" in source or "calculator" in source or "blog" in title:
-                    combined_score -= 0.20
-                    
-                key = _doc_key(doc)
-                previous = candidate_scores.get(key)
-                if previous is None or combined_score > previous[0]:
-                    candidate_scores[key] = (combined_score, doc)
+        # Sort dense results by combined score
+        dense_docs: List[Document] = [
+            doc for _, doc in sorted(dense_seen.values(), key=lambda x: x[0], reverse=True)
+        ]
 
-        ranked_candidates = sorted(candidate_scores.values(), key=lambda item: item[0], reverse=True)
-        results = [doc for _, doc in ranked_candidates[:k]]
-        
-        # Log retrieved documents
-        logger.info(f"\n{'='*70}")
-        logger.info(f"📊 Vector DB Query")
-        logger.info(f"{'='*70}")
-        logger.info(f"Query: {query}")
-        if filters:
-            logger.info(f"Filters: {filters}")
-        logger.info(f"Retrieved {len(results)} documents")
-        
-        for idx, doc in enumerate(results, 1):
-            logger.info(f"\n--- Document {idx} ---")
-            logger.info(f"Source: {doc.metadata.get('source', 'Unknown')}")
-            logger.info(f"Title: {doc.metadata.get('title', 'Unknown')}")
-            logger.info(f"Category: {doc.metadata.get('category', 'Unknown')}")
-            logger.info(f"Organization: {doc.metadata.get('organization', 'Unknown')}")
-            logger.info(f"Content preview: {doc.page_content[:200]}...")
-        
-        logger.info(f"{'='*70}\n")
-        
-        return results
-    
+        # ── Step 2: BM25 retrieval ─────────────────────────────────────
+        bm25_hits = self._bm25_search(query, k=self.BM25_TOP_K, domain_filter=domain_filter)
+
+        # ── Step 3: RRF Fusion ─────────────────────────────────────────
+        fused_docs = self._rrf_fusion(dense_docs, bm25_hits)
+
+        # ── Step 4: Cross-Encoder Reranker ─────────────────────────────
+        final_docs = self._rerank(query, fused_docs, top_k=k)
+
+        # ── Logging ────────────────────────────────────────────────────
+        logger.info("=" * 60)
+        logger.info("Hybrid RAG Query: %s", query)
+        logger.info("Dense candidates: %d | BM25 hits: %d | After RRF: %d | Final: %d",
+                    len(dense_docs), len(bm25_hits), len(fused_docs), len(final_docs))
+        for idx, doc in enumerate(final_docs, 1):
+            logger.info("  [%d] %s | %s | %s",
+                        idx,
+                        doc.metadata.get("title",    "?"),
+                        doc.metadata.get("source",   "?"),
+                        doc.page_content[:120])
+        logger.info("=" * 60)
+
+        return final_docs
+
+    # ------------------------------------------------------------------
+    # Context assembly
+    # ------------------------------------------------------------------
+
     def get_context(
         self,
         query: str,
@@ -568,16 +595,6 @@ class VectorDBService:
         topic: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """
-        Get concatenated context from similar documents.
-        
-        Args:
-            query: Search query
-            k: Number of documents to retrieve
-            
-        Returns:
-            Concatenated context string
-        """
         effective_filters: Dict[str, Any] = dict(filters or {})
 
         inferred_domain = domain or self._infer_domain(query)
@@ -590,47 +607,37 @@ class VectorDBService:
 
         documents = self.similarity_search(query, k=k, filters=effective_filters or None)
 
-        # Fallback: if the filtered retrieval is too narrow, broaden it in two steps
-        # rather than returning too little context.
+        # Broadening fallback: if results are too few, relax filters progressively
         if effective_filters and len(documents) < max(1, k // 2):
             if "topic" in effective_filters:
-                broader_filters = dict(effective_filters)
-                broader_filters.pop("topic", None)
-                logger.info(
-                    "Broadening retrieval for query '%s' by removing topic filter: %s",
-                    query,
-                    broader_filters,
-                )
-                documents = self.similarity_search(query, k=k, filters=broader_filters)
+                broader = dict(effective_filters)
+                broader.pop("topic", None)
+                logger.info("Broadening retrieval — removing topic filter: %s", broader)
+                documents = self.similarity_search(query, k=k, filters=broader)
 
         if effective_filters and not documents:
-            logger.info("Broadening retrieval for query '%s' by removing all filters", query)
+            logger.info("Broadening retrieval — removing all filters")
             documents = self.similarity_search(query, k=k, filters=None)
 
         context_blocks = [self._build_context_block(doc) for doc in documents]
         context = "\n\n".join(context_blocks)
-        context = context[:self.MAX_CONTEXT_CHARS].rstrip()
-        
-        logger.info(f"📝 Total context length: {len(context)} characters")
-        
+        context = context[: self.MAX_CONTEXT_CHARS].rstrip()
+
+        logger.info("Total context length: %d characters", len(context))
         return context
-    
+
     def is_initialized(self) -> bool:
-        """Check if the vector database is initialized."""
         return os.path.exists(self.persist_directory)
 
 
-# Singleton instance for the application
+# ---------------------------------------------------------------------------
+# Singleton
+# ---------------------------------------------------------------------------
+
 _vector_db_service: Optional[VectorDBService] = None
 
 
 def get_vector_db_service() -> VectorDBService:
-    """
-    Get the singleton VectorDBService instance.
-    
-    Returns:
-        VectorDBService instance
-    """
     global _vector_db_service
     if _vector_db_service is None:
         _vector_db_service = VectorDBService()
@@ -640,40 +647,22 @@ def get_vector_db_service() -> VectorDBService:
 def initialize_vector_db(
     force_recreate: bool = False,
     source_path: Optional[str] = None,
-    source_type: str = "scraped"
+    source_type: str = "scraped",
 ) -> dict:
-    """
-    Initialize the vector database.
-    This should be called once during application setup.
-    
-    Args:
-        force_recreate: If True, recreate even if DB exists
-        source_path: Path to source file (JSON for scraped, PDF for pdf)
-        source_type: Type of source - "scraped" (default) or "pdf"
-        
-    Returns:
-        Dictionary with initialization status
-    """
     service = get_vector_db_service()
     return service.create_vector_db(
         source_path=source_path,
         source_type=source_type,
-        force_recreate=force_recreate
+        force_recreate=force_recreate,
     )
 
 
 if __name__ == "__main__":
-    # Run this script directly to create the vector database
     print("=" * 60)
-    print("🏋️ FitMind AI Coach - Vector Database Initialization")
+    print("FitMind AI Coach - Vector Database Initialization")
     print("=" * 60)
-    
     result = initialize_vector_db(force_recreate=False)
-    
-    print("\n📊 Result:")
+    print("\nResult:")
     for key, value in result.items():
         print(f"  {key}: {value}")
-    
-    print("\n" + "=" * 60)
-    print("✅ Vector database initialization complete!")
     print("=" * 60)

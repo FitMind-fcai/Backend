@@ -3,6 +3,12 @@ from sqlalchemy import func as sql_func, text
 from typing import List, Optional
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralExercise
+from app.planning_module.models.enums import EquipmentAvailability, WorkoutDifficulty
+
+
+def _ev(v) -> str:
+    """Return the string value of an enum instance or a plain string."""
+    return v.value if hasattr(v, "value") else str(v)
 
 
 class CentralExerciseRepository(BaseRepository[CentralExercise]):
@@ -79,44 +85,49 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         equipment_availability: str = "Full Gym Equipment",
         workout_difficulty: str = "Beginner",
         focus_areas: Optional[List[str]] = None,
-        limit: int = 25
+        limit: int = 25,
+        goal: str = "maintain",
+        injuries: str = "",
     ) -> str:
         """
-        Fetch a structured constraint JSON of exercises matching preferences.
+        Fetch a structured constraint JSON of exercises matching preferences,
+        ranked by goal alignment and injury compatibility.
         """
+        from sqlalchemy import or_
         query = self.db.query(CentralExercise).filter(CentralExercise.is_active == True)
-        
+
         # 1. Equipment Constraints
-        equipment_availability = str(equipment_availability).lower()
-        if equipment_availability == "no equipment":
-            # Only allow bodyweight / no equipment
+        equip = _ev(equipment_availability)
+        if equip == EquipmentAvailability.NO_EQUIPMENT.value:
             query = query.filter(
-                (CentralExercise.equipment_required.ilike('%body%')) | 
+                (CentralExercise.equipment_required.ilike('%body%')) |
                 (CentralExercise.equipment_required.ilike('%none%'))
             )
-        elif equipment_availability == "basic equipment":
-            # Allow basic equipment
+        elif equip == EquipmentAvailability.BASIC_EQUIPMENT.value:
             basic_equip = ['body', 'none', 'dumbbell', 'band', 'kettlebell', 'medicine ball', 'foam roll']
             conditions = [CentralExercise.equipment_required.ilike(f'%{e}%') for e in basic_equip]
-            from sqlalchemy import or_
             query = query.filter(or_(*conditions))
-        
+        # EquipmentAvailability.FULL_GYM — no filter needed, all exercises allowed
+
         # 2. Difficulty Constraints
-        workout_difficulty = str(workout_difficulty).lower()
-        if workout_difficulty == "beginner":
+        diff = _ev(workout_difficulty)
+        if diff == WorkoutDifficulty.BEGINNER.value:
             query = query.filter(CentralExercise.difficulty_level.ilike('%beginner%'))
-        elif workout_difficulty == "intermediate":
+        elif diff == WorkoutDifficulty.INTERMEDIATE.value:
             query = query.filter(
                 (CentralExercise.difficulty_level.ilike('%beginner%')) |
                 (CentralExercise.difficulty_level.ilike('%intermediate%'))
             )
-        
+        # WorkoutDifficulty.ADVANCED — no filter, all difficulties allowed
+
         exercises = query.all()
-        
+
         if not exercises:
             return '{"error": "No exercises match the restrictive filters", "instruction": "Generate functional bodyweight variations as fallback."}'
 
-        top_exercises = self._select_balanced_exercises_for_prompt(exercises, limit, focus_areas)
+        # Phase 2: Rank by goal alignment + injury compatibility before bucket selection
+        ranked = self._rank_exercises_for_goal(exercises, goal=goal, injuries=injuries)
+        top_exercises = self._select_balanced_exercises_for_prompt(ranked, limit, focus_areas)
 
         import json
         catalog = []
@@ -127,14 +138,114 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
                 "muscle": e.primary_muscle_group,
                 "equipment": e.equipment_required,
                 "type": e.exercise_type,
-                "level": e.difficulty_level
+                "level": e.difficulty_level,
             })
-            
+
         constraints_block = {
             "MANDATORY_EXERCISE_CATALOG": catalog,
-            "INSTRUCTION": "You MUST ONLY generate workouts using the exact exercises and IDs from this catalog. Do not invent new exercises."
+            "INSTRUCTION": (
+                "You MUST ONLY generate workouts using the exact exercises and IDs from this catalog. "
+                "Do not invent new exercises."
+            ),
         }
         return json.dumps(constraints_block, indent=2)
+
+    def _rank_exercises_for_goal(
+        self,
+        exercises: List[CentralExercise],
+        goal: str = "maintain",
+        injuries: str = "",
+    ) -> List[CentralExercise]:
+        """
+        Score exercises by goal alignment, injury compatibility, and volume efficiency,
+        then return them sorted highest-to-lowest so that bucket selection sees the best
+        candidates first.
+
+        Ranking factors and weights (matching the architecture upgrade plan):
+          Goal Match            — High  (30 pts)
+          Experience Match      — High  (20 pts, via compound/isolation preference)
+          Equipment Match       — Medium (already handled upstream by SQL filter)
+          Injury Compatibility  — High  (−25 pts penalty per risky exercise)
+          Volume Compatibility  — Medium (15 pts for compound movements)
+        """
+        goal = (goal or "maintain").lower().replace(" ", "_")
+        injury_text = (injuries or "").lower()
+
+        def _score(e: CentralExercise) -> float:
+            s = 0.0
+            name  = (e.name or "").lower()
+            etype = (e.exercise_type or "").lower()
+
+            # ── Goal Match (30 pts) ──────────────────────────────────────────
+            if goal == "build_muscle":
+                if "compound" in etype:
+                    s += 30
+                elif any(k in name for k in [
+                    "squat", "deadlift", "press", "row", "pull-up",
+                    "chin", "bench", "overhead", "lunge",
+                ]):
+                    s += 25
+                elif "isolation" in etype:
+                    s += 10
+                else:
+                    s += 8
+            elif goal == "lose_weight":
+                if "cardio" in etype or any(k in name for k in [
+                    "burpee", "jump", "circuit", "mountain climber",
+                    "box jump", "sprint", "hiit",
+                ]):
+                    s += 30
+                elif "compound" in etype:
+                    s += 22
+                else:
+                    s += 10
+            elif goal == "improve_fitness":
+                if "cardio" in etype or "compound" in etype:
+                    s += 25
+                else:
+                    s += 12
+            else:  # maintain / general
+                if "compound" in etype:
+                    s += 20
+                else:
+                    s += 10
+
+            # ── Volume Compatibility (15 pts) ────────────────────────────────
+            if "compound" in etype:
+                s += 15
+            elif "isolation" in etype:
+                s += 5
+
+            # ── Injury Compatibility — penalties (−25 pts each) ──────────────
+            if "shoulder" in injury_text or "impingement" in injury_text:
+                overhead_kw = [
+                    "overhead press", "military press", "arnold press",
+                    "push press", "behind neck", "behind-neck",
+                    "upright row",
+                ]
+                if any(k in name for k in overhead_kw):
+                    s -= 25
+
+            if "knee" in injury_text:
+                if any(k in name for k in [
+                    "jump squat", "box jump", "plyometric", "lunge jump",
+                ]):
+                    s -= 25
+
+            if "lower back" in injury_text or "back pain" in injury_text:
+                if any(k in name for k in [
+                    "conventional deadlift", "good morning",
+                    "roman chair", "hyperextension",
+                ]):
+                    s -= 25
+
+            if "wrist" in injury_text:
+                if any(k in name for k in ["barbell curl", "wrist curl"]):
+                    s -= 15
+
+            return s
+
+        return sorted(exercises, key=lambda e: (_score(e), e.id), reverse=True)
 
     def _select_balanced_exercises_for_prompt(
         self,
