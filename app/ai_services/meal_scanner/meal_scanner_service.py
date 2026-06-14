@@ -220,10 +220,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 for w in data.get("allergen_warnings", [])
             ]
             tags: List[str] = data.get("tags", [])
+            food_item_names: List[str] = [item.get("name", "") for item in data.get("food_items", []) if item.get("name")]
 
             matched_foods: List[MatchedFoodDTO] = []
-            if db is not None and tags:
-                matched_foods = self._find_similar_foods(tags, db)
+            if db is not None and (food_item_names or tags):
+                matched_foods = self._find_similar_foods(food_item_names + tags, db)
 
             meal_name = data.get("meal_name", "Unidentified Meal")
             logger.info(
@@ -258,21 +259,21 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _find_similar_foods(self, tags: List[str], db) -> List[MatchedFoodDTO]:
-        """Embed tags and run cosine similarity search against central_foods."""
+    def _find_similar_foods(self, search_terms: List[str], db) -> List[MatchedFoodDTO]:
+        """Embed food names + tags and run cosine similarity search against central_foods."""
         try:
             from sqlalchemy import text
 
-            vec_str = vec_to_pg_str(embed_text(" ".join(tags)))
+            vec_str = vec_to_pg_str(embed_text(" ".join(search_terms)))
             rows = db.execute(
                 text("""
                     SELECT id, food_name, food_category,
                            calories_per_100g, protein_per_100g, carbs_per_100g,
                            fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
-                           1 - (name_embedding <=> :vec::vector) AS similarity
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
                     FROM central_foods
                     WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> :vec::vector
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT 5
                 """),
                 {"vec": vec_str},
@@ -287,6 +288,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                     serving_description=r.serving_description, similarity_score=float(r.similarity),
                 )
                 for r in rows
+                if r.similarity >= 0.55
             ]
         except Exception as exc:
             logger.warning("Vector search failed (returning empty list): %s", exc)

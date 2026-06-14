@@ -165,10 +165,10 @@ class TrackingService:
                     SELECT id, food_name, food_category,
                            calories_per_100g, protein_per_100g, carbs_per_100g,
                            fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
-                           1 - (name_embedding <=> :vec::vector) AS similarity
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
                     FROM central_foods
                     WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> :vec::vector
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
                 {"vec": vec, "lim": limit},
@@ -182,6 +182,7 @@ class TrackingService:
                     serving_description=r.serving_description, similarity_score=float(r.similarity),
                 )
                 for r in rows
+                if r.similarity >= 0.55
             ]
         except Exception as exc:
             logger.warning("Food vector search failed (returning empty): %s", exc)
@@ -197,10 +198,10 @@ class TrackingService:
                 sql_text("""
                     SELECT id, name, exercise_type, primary_muscle_group,
                            secondary_muscles, equipment_required, difficulty_level, location,
-                           1 - (name_embedding <=> :vec::vector) AS similarity
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
                     FROM central_exercises
                     WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> :vec::vector
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
                 {"vec": vec, "lim": limit},
@@ -215,6 +216,7 @@ class TrackingService:
                     similarity_score=float(r.similarity),
                 )
                 for r in rows
+                if r.similarity >= 0.55
             ]
         except Exception as exc:
             logger.warning("Exercise vector search failed (returning empty): %s", exc)

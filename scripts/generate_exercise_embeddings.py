@@ -54,33 +54,29 @@ def main():
             logger.info("Nothing to do.")
             return
 
-        offset = 0
-        processed = 0
-        while True:
-            rows = conn.execute(
-                text(
-                    "SELECT id, name FROM central_exercises "
-                    "WHERE is_active = true AND name_embedding IS NULL "
-                    "LIMIT :lim OFFSET :off"
-                ),
-                {"lim": BATCH_SIZE, "off": offset},
-            ).fetchall()
-            if not rows:
-                break
+        # Fetch all IDs up-front so OFFSET doesn't shift as we write embeddings
+        all_rows = conn.execute(
+            text(
+                "SELECT id, name FROM central_exercises "
+                "WHERE is_active = true AND name_embedding IS NULL ORDER BY id"
+            ),
+        ).fetchall()
 
-            names = [r.name for r in rows]
+        processed = 0
+        for batch_start in range(0, len(all_rows), BATCH_SIZE):
+            batch = all_rows[batch_start: batch_start + BATCH_SIZE]
+            names = [r.name for r in batch]
             embeddings = model.encode(names, normalize_embeddings=True, show_progress_bar=False)
 
-            for row, emb in zip(rows, embeddings):
+            for row, emb in zip(batch, embeddings):
                 conn.execute(
-                    text("UPDATE central_exercises SET name_embedding = :vec::vector WHERE id = :id"),
+                    text("UPDATE central_exercises SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
                     {"vec": _vec_str(emb), "id": row.id},
                 )
 
             conn.commit()
-            processed += len(rows)
+            processed += len(batch)
             logger.info("Embedded %d / %d exercises …", processed, total)
-            offset += BATCH_SIZE
 
         logger.info("Creating IVFFlat index on central_exercises.name_embedding …")
         try:
