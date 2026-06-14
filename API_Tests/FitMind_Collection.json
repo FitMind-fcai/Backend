@@ -5590,6 +5590,427 @@
           ]
         }
       ]
+    },
+    {
+      "name": "08 Notifications",
+      "item": [
+        {
+          "name": "Device Token",
+          "item": [
+            {
+              "name": "Register Device Token - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Token registered', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('id');",
+                      "  pm.expect(body.token).to.eql('fcm_token_example_abc123xyz');",
+                      "  pm.expect(body.is_active).to.be.true;",
+                      "  pm.environment.set('deviceToken', body.token);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"fcm_token_example_abc123xyz\",\n  \"platform\": \"android\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/device-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "device-token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Register Device Token - iOS",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('iOS token registered', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.platform).to.eql('ios');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"fcm_ios_token_example_abc123\",\n  \"platform\": \"ios\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/device-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "device-token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Deregister Device Token - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"fcm_token_example_abc123xyz\",\n  \"platform\": \"android\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/device-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "device-token"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Register Device Token - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"some_token\",\n  \"platform\": \"android\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/device-token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "device-token"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Preferences",
+          "item": [
+            {
+              "name": "Get Preferences - Success (auto-created with defaults)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Has all preference fields', () => {",
+                      "  const body = pm.response.json();",
+                      "  ['meal_reminders_enabled','workout_reminders_enabled',",
+                      "   'hydration_reminders_enabled','sleep_reminders_enabled',",
+                      "   'hydration_interval_hours','meal_reminder_minutes_before',",
+                      "   'workout_reminder_hour','sleep_reminder_hour'].forEach(k => {",
+                      "    pm.expect(body).to.have.property(k);",
+                      "  });",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Preferences - Disable Sleep Reminder",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Sleep reminder disabled', () => {",
+                      "  pm.expect(pm.response.json().sleep_reminders_enabled).to.be.false;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sleep_reminders_enabled\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Preferences - Custom Hydration Interval",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Hydration interval updated', () => {",
+                      "  pm.expect(pm.response.json().hydration_interval_hours).to.eql(3);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hydration_reminders_enabled\": true,\n  \"hydration_interval_hours\": 3\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Preferences - Set Workout & Sleep Hours",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Hours updated', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.workout_reminder_hour).to.eql(8);",
+                      "  pm.expect(body.sleep_reminder_hour).to.eql(22);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"workout_reminder_hour\": 8,\n  \"sleep_reminder_hour\": 22\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Preferences - Invalid Hour (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 422 Unprocessable', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"workout_reminder_hour\": 25\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/preferences",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "preferences"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

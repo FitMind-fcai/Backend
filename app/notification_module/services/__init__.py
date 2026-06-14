@@ -1,6 +1,6 @@
-"""
-Notification Services
-Business logic for notification delivery and scheduling.
-"""
+"""Notification service exports."""
 
-__all__ = []
+from app.notification_module.services.notification_service import NotificationService
+from app.notification_module.services.reminder_service import ReminderService
+
+__all__ = ["NotificationService", "ReminderService"]
