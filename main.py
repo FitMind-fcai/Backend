@@ -3,7 +3,7 @@ from fastapi import FastAPI, APIRouter
 from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
-from app.db.database import create_tables
+from app.db.database import create_tables, engine
 from app.core.config import SQLALCHEMY_LOG_LEVEL
 from app.profile_module.routes import profileRouter
 from app.planning_module.routes import (
@@ -12,6 +12,7 @@ from app.planning_module.routes import (
     plan_generation_router
 )
 from app.tracking_module.routes import tracking_router
+from app.recommendation_system.routes.recommendations import recommendation_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -81,6 +82,25 @@ app.openapi = custom_openapi
 # Create database tables on startup
 @app.on_event("startup")
 def startup_event():
+    # Enable pgvector extension and ensure the name_embedding column exists.
+    # This is idempotent — safe to run on every start.
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.execute(text(
+                "ALTER TABLE central_foods "
+                "ADD COLUMN IF NOT EXISTS name_embedding vector(384)"
+            ))
+            conn.execute(text(
+                "ALTER TABLE central_exercises "
+                "ADD COLUMN IF NOT EXISTS name_embedding vector(384)"
+            ))
+            conn.commit()
+        print("✅ pgvector extension and name_embedding columns ready.")
+    except Exception as exc:
+        print(f"⚠️  pgvector setup skipped (non-fatal): {exc}")
+
     create_tables()
     print("✅ Database tables created successfully!")
 
@@ -92,7 +112,8 @@ v1_router.include_router(profileRouter, tags=["Profiles"])
 v1_router.include_router(plan_generation_router, tags=["Plan Generation"])
 v1_router.include_router(workout_router, tags=["Workout Plans"])
 v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
-v1_router.include_router(tracking_router, tags=["Tracking"])
+v1_router.include_router(tracking_router)  # tags are set per-endpoint
+v1_router.include_router(recommendation_router)
 
 app.include_router(v1_router)
 

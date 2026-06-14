@@ -94,8 +94,64 @@
       "type": "default",
       "enabled": true,
       "description": "Paste 5-digit OTP received in password-reset email"
+    },
+    {
+      "key": "mealLogId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by 06 Tracking / Log Meal. Used by update/delete meal log requests."
+    },
+    {
+      "key": "workoutLogId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by 06 Tracking / Log Workout. Used by update/delete workout log requests."
+    },
+    {
+      "key": "scanMatchedFoodId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Meal Scanner / Scan Success. Central food ID from top vector match — pass as central_food_id in Scan+Log requests."
+    },
+    {
+      "key": "voiceMealMatchedFoodId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Voice - Meals / Voice Success. Central food ID from top vector match — pass as central_food_id in Voice+Log requests."
+    },
+    {
+      "key": "voiceExerciseMatchId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Voice - Workouts / Voice Success. Central exercise ID from top vector match for exercise[0] — use in exercise_overrides."
+    },
+    {
+      "key": "voiceWorkoutLogId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Voice - Workouts / Voice+Log. ID of the first WorkoutLog row created."
+    },
+    {
+      "key": "centralFoodId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "A real central_foods.id from your DB — needed for Scan+Log and Voice+Log with central food override."
+    },
+    {
+      "key": "centralExerciseId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "A real central_exercises.id from your DB — needed for Voice+Log with exercise override."
     }
   ],
-  "_postman_exported_at": "2026-03-10T00:00:00.000Z",
+  "_postman_exported_at": "2026-06-11T00:00:00.000Z",
   "_postman_exported_using": "Postman/11.0.0"
 }

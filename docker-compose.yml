@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL Database
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: FitMind_DB
     restart: always
     environment:

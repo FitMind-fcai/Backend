@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sql_func
+from sqlalchemy import func as sql_func, text
 from typing import List, Optional
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralExercise
@@ -363,6 +363,45 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         # Optional: deterministic shuffle to mix up the json array a bit so the LLM doesn't skew to the first items
         random.Random(42).shuffle(selected)
         return selected[:limit]
+
+    def search_by_vector(
+        self,
+        embedding: List[float],
+        limit: int = 5,
+    ) -> List[dict]:
+        """
+        Cosine similarity search using pgvector.
+
+        Returns up to *limit* central_exercises ordered by closeness to *embedding*.
+        Each result is a plain dict with exercise fields plus `similarity_score`.
+        Rows with no stored embedding are excluded.
+        """
+        from app.ai_services.embedding_utils import vec_to_pg_str
+        vec_str = vec_to_pg_str(embedding)
+        rows = self.db.execute(
+            text("""
+                SELECT
+                    id, name, exercise_type, primary_muscle_group,
+                    secondary_muscles, equipment_required, difficulty_level, location,
+                    1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity_score
+                FROM central_exercises
+                WHERE is_active = true
+                  AND name_embedding IS NOT NULL
+                ORDER BY name_embedding <=> CAST(:vec AS vector)
+                LIMIT :limit
+            """),
+            {"vec": vec_str, "limit": limit},
+        ).fetchall()
+        return [dict(r._mapping) for r in rows]
+
+    def set_embedding(self, exercise_id: int, embedding: List[float]) -> None:
+        """Persist the *embedding* vector for a single central_exercise row."""
+        from app.ai_services.embedding_utils import vec_to_pg_str
+        self.db.execute(
+            text("UPDATE central_exercises SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
+            {"vec": vec_to_pg_str(embedding), "id": exercise_id},
+        )
+        self.db.commit()
 
     def find_or_create(self, exercise_data: dict) -> CentralExercise:
         """Find exercise by name or create a new catalog entry if not found"""

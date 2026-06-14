@@ -195,6 +195,199 @@ class AICoachService:
 
         return plan
 
+    # ------------------------------------------------------------------
+    # Progress analysis  (used by recommendation_system)
+    # ------------------------------------------------------------------
+
+    def analyze_daily_progress(
+        self,
+        snapshot_data: dict,
+        user_goal: str,
+        user_profile_context: str,
+    ) -> dict:
+        """
+        Convert a 24-hour snapshot of engineered features into a short coaching tip.
+        Returns {"urgency": str, "suggestion": str}.
+        """
+        calorie_line = (
+            "No active nutrition plan."
+            if snapshot_data.get("calories_target") is None
+            else (
+                f"Calories: {snapshot_data['calories_consumed']:.0f} consumed / "
+                f"{snapshot_data['calories_target']} target "
+                f"({snapshot_data.get('calorie_gap', 0):+.0f} kcal remaining)"
+            )
+        )
+        protein_line = (
+            ""
+            if snapshot_data.get("protein_target") is None
+            else (
+                f"Protein: {snapshot_data['protein_consumed']:.1f}g consumed / "
+                f"{snapshot_data['protein_target']}g target "
+                f"({snapshot_data.get('protein_gap', 0):+.1f}g remaining)"
+            )
+        )
+        meal_types = ", ".join(snapshot_data.get("meal_types_logged", [])) or "none"
+        weight_note = (
+            f"yes — {snapshot_data.get('latest_weight_kg')} kg"
+            if snapshot_data.get("weight_logged")
+            else "no"
+        )
+
+        user_prompt = f"""
+User goal: {user_goal}
+
+{user_profile_context}
+
+## Last 24-Hour Snapshot (derived from raw logs via feature engineering)
+{calorie_line}
+{protein_line}
+Meals logged today: {meal_types}
+Workout sessions logged today: {snapshot_data.get('workout_sessions_logged', 0)}
+Weight logged today: {weight_note}
+
+Based ONLY on this snapshot, reply with a JSON object:
+{{
+  "urgency": "on_track" | "needs_attention" | "off_track",
+  "suggestion": "One or two direct, actionable coaching sentences the user can act on RIGHT NOW."
+}}
+
+urgency rules:
+- "on_track": calories within ±15% of target AND at least one workout or meal logged
+- "off_track": calories >30% under/over OR no logs at all today
+- "needs_attention": everything else
+""".strip()
+
+        system_prompt = (
+            "You are a concise, no-nonsense personal fitness coach. "
+            "Reply ONLY with the JSON object. No markdown fences. No extra text. "
+            "Keep suggestion under 60 words. Be direct and specific."
+        )
+
+        raw = self._call_llm(system_prompt, user_prompt, json_mode=True)
+        result = self._parse_json_response(raw)
+        return {
+            "urgency": result.get("urgency", "needs_attention"),
+            "suggestion": result.get(
+                "suggestion",
+                "Keep logging your meals and workouts to get personalised coaching.",
+            ),
+        }
+
+    def generate_progress_report(
+        self,
+        features_data: dict,
+        user_profile_context: str,
+    ) -> dict:
+        """
+        Convert a fully engineered ProgressFeatures dict into a structured coaching report.
+        Returns {assessment, positives, improvements, suggestions, projection}.
+        """
+        n  = features_data["nutrition"]
+        w  = features_data["workout"]
+        wt = features_data["weight"]
+
+        calorie_adherence = (
+            f"{n['calorie_adherence_pct']:.1f}%"
+            if n.get("calorie_adherence_pct") is not None
+            else "N/A (no active plan)"
+        )
+        protein_adherence = (
+            f"{n['protein_adherence_pct']:.1f}%"
+            if n.get("protein_adherence_pct") is not None
+            else "N/A (no active plan)"
+        )
+        freq_adherence = (
+            f"{w['frequency_adherence_pct']:.1f}%"
+            if w.get("frequency_adherence_pct") is not None
+            else "N/A (no active plan)"
+        )
+
+        prog_lines = []
+        for p in (w.get("exercise_progressions") or [])[:5]:
+            prog_lines.append(
+                f"  • {p['exercise_name']}: {p['sessions_logged']} sessions, "
+                f"volume change {p['progression_pct']:+.1f}%"
+            )
+        progressions_block = (
+            "\n".join(prog_lines) if prog_lines
+            else "  • Not enough data for exercise progressions."
+        )
+
+        if wt["measurements_count"] == 0:
+            weight_section = "No weight measurements in this period."
+        elif wt.get("weight_change_kg") is not None:
+            weight_section = (
+                f"Measurements: {wt['measurements_count']} | "
+                f"Change: {wt['weight_change_kg']:+.2f} kg | "
+                f"Trend: {wt['trend_direction']} "
+                f"({(wt.get('weight_trend_slope') or 0):+.4f} kg/day)"
+            )
+        else:
+            weight_section = f"Measurements: {wt['measurements_count']}"
+
+        user_prompt = f"""
+## Client Progress Analysis — {features_data['period_label']}
+Period: {features_data['period_start']} → {features_data['period_end']} ({features_data['period_days']} days)
+Goal: {features_data['user_goal']}
+Overall consistency score: {features_data['overall_consistency_score']:.0%}
+On-track flag: {features_data['on_track']}
+
+{user_profile_context}
+
+## ENGINEERED NUTRITION FEATURES
+- Logging consistency: {n['days_with_logs']} / {features_data['period_days']} days ({n['logging_consistency_pct']:.1f}%)
+- Avg daily calories: {n['avg_daily_calories']:.0f} kcal | Target: {n.get('target_daily_calories') or 'N/A'} kcal | Adherence: {calorie_adherence}
+- Avg daily protein: {n['avg_daily_protein_g']:.1f}g | Target: {n.get('target_daily_protein_g') or 'N/A'}g | Adherence: {protein_adherence}
+- Avg daily carbs: {n['avg_daily_carbs_g']:.1f}g | Avg daily fats: {n['avg_daily_fats_g']:.1f}g
+- Calorie trend slope: {n['calorie_trend_slope']:+.2f} kcal/day (positive = increasing intake)
+- Macro balance score: {n['macro_balance_score']:.1f}/100
+
+## ENGINEERED WORKOUT FEATURES
+- Sessions: {w['total_sessions']} actual | {w.get('planned_sessions') or 'N/A'} planned | Adherence: {freq_adherence}
+- Avg sets/session: {w['avg_sets_per_session']:.1f} | Avg reps/session: {w['avg_reps_per_session']:.1f}
+- Total training volume: {w['total_volume_kg']:.1f} kg (Σ sets×reps×weight)
+- Volume trend slope: {w['volume_trend_slope']:+.2f} kg/week (positive = progressive overload)
+- Unique exercises: {w['unique_exercises_count']}
+- Exercise progressions:
+{progressions_block}
+
+## ENGINEERED WEIGHT FEATURES
+{weight_section}
+
+Respond with ONLY this JSON:
+{{
+  "assessment": "1-2 sentence overall verdict referencing actual numbers.",
+  "positives": ["max 3 bullets — what is going well"],
+  "improvements": ["max 3 bullets — what needs work"],
+  "suggestions": ["max 3 specific, actionable next steps"],
+  "projection": "1 quantified sentence: what the client should expect if the current trend continues."
+}}
+""".strip()
+
+        system_prompt = (
+            "You are an expert certified personal trainer and sports nutritionist. "
+            "Analyse the engineered feature data and write a coaching progress report. "
+            "Output ONLY the JSON object. No markdown fences. No extra text. "
+            "Reference actual numbers. Be direct. Max 25 words per bullet."
+        )
+
+        raw = self._call_llm(system_prompt, user_prompt, json_mode=True)
+        result = self._parse_json_response(raw)
+
+        def _to_list(v, max_n: int = 3):
+            if isinstance(v, list):
+                return [str(x) for x in v[:max_n]]
+            return [str(v)] if v else []
+
+        return {
+            "assessment":   str(result.get("assessment", "")),
+            "positives":    _to_list(result.get("positives", [])),
+            "improvements": _to_list(result.get("improvements", [])),
+            "suggestions":  _to_list(result.get("suggestions", [])),
+            "projection":   str(result.get("projection", "")),
+        }
+
     def ask_coach(
         self,
         question: str,

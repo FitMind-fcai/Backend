@@ -41,3 +41,12 @@ class WorkoutLogRepository(BaseRepository[WorkoutLog]):
         if log_date is not None:
             query = query.filter(WorkoutLog.log_date == log_date)
         return query.order_by(WorkoutLog.log_date.desc(), WorkoutLog.id.desc()).offset(skip).limit(limit).all()
+
+    def list_logs_since(self, user_id: int, since: date, until: Optional[date] = None) -> List[WorkoutLog]:
+        query = self.db.query(WorkoutLog).filter(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.log_date >= since,
+        )
+        if until is not None:
+            query = query.filter(WorkoutLog.log_date <= until)
+        return query.order_by(WorkoutLog.log_date.asc(), WorkoutLog.id.asc()).all()
