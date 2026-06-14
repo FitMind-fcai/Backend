@@ -4625,6 +4625,283 @@
                 }
               },
               "response": []
+            },
+            {
+              "name": "Save Sleep Log - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Sleep log saved', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.category).to.eql('sleep');",
+                      "  pm.expect(body.sleep_logs[0]).to.have.property('id');",
+                      "  pm.environment.set('sleepLogId', body.sleep_logs[0].id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"sleep\",\n  \"log_date\": \"2026-06-14\",\n  \"sleep_entries\": [\n    {\n      \"sleep_hours\": 7.5,\n      \"sleep_quality\": 8,\n      \"notes\": \"Good deep sleep\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Hydration Log - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Hydration log saved', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.category).to.eql('hydration');",
+                      "  pm.expect(body.hydration_logs[0]).to.have.property('id');",
+                      "  pm.environment.set('hydrationLogId', body.hydration_logs[0].id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"hydration\",\n  \"log_date\": \"2026-06-14\",\n  \"hydration_entries\": [\n    {\n      \"water_ml\": 500,\n      \"notes\": \"Morning glass\"\n    },\n    {\n      \"water_ml\": 750,\n      \"notes\": \"Post-workout\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Sleep Logs - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns sleep log array', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  if (body.length > 0) {",
+                      "    pm.expect(body[0]).to.have.property('sleep_hours');",
+                      "    pm.expect(body[0]).to.have.property('sleep_quality');",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/sleep",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "sleep"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Sleep Logs - Filter by Date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array filtered by date', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  body.forEach(log => pm.expect(log.log_date).to.eql('2026-06-14'));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/sleep?date=2026-06-14",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "sleep"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2026-06-14"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Hydration Logs - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns hydration log array', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  if (body.length > 0) pm.expect(body[0]).to.have.property('water_ml');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/hydration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "hydration"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Hydration Logs - Filter by Date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array filtered by date', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  body.forEach(log => pm.expect(log.log_date).to.eql('2026-06-14'));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/hydration?date=2026-06-14",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "hydration"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2026-06-14"
+                    }
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         }
@@ -5222,6 +5499,89 @@
                       "key": "period",
                       "value": "week"
                     }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "FitMind Score \u00b7 Radar",
+          "item": [
+            {
+              "name": "Get FitMind Score - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Score response has all 6 axes', () => {",
+                      "  const body = pm.response.json();",
+                      "  ['overall_score','nutrition','strength','agility','endurance','hydration','sleep'].forEach(k => {",
+                      "    pm.expect(body).to.have.property(k);",
+                      "    pm.expect(body[k]).to.be.a('number').and.within(0, 100);",
+                      "  });",
+                      "});",
+                      "pm.test('Has 3 series arrays of length 6', () => {",
+                      "  const body = pm.response.json();",
+                      "  ['strength_series','agility_series','endurance_series'].forEach(k => {",
+                      "    pm.expect(body[k]).to.be.an('array').with.lengthOf(6);",
+                      "  });",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/score",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "score"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get FitMind Score - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/score",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "score"
                   ]
                 }
               },

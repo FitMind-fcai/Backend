@@ -14,6 +14,8 @@ from app.tracking_module.schemas.tracking import (
     MealLogResponse,
     WorkoutLogResponse,
     WeightLogResponse,
+    SleepLogResponse,
+    HydrationLogResponse,
     SaveLogsRequest,
     SaveLogsResponse,
     ManualFoodCreate,
@@ -314,6 +316,44 @@ def get_weight_logs(
     service: TrackingService = Depends(get_tracking_service),
 ):
     return service.get_weight_logs(user_id=current_user.id, log_date=log_date, limit=limit)
+
+
+@tracking_router.get(
+    "/logs/sleep",
+    response_model=List[SleepLogResponse],
+    tags=["Logs"],
+    summary="Get sleep logs",
+    description=(
+        "Returns the current user's sleep logs, newest first. "
+        "Pass `date` (YYYY-MM-DD) to filter by a specific day."
+    ),
+)
+def get_sleep_logs(
+    log_date: Optional[date] = Query(default=None, alias="date", description="Filter by date (YYYY-MM-DD)"),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.get_sleep_logs(user_id=current_user.id, log_date=log_date, limit=limit)
+
+
+@tracking_router.get(
+    "/logs/hydration",
+    response_model=List[HydrationLogResponse],
+    tags=["Logs"],
+    summary="Get hydration logs",
+    description=(
+        "Returns the current user's water intake logs, newest first. "
+        "Pass `date` (YYYY-MM-DD) to filter by a specific day."
+    ),
+)
+def get_hydration_logs(
+    log_date: Optional[date] = Query(default=None, alias="date", description="Filter by date (YYYY-MM-DD)"),
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.get_hydration_logs(user_id=current_user.id, log_date=log_date, limit=limit)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -10,6 +10,8 @@ from app.recommendation_system.services.recommendation_service import Recommenda
 from app.tracking_module.repositories.meal_log_repository import MealLogRepository
 from app.tracking_module.repositories.weight_log_repository import WeightLogRepository
 from app.tracking_module.repositories.workout_log_repository import WorkoutLogRepository
+from app.tracking_module.repositories.sleep_log_repository import SleepLogRepository
+from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
 
 
 def get_recommendation_service(
@@ -20,6 +22,8 @@ def get_recommendation_service(
         meal_repo=MealLogRepository(db),
         workout_repo=WorkoutLogRepository(db),
         weight_repo=WeightLogRepository(db),
+        sleep_repo=SleepLogRepository(db),
+        hydration_repo=HydrationLogRepository(db),
         nutrition_plan_repo=NutritionPlanRepository(db),
         workout_plan_repo=WorkoutPlanRepository(db),
         profile_repo=ProfileRepository(db),

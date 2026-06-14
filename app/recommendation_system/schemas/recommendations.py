@@ -181,3 +181,31 @@ class ProgressReport(BaseModel):
     suggestions: List[str]                      # specific, actionable next steps
     projection: str                             # what happens if this trend continues
     generated_at: datetime
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FitMind Score  (radar chart + overall score)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class FitMindScore(BaseModel):
+    """
+    Scores powering the FitMind Score radar chart.
+
+    Axis order (matches frontend constants):
+      0: nutrition  1: strength  2: agility  3: endurance  4: hydration  5: sleep
+
+    Each individual score is 0–100.
+    The three series arrays follow the same 6-axis order and drive the
+    STRENGTH / AGILITY / ENDURANCE overlapping hexagons on the radar.
+    """
+    overall_score: int
+    nutrition: int
+    strength: int
+    agility: int
+    endurance: int
+    hydration: int
+    sleep: int
+    strength_series: List[int]      # [nutrition, strength, agility, endurance, hydration, sleep]
+    agility_series: List[int]
+    endurance_series: List[int]
+    generated_at: datetime

@@ -8,6 +8,7 @@ from app.auth_module.models.user import User
 from app.recommendation_system.core.dependencies import get_recommendation_service
 from app.recommendation_system.schemas.recommendations import (
     DailySuggestionResponse,
+    FitMindScore,
     NextMealResponse,
     NextWorkoutResponse,
     ProgressReport,
@@ -144,3 +145,34 @@ def get_progress_report(
     service: RecommendationService = Depends(get_recommendation_service),
 ) -> ProgressReport:
     return service.get_progress_report(user_id=current_user.id, period=period)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FitMind Score  (radar chart)
+# ──────────────────────────────────────────────────────────────────────────────
+
+@recommendation_router.get(
+    "/score",
+    response_model=FitMindScore,
+    tags=["Recommendations · Score"],
+    summary="Get FitMind Score for the radar chart",
+    description=(
+        "Computes six axis scores (0–100) and three series arrays for the FitMind "
+        "Score radar chart, plus a weighted `overall_score`.\n\n"
+        "All scores are based on the **last 7 days** of logged data.\n\n"
+        "**Axis scores:**\n"
+        "- `nutrition` — calorie & protein adherence + logging consistency\n"
+        "- `strength`  — total training volume + week-over-week progression\n"
+        "- `agility`   — exercise variety + cardio proportion\n"
+        "- `endurance` — workout frequency vs. planned sessions per week\n"
+        "- `hydration` — average daily water intake vs. 2 500 ml target\n"
+        "- `sleep`     — sleep duration (7–9 h = 100) + quality rating (1–10)\n\n"
+        "**Series arrays** (6 values each, same axis order) drive the overlapping "
+        "hexagons on the radar: `strength_series`, `agility_series`, `endurance_series`."
+    ),
+)
+def get_fitmind_score(
+    current_user: User = Depends(get_current_verified_user),
+    service: RecommendationService = Depends(get_recommendation_service),
+) -> FitMindScore:
+    return service.get_fitmind_score(user_id=current_user.id)

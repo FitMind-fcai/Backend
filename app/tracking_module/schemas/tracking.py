@@ -56,6 +56,29 @@ class WeightLogResponse(BaseModel):
     created_at: datetime
 
 
+class SleepLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    log_date: date
+    sleep_hours: float
+    sleep_quality: int
+    notes: Optional[str]
+    created_at: datetime
+
+
+class HydrationLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    log_date: date
+    water_ml: float
+    notes: Optional[str]
+    created_at: datetime
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Unified save endpoint schemas
 # ──────────────────────────────────────────────────────────────────────────────
@@ -104,21 +127,36 @@ class WeightLogEntry(BaseModel):
     notes: Optional[str] = None
 
 
+class SleepLogEntry(BaseModel):
+    """One sleep session to log."""
+    sleep_hours: float = Field(..., gt=0, le=24, description="Total hours slept")
+    sleep_quality: int = Field(..., ge=1, le=10, description="Sleep quality rating 1–10")
+    notes: Optional[str] = None
+
+
+class HydrationLogEntry(BaseModel):
+    """One water intake entry to log."""
+    water_ml: float = Field(..., gt=0, description="Water consumed in millilitres")
+    notes: Optional[str] = None
+
+
 class SaveLogsRequest(BaseModel):
     """
     Unified log-save request for all categories.
 
-    Set `category` to `meal`, `workout`, or `weight` and populate the
-    matching `*_entries` field. Multiple entries are saved in one call.
+    Set `category` to `meal`, `workout`, `weight`, `sleep`, or `hydration`
+    and populate the matching `*_entries` field.
 
     **`log_method`:** `TEXT` (default) | `VOICE` | `CAMERA`
     """
-    category: Literal["meal", "workout", "weight"]
+    category: Literal["meal", "workout", "weight", "sleep", "hydration"]
     log_date: date
     log_method: str = Field(default="TEXT", description="TEXT | VOICE | CAMERA")
     meal_entries: Optional[List[MealLogEntry]] = None
     workout_entries: Optional[List[WorkoutLogEntry]] = None
     weight_entries: Optional[List[WeightLogEntry]] = None
+    sleep_entries: Optional[List[SleepLogEntry]] = None
+    hydration_entries: Optional[List[HydrationLogEntry]] = None
 
     @model_validator(mode="after")
     def check_entries_present(self):
@@ -136,6 +174,8 @@ class SaveLogsResponse(BaseModel):
     meal_logs: List[MealLogResponse] = Field(default_factory=list)
     workout_logs: List[WorkoutLogResponse] = Field(default_factory=list)
     weight_logs: List[WeightLogResponse] = Field(default_factory=list)
+    sleep_logs: List[SleepLogResponse] = Field(default_factory=list)
+    hydration_logs: List[HydrationLogResponse] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
