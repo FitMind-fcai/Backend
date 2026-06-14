@@ -272,11 +272,11 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
                 SELECT
                     id, name, exercise_type, primary_muscle_group,
                     secondary_muscles, equipment_required, difficulty_level, location,
-                    1 - (name_embedding <=> :vec::vector) AS similarity_score
+                    1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity_score
                 FROM central_exercises
                 WHERE is_active = true
                   AND name_embedding IS NOT NULL
-                ORDER BY name_embedding <=> :vec::vector
+                ORDER BY name_embedding <=> CAST(:vec AS vector)
                 LIMIT :limit
             """),
             {"vec": vec_str, "limit": limit},
@@ -287,7 +287,7 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         """Persist the *embedding* vector for a single central_exercise row."""
         from app.ai_services.embedding_utils import vec_to_pg_str
         self.db.execute(
-            text("UPDATE central_exercises SET name_embedding = :vec::vector WHERE id = :id"),
+            text("UPDATE central_exercises SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
             {"vec": vec_to_pg_str(embedding), "id": exercise_id},
         )
         self.db.commit()

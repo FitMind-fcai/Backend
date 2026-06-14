@@ -314,11 +314,11 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
                     fiber_per_100g,
                     serving_size_g,
                     serving_description,
-                    1 - (name_embedding <=> :vec::vector) AS similarity_score
+                    1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity_score
                 FROM central_foods
                 WHERE is_active = true
                   AND name_embedding IS NOT NULL
-                ORDER BY name_embedding <=> :vec::vector
+                ORDER BY name_embedding <=> CAST(:vec AS vector)
                 LIMIT :limit
             """),
             {"vec": vec_str, "limit": limit},
@@ -329,7 +329,7 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         """Persist the *embedding* vector for a single central_food row."""
         vec_str = "[" + ",".join(f"{v:.6f}" for v in embedding) + "]"
         self.db.execute(
-            text("UPDATE central_foods SET name_embedding = :vec::vector WHERE id = :id"),
+            text("UPDATE central_foods SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
             {"vec": vec_str, "id": food_id},
         )
         self.db.commit()

@@ -187,10 +187,10 @@ class VoiceTranscriberService:
                     SELECT id, food_name, food_category,
                            calories_per_100g, protein_per_100g, carbs_per_100g,
                            fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
-                           1 - (name_embedding <=> :vec::vector) AS similarity
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
                     FROM central_foods
                     WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> :vec::vector
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
                 {"vec": vec, "lim": limit},
@@ -204,6 +204,7 @@ class VoiceTranscriberService:
                     serving_description=r.serving_description, similarity_score=float(r.similarity),
                 )
                 for r in rows
+                if r.similarity >= 0.55
             ]
         except Exception as exc:
             logger.warning("Food vector search failed: %s", exc)
@@ -221,10 +222,10 @@ class VoiceTranscriberService:
                 sql_text("""
                     SELECT id, name, exercise_type, primary_muscle_group,
                            secondary_muscles, equipment_required, difficulty_level, location,
-                           1 - (name_embedding <=> :vec::vector) AS similarity
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
                     FROM central_exercises
                     WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> :vec::vector
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
                 {"vec": vec, "lim": limit},
@@ -239,6 +240,7 @@ class VoiceTranscriberService:
                     similarity_score=float(r.similarity),
                 )
                 for r in rows
+                if r.similarity >= 0.55
             ]
         except Exception as exc:
             logger.warning("Exercise vector search failed: %s", exc)
@@ -310,7 +312,8 @@ Rules:
             )
 
         tags: List[str] = data.get("tags", [])
-        search_text = " ".join(tags) or transcription.text
+        food_items: List[str] = data.get("food_items", [])
+        search_text = " ".join(food_items + tags) or transcription.text
         matched_foods = self._search_foods(search_text, db)
 
         return MealLogTranscriptionDTO(

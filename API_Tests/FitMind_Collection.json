@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "FitMind API",
-    "description": "Complete test collection for the FitMind Backend API.\n\nCovers all endpoints with happy-path and error scenarios:\n- Authentication (signup, login, email verification, OTP, password reset)\n- Profile management (create, read, update)\n- AI Plan Generation (workout, nutrition)\n- Workout Plans & Days & Exercises\n- Nutrition Plans & Meals\n\n**Setup:** Import `FitMind_Environment.json` alongside this collection and select the \"FitMind Local\" environment before running.",
+    "description": "Complete test collection for the FitMind Backend API.\n\nCovers all endpoints with happy-path and error scenarios:\n- Authentication (signup, login, email verification, OTP, password reset)\n- Profile management (create, read, update)\n- AI Plan Generation (workout, nutrition)\n- Workout Plans & Days & Exercises\n- Nutrition Plans & Meals\n- Tracking (foods, exercises, meal logs, workout logs, weight logs, scan, voice)\n- Recommendation System (next meal by time, next workout, daily AI suggestion, progress report)\n\n**Setup:** Import `FitMind_Environment.json` alongside this collection and select the \"FitMind Local\" environment before running.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -3332,20 +3332,19 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('Food search returns serving-level nutrition', () => {",
                   "  const body = pm.response.json();",
                   "  pm.expect(body).to.be.an('array');",
                   "  if (body.length > 0) {",
-                  "    pm.expect(body[0]).to.have.property('serving_description');",
-                  "    pm.expect(body[0]).to.have.property('calories_per_serving');",
-                  "    pm.expect(body[0]).to.have.property('protein_g_per_serving');",
+                  "    pm.expect(body[0]).to.have.property('id');",
+                  "    pm.expect(body[0]).to.have.property('food_name');",
                   "    pm.environment.set('trackingCentralFoodId', body[0].id);",
                   "  }",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -3358,14 +3357,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/v1/tracking/foods/search?q=chicken&limit=10",
+              "raw": "{{baseUrl}}/v1/tracking/meals/search?q=chicken&limit=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "v1",
                 "tracking",
-                "foods",
+                "meals",
                 "search"
               ],
               "query": [
@@ -3388,19 +3387,19 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('Exercise search returns details', () => {",
                   "  const body = pm.response.json();",
                   "  pm.expect(body).to.be.an('array');",
                   "  if (body.length > 0) {",
+                  "    pm.expect(body[0]).to.have.property('id');",
                   "    pm.expect(body[0]).to.have.property('name');",
-                  "    pm.expect(body[0]).to.have.property('equipment_required');",
                   "    pm.environment.set('trackingCentralExerciseId', body[0].id);",
                   "  }",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -3413,14 +3412,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/v1/tracking/exercises/search?q=squat&limit=10",
+              "raw": "{{baseUrl}}/v1/tracking/workouts/search?q=squat&limit=10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "v1",
                 "tracking",
-                "exercises",
+                "workouts",
                 "search"
               ],
               "query": [
@@ -3443,6 +3442,7 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
                   "pm.test('Manual food created in central table', () => {",
@@ -3452,8 +3452,7 @@
                   "  pm.expect(body.is_verified).to.eql(false);",
                   "  pm.environment.set('trackingManualFoodId', body.id);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -3494,6 +3493,7 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
                   "pm.test('Manual exercise created in central table', () => {",
@@ -3503,8 +3503,7 @@
                   "  pm.expect(body.is_verified).to.eql(false);",
                   "  pm.environment.set('trackingManualExerciseId', body.id);",
                   "});"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -3540,481 +3539,7 @@
           "response": []
         },
         {
-          "name": "Create Workout Log (Text) - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Workout log created', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('id');",
-                  "  pm.expect(body).to.have.property('central_exercise_id');",
-                  "  pm.environment.set('trackingWorkoutLogId', body.id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"central_exercise_id\": 1,\n  \"log_date\": \"2026-04-20\",\n  \"sets_completed\": 3,\n  \"reps_completed\": 10,\n  \"weight_used\": 40.0,\n  \"notes\": \"text workout logging smoke\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/workouts/text",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "workouts",
-                "text"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "List Workout Logs - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Returns array', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.be.an('array');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/workouts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "workouts"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Workout Log by ID - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/workouts/{{trackingWorkoutLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "workouts",
-                "{{trackingWorkoutLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Workout Log - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/workouts/{{trackingWorkoutLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "workouts",
-                "{{trackingWorkoutLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Meal Log (Text) - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Meal log created', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('id');",
-                  "  pm.expect(body.log_method).to.eql('TEXT');",
-                  "  pm.environment.set('trackingMealLogId', body.id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"central_food_id\": 1,\n  \"log_date\": \"2026-04-20\",\n  \"meal_type\": \"Lunch\",\n  \"meal_name\": \"Chicken rice bowl\",\n  \"servings\": 1,\n  \"calories\": 650,\n  \"protein_g\": 45,\n  \"carbs_g\": 70,\n  \"fats_g\": 20\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/meals/text",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "meals",
-                "text"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "List Meal Logs - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/meals",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "meals"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Meal Log by ID - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/meals/{{trackingMealLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "meals",
-                "{{trackingMealLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Meal Log - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/meals/{{trackingMealLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "meals",
-                "{{trackingMealLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Create Weight Log (Text) - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('Weight log created', () => {",
-                  "  const body = pm.response.json();",
-                  "  pm.expect(body).to.have.property('id');",
-                  "  pm.environment.set('trackingWeightLogId', body.id);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"log_date\": \"2026-04-20\",\n  \"weight\": 81.3,\n  \"notes\": \"Morning weigh-in\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/weights/text",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "weights",
-                "text"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "List Weight Logs - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/weights",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "weights"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Weight Log by ID - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/weights/{{trackingWeightLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "weights",
-                "{{trackingWeightLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Weight Log - Success",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/tracking/weights/{{trackingWeightLogId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "tracking",
-                "weights",
-                "{{trackingWeightLogId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Meal Scanner (Camera)",
+          "name": "Meal Scanner (AI)",
           "item": [
             {
               "name": "Scan Meal - Success",
@@ -4022,9 +3547,10 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
-                      "pm.test('Scan returns meal name and macros', () => {",
+                      "pm.test('Scan returns meal name, macros, tags and matched_foods', () => {",
                       "  const body = pm.response.json();",
                       "  pm.expect(body).to.have.property('meal_name');",
                       "  pm.expect(body).to.have.property('total_calories');",
@@ -4035,8 +3561,7 @@
                       "    pm.environment.set('scanMatchedFoodId', body.matched_foods[0].id);",
                       "  }",
                       "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4094,10 +3619,10 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4133,173 +3658,11 @@
                 }
               },
               "response": []
-            },
-            {
-              "name": "Scan & Log Meal - Success (AI macros)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Response has scan and meal_log', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body).to.have.property('scan');",
-                      "  pm.expect(body).to.have.property('meal_log');",
-                      "  pm.expect(body.meal_log).to.have.property('id');",
-                      "  pm.expect(body.meal_log.log_method).to.eql('CAMERA');",
-                      "  pm.environment.set('scanMealLogId', body.meal_log.id);",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "file",
-                      "type": "file",
-                      "src": []
-                    },
-                    {
-                      "key": "image_format",
-                      "value": "jpeg",
-                      "type": "text"
-                    },
-                    {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
-                      "key": "meal_type",
-                      "value": "Lunch",
-                      "type": "text"
-                    },
-                    {
-                      "key": "language",
-                      "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "servings",
-                      "value": "1.0",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "meals",
-                    "scan",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Scan & Log Meal - With Central Food Override",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Meal log uses selected central food', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body.meal_log.central_food_id).to.eql(pm.environment.get('scanMatchedFoodId'));",
-                      "  pm.expect(body.meal_log.log_method).to.eql('CAMERA');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "file",
-                      "type": "file",
-                      "src": []
-                    },
-                    {
-                      "key": "image_format",
-                      "value": "jpeg",
-                      "type": "text"
-                    },
-                    {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
-                      "key": "meal_type",
-                      "value": "Lunch",
-                      "type": "text"
-                    },
-                    {
-                      "key": "language",
-                      "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "servings",
-                      "value": "1.5",
-                      "type": "text"
-                    },
-                    {
-                      "key": "central_food_id",
-                      "value": "{{scanMatchedFoodId}}",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/meals/scan/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "meals",
-                    "scan",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
             }
           ]
         },
         {
-          "name": "Voice - Meals",
+          "name": "AI Voice",
           "item": [
             {
               "name": "Voice Meal - Success",
@@ -4307,6 +3670,7 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                       "pm.test('Voice meal returns parsed food and matches', () => {",
@@ -4320,8 +3684,7 @@
                       "    pm.environment.set('voiceMealMatchedFoodId', body.matched_foods[0].id);",
                       "  }",
                       "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4374,14 +3737,14 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                       "pm.test('Parse successful', () => {",
                       "  const body = pm.response.json();",
                       "  pm.expect(body.parse_successful).to.eql(true);",
                       "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4429,250 +3792,12 @@
               "response": []
             },
             {
-              "name": "Voice & Log Meal - Success (AI macros)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Response has voice and meal_log', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body).to.have.property('voice');",
-                      "  pm.expect(body).to.have.property('meal_log');",
-                      "  pm.expect(body.meal_log).to.have.property('id');",
-                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
-                      "  pm.environment.set('voiceMealLogId', body.meal_log.id);",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "file",
-                      "type": "file",
-                      "src": []
-                    },
-                    {
-                      "key": "audio_format",
-                      "value": "mp3",
-                      "type": "text"
-                    },
-                    {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
-                      "key": "meal_type",
-                      "value": "Lunch",
-                      "type": "text"
-                    },
-                    {
-                      "key": "language",
-                      "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "servings",
-                      "value": "1.0",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "meals",
-                    "voice",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Voice & Log Meal - With Central Food Override",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Meal log uses selected central food macros', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body.meal_log.central_food_id).to.eql(pm.environment.get('voiceMealMatchedFoodId'));",
-                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "file",
-                      "type": "file",
-                      "src": []
-                    },
-                    {
-                      "key": "audio_format",
-                      "value": "mp3",
-                      "type": "text"
-                    },
-                    {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
-                      "key": "meal_type",
-                      "value": "Dinner",
-                      "type": "text"
-                    },
-                    {
-                      "key": "language",
-                      "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "servings",
-                      "value": "2.0",
-                      "type": "text"
-                    },
-                    {
-                      "key": "central_food_id",
-                      "value": "{{voiceMealMatchedFoodId}}",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "meals",
-                    "voice",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Voice & Log Meal - Missing meal_type (uses detected)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Meal log saved with detected meal type', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body.meal_log).to.have.property('meal_type');",
-                      "  pm.expect(body.meal_log.log_method).to.eql('VOICE');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "file",
-                      "type": "file",
-                      "src": []
-                    },
-                    {
-                      "key": "audio_format",
-                      "value": "mp3",
-                      "type": "text"
-                    },
-                    {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
-                      "key": "language",
-                      "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "servings",
-                      "value": "1.0",
-                      "type": "text"
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/meals/voice/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "meals",
-                    "voice",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
-            }
-          ]
-        },
-        {
-          "name": "Voice - Workouts",
-          "item": [
-            {
               "name": "Voice Workout - Success",
               "event": [
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
                       "pm.test('Voice workout returns parsed exercises', () => {",
@@ -4685,8 +3810,7 @@
                       "    pm.environment.set('voiceExerciseMatchId', body.exercises[0].matched_exercises[0].id);",
                       "  }",
                       "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4739,10 +3863,10 @@
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4780,77 +3904,24 @@
               "response": []
             },
             {
-              "name": "Voice & Log Workout - Success (auto-match)",
+              "name": "Voice Weight - Success",
               "event": [
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Logged exercises match parsed count', () => {",
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Voice weight returns extracted_weight_kg', () => {",
                       "  const body = pm.response.json();",
-                      "  pm.expect(body).to.have.property('voice');",
-                      "  pm.expect(body).to.have.property('logged_exercises').that.is.an('array');",
-                      "  pm.expect(body.logged_exercises.length).to.be.above(0);",
-                      "  body.logged_exercises.forEach(entry => {",
-                      "    pm.expect(entry.workout_log).to.have.property('id');",
-                      "    pm.expect(entry.workout_log.log_method).to.be.undefined;",
-                      "  });",
-                      "  pm.environment.set('voiceWorkoutLogId', body.logged_exercises[0].workout_log.id);",
+                      "  pm.expect(body).to.have.property('raw_text');",
+                      "  pm.expect(body).to.have.property('extracted_weight_kg');",
+                      "  pm.expect(body.parse_successful).to.eql(true);",
+                      "  if (body.extracted_weight_kg) {",
+                      "    pm.environment.set('voiceExtractedWeight', body.extracted_weight_kg);",
+                      "  }",
                       "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "tracking",
-                    "workouts",
-                    "voice",
-                    "log"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Voice & Log Workout - With Exercise Override",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('First exercise uses overridden central_exercise_id', () => {",
-                      "  const body = pm.response.json();",
-                      "  pm.expect(body.logged_exercises.length).to.be.above(0);",
-                      "  pm.expect(body.logged_exercises[0].workout_log.central_exercise_id)",
-                      "    .to.eql(pm.environment.get('voiceExerciseMatchId'));",
-                      "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4876,52 +3947,50 @@
                       "type": "text"
                     },
                     {
-                      "key": "log_date",
-                      "value": "2026-06-11",
-                      "type": "text"
-                    },
-                    {
                       "key": "language",
                       "value": "en",
-                      "type": "text"
-                    },
-                    {
-                      "key": "exercise_overrides",
-                      "value": "[{\"exercise_index\":0,\"central_exercise_id\":{{voiceExerciseMatchId}}}]",
                       "type": "text"
                     }
                   ]
                 },
                 "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
+                  "raw": "{{baseUrl}}/v1/tracking/weights/voice",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "v1",
                     "tracking",
-                    "workouts",
-                    "voice",
-                    "log"
+                    "weights",
+                    "voice"
                   ]
                 }
               },
               "response": []
-            },
+            }
+          ]
+        },
+        {
+          "name": "Logs",
+          "item": [
             {
-              "name": "Voice & Log Workout - Multi-exercise",
+              "name": "Save Meal Log (TEXT) - Success",
               "event": [
                 {
                   "listen": "test",
                   "script": {
+                    "type": "text/javascript",
                     "exec": [
                       "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
-                      "pm.test('Multiple workout log entries created', () => {",
+                      "pm.test('Meal log entry saved', () => {",
                       "  const body = pm.response.json();",
-                      "  pm.expect(body.logged_exercises.length).to.be.above(1);",
+                      "  pm.expect(body).to.have.property('meal_logs');",
+                      "  pm.expect(body.meal_logs).to.be.an('array').that.is.not.empty;",
+                      "  pm.expect(body.meal_logs[0]).to.have.property('id');",
+                      "  pm.expect(body.meal_logs[0].log_method).to.eql('TEXT');",
+                      "  pm.environment.set('trackingMealLogId', body.meal_logs[0].id);",
                       "});"
-                    ],
-                    "type": "text/javascript"
+                    ]
                   }
                 }
               ],
@@ -4939,19 +4008,1220 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"audio_base64\": \"{{audioBase64Multi}}\",\n  \"audio_format\": \"mp3\",\n  \"log_date\": \"2026-06-10\",\n  \"language\": \"en\"\n}"
+                  "raw": "{\n  \"category\": \"meal\",\n  \"log_date\": \"2026-06-14\",\n  \"log_method\": \"TEXT\",\n  \"meal_entries\": [\n    {\n      \"central_food_id\": 1,\n      \"meal_type\": \"Lunch\",\n      \"meal_name\": \"Chicken rice bowl\",\n      \"servings\": 1,\n      \"calories\": 650,\n      \"protein_g\": 45,\n      \"carbs_g\": 70,\n      \"fats_g\": 20\n    }\n  ]\n}"
                 },
                 "url": {
-                  "raw": "{{baseUrl}}/v1/tracking/workouts/voice/log",
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "v1",
                     "tracking",
-                    "workouts",
-                    "voice",
-                    "log"
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Meal Log (CAMERA) - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Meal log saved with CAMERA method', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.meal_logs[0].log_method).to.eql('CAMERA');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"meal\",\n  \"log_date\": \"2026-06-14\",\n  \"log_method\": \"CAMERA\",\n  \"meal_entries\": [\n    {\n      \"central_food_id\": {{scanMatchedFoodId}},\n      \"meal_type\": \"Lunch\",\n      \"servings\": 1.0\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Meal Log (VOICE) - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Meal log saved with VOICE method', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.meal_logs[0].log_method).to.eql('VOICE');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"meal\",\n  \"log_date\": \"2026-06-14\",\n  \"log_method\": \"VOICE\",\n  \"meal_entries\": [\n    {\n      \"central_food_id\": {{voiceMealMatchedFoodId}},\n      \"meal_type\": \"Dinner\",\n      \"servings\": 1.0\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Workout Log (TEXT) - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Workout log entry saved', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('workout_logs');",
+                      "  pm.expect(body.workout_logs).to.be.an('array').that.is.not.empty;",
+                      "  pm.expect(body.workout_logs[0]).to.have.property('id');",
+                      "  pm.environment.set('trackingWorkoutLogId', body.workout_logs[0].id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"workout\",\n  \"log_date\": \"2026-06-14\",\n  \"log_method\": \"TEXT\",\n  \"workout_entries\": [\n    {\n      \"central_exercise_id\": 1,\n      \"sets_completed\": 3,\n      \"reps_completed\": 10,\n      \"weight_used\": 40.0,\n      \"notes\": \"text workout logging smoke\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Workout Log (VOICE) - Multi-exercise",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Multiple workout logs saved', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.workout_logs.length).to.be.above(1);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"workout\",\n  \"log_date\": \"2026-06-14\",\n  \"log_method\": \"VOICE\",\n  \"workout_entries\": [\n    {\n      \"central_exercise_id\": {{voiceExerciseMatchId}},\n      \"sets_completed\": 4,\n      \"reps_completed\": 12,\n      \"weight_used\": 60.0\n    },\n    {\n      \"central_exercise_id\": 2,\n      \"sets_completed\": 3,\n      \"reps_completed\": 8,\n      \"weight_used\": 80.0\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Weight Log - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Weight log saved', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('weight_logs');",
+                      "  pm.expect(body.weight_logs).to.be.an('array').that.is.not.empty;",
+                      "  pm.expect(body.weight_logs[0]).to.have.property('id');",
+                      "  pm.environment.set('trackingWeightLogId', body.weight_logs[0].id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"weight\",\n  \"log_date\": \"2026-06-14\",\n  \"weight_entries\": [\n    {\n      \"weight\": 81.3,\n      \"notes\": \"Morning weigh-in\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Weight Log (VOICE) - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                      "pm.test('Weight log saved from voice-extracted value', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.weight_logs[0]).to.have.property('id');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"weight\",\n  \"log_date\": \"2026-06-14\",\n  \"weight_entries\": [\n    {\n      \"weight\": {{voiceExtractedWeight}},\n      \"notes\": \"Voice extracted weight\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Log - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"category\": \"meal\",\n  \"log_date\": \"2026-06-14\",\n  \"meal_entries\": [{\"meal_type\": \"Lunch\", \"calories\": 500}]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Meal Logs - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array of meal logs', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  if (body.length > 0) {",
+                      "    pm.expect(body[0]).to.have.property('id');",
+                      "    pm.expect(body[0]).to.have.property('meal_type');",
+                      "    pm.expect(body[0]).to.have.property('log_method');",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/meals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "meals"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Meal Logs - Filter by Date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('All logs match requested date', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  body.forEach(log => pm.expect(log.log_date).to.eql('2026-06-14'));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/meals?date=2026-06-14",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "meals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2026-06-14"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Workout Logs - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array of workout logs', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  if (body.length > 0) {",
+                      "    pm.expect(body[0]).to.have.property('id');",
+                      "    pm.expect(body[0]).to.have.property('central_exercise_id');",
+                      "    pm.expect(body[0]).to.have.property('sets_completed');",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/workouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "workouts"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Workout Logs - Filter by Date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array filtered by date', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  body.forEach(log => pm.expect(log.log_date).to.eql('2026-06-14'));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/workouts?date=2026-06-14",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "workouts"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2026-06-14"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Weight Logs - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array of weight logs', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  if (body.length > 0) {",
+                      "    pm.expect(body[0]).to.have.property('id');",
+                      "    pm.expect(body[0]).to.have.property('weight');",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/weights",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "weights"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Weight Logs - Filter by Date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns array filtered by date', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.be.an('array');",
+                      "  body.forEach(log => pm.expect(log.log_date).to.eql('2026-06-14'));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tracking/logs/weights?date=2026-06-14",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "tracking",
+                    "logs",
+                    "weights"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2026-06-14"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 Recommendations",
+      "item": [
+        {
+          "name": "Next Meal \u00b7 Plan",
+          "item": [
+            {
+              "name": "Get Next Meal - With Time (Success)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns recommended_meal with meal details', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.has_plan).to.eql(true);",
+                      "  pm.expect(body).to.have.property('query_time');",
+                      "  pm.expect(body).to.have.property('recommended_meal');",
+                      "  const meal = body.recommended_meal;",
+                      "  pm.expect(meal).to.have.property('meal_id');",
+                      "  pm.expect(meal).to.have.property('meal_type');",
+                      "  pm.expect(meal).to.have.property('meal_name');",
+                      "  pm.expect(meal).to.have.property('calories');",
+                      "  pm.expect(meal).to.have.property('protein_g');",
+                      "  pm.expect(meal).to.have.property('ingredients').that.is.an('array');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-meal?time=13:00",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-meal"
+                  ],
+                  "query": [
+                    {
+                      "key": "time",
+                      "value": "13:00",
+                      "description": "HH:MM (24-hour) \u2014 recommendation based on this time of day"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Next Meal - No Time (defaults to now)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns recommended_meal based on current server time', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('has_plan');",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  if (body.has_plan) {",
+                      "    pm.expect(body).to.have.property('recommended_meal');",
+                      "    pm.expect(body).to.have.property('query_time');",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-meal",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-meal"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Next Meal - Breakfast Time (07:30)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Recommended meal fits breakfast time', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.query_time).to.eql('07:30');",
+                      "  if (body.recommended_meal) {",
+                      "    pm.expect(body.recommended_meal.meal_type.toLowerCase()).to.include('breakfast');",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-meal?time=07:30",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-meal"
+                  ],
+                  "query": [
+                    {
+                      "key": "time",
+                      "value": "07:30"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Next Meal - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-meal?time=13:00",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-meal"
+                  ],
+                  "query": [
+                    {
+                      "key": "time",
+                      "value": "13:00"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Next Workout \u00b7 Plan",
+          "item": [
+            {
+              "name": "Get Next Workout - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns workout session for today', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('has_plan');",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  if (body.has_plan) {",
+                      "    pm.expect(body).to.have.property('plan_name');",
+                      "    pm.expect(body).to.have.property('workout_day_name');",
+                      "    pm.expect(body).to.have.property('exercises').that.is.an('array');",
+                      "    if (body.exercises.length > 0) {",
+                      "      const ex = body.exercises[0];",
+                      "      pm.expect(ex).to.have.property('exercise_name');",
+                      "      pm.expect(ex).to.have.property('already_logged');",
+                      "      pm.expect(ex).to.have.property('order_index');",
+                      "    }",
+                      "  }",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-workout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-workout"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Next Workout - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/next-workout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "next-workout"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Daily Suggestion \u00b7 AI",
+          "item": [
+            {
+              "name": "Get Daily Suggestion - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns AI coaching suggestion with snapshot', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.period).to.eql('last_24_hours');",
+                      "  pm.expect(body).to.have.property('snapshot');",
+                      "  pm.expect(body.snapshot).to.have.property('calories_consumed');",
+                      "  pm.expect(body.snapshot).to.have.property('workout_sessions_logged');",
+                      "  pm.expect(body.snapshot).to.have.property('weight_logged');",
+                      "  pm.expect(body).to.have.property('urgency');",
+                      "  pm.expect(['on_track', 'needs_attention', 'off_track']).to.include(body.urgency);",
+                      "  pm.expect(body).to.have.property('suggestion');",
+                      "  pm.expect(body.suggestion).to.be.a('string').that.is.not.empty;",
+                      "  pm.expect(body).to.have.property('generated_at');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/daily-suggestion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "daily-suggestion"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Daily Suggestion - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/daily-suggestion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "daily-suggestion"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Progress Report \u00b7 AI",
+          "item": [
+            {
+              "name": "Get Progress Report - Week",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns full progress report with engineered features', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('features');",
+                      "  const f = body.features;",
+                      "  pm.expect(f.period_label).to.eql('Last 7 Days');",
+                      "  pm.expect(f).to.have.property('nutrition');",
+                      "  pm.expect(f.nutrition).to.have.property('logging_consistency_pct');",
+                      "  pm.expect(f.nutrition).to.have.property('calorie_trend_slope');",
+                      "  pm.expect(f.nutrition).to.have.property('macro_balance_score');",
+                      "  pm.expect(f).to.have.property('workout');",
+                      "  pm.expect(f.workout).to.have.property('total_volume_kg');",
+                      "  pm.expect(f.workout).to.have.property('volume_trend_slope');",
+                      "  pm.expect(f.workout).to.have.property('exercise_progressions').that.is.an('array');",
+                      "  pm.expect(f).to.have.property('weight');",
+                      "  pm.expect(f.weight).to.have.property('trend_direction');",
+                      "  pm.expect(body).to.have.property('assessment');",
+                      "  pm.expect(body).to.have.property('positives').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('improvements').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('suggestions').that.is.an('array');",
+                      "  pm.expect(body).to.have.property('projection');",
+                      "  pm.expect(body).to.have.property('generated_at');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/progress-report?period=week",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "progress-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "week",
+                      "description": "Report window: week | month | full_plan"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Progress Report - Month",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Period label is Last 30 Days', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.features.period_label).to.eql('Last 30 Days');",
+                      "  pm.expect(body.features.period_days).to.eql(30);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/progress-report?period=month",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "progress-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "month"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Progress Report - Full Plan",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Period label is Full Plan', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.features.period_label).to.eql('Full Plan');",
+                      "  pm.expect(body.features.overall_consistency_score).to.be.a('number');",
+                      "  pm.expect(body.features.on_track).to.be.a('boolean');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/progress-report?period=full_plan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "progress-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "full_plan"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Progress Report - Invalid Period (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 422 Unprocessable Entity', () => pm.response.to.have.status(422));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/progress-report?period=quarterly",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "progress-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "quarterly"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Progress Report - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/recommendations/progress-report?period=week",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "recommendations",
+                    "progress-report"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "week"
+                    }
                   ]
                 }
               },
