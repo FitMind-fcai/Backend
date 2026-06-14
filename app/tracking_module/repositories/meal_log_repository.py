@@ -60,3 +60,12 @@ class MealLogRepository(BaseRepository[MealLog]):
         if meal_type is not None:
             query = query.filter(MealLog.meal_type == meal_type)
         return query.order_by(MealLog.log_date.desc(), MealLog.id.desc()).offset(skip).limit(limit).all()
+
+    def list_logs_since(self, user_id: int, since: date, until: Optional[date] = None) -> List[MealLog]:
+        query = self.db.query(MealLog).filter(
+            MealLog.user_id == user_id,
+            MealLog.log_date >= since,
+        )
+        if until is not None:
+            query = query.filter(MealLog.log_date <= until)
+        return query.order_by(MealLog.log_date.asc(), MealLog.id.asc()).all()

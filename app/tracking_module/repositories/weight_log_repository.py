@@ -25,3 +25,12 @@ class WeightLogRepository(BaseRepository[WeightLog]):
         if log_date is not None:
             query = query.filter(WeightLog.log_date == log_date)
         return query.order_by(WeightLog.log_date.desc(), WeightLog.id.desc()).offset(skip).limit(limit).all()
+
+    def list_logs_since(self, user_id: int, since: date, until: Optional[date] = None) -> List[WeightLog]:
+        query = self.db.query(WeightLog).filter(
+            WeightLog.user_id == user_id,
+            WeightLog.log_date >= since,
+        )
+        if until is not None:
+            query = query.filter(WeightLog.log_date <= until)
+        return query.order_by(WeightLog.log_date.asc(), WeightLog.id.asc()).all()
