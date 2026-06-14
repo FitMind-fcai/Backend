@@ -8,12 +8,16 @@ from sqlalchemy import text as sql_text
 from app.tracking_module.repositories.workout_log_repository import WorkoutLogRepository
 from app.tracking_module.repositories.meal_log_repository import MealLogRepository
 from app.tracking_module.repositories.weight_log_repository import WeightLogRepository
+from app.tracking_module.repositories.sleep_log_repository import SleepLogRepository
+from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
 from app.shared.repositories.central_food_repository import CentralFoodRepository
 from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
 from app.tracking_module.schemas.tracking import (
     MealLogResponse,
     WorkoutLogResponse,
     WeightLogResponse,
+    SleepLogResponse,
+    HydrationLogResponse,
     SaveLogsRequest,
     SaveLogsResponse,
     ManualFoodCreate,
@@ -40,12 +44,16 @@ class TrackingService:
         workout_repo: WorkoutLogRepository,
         meal_repo: MealLogRepository,
         weight_repo: WeightLogRepository,
+        sleep_repo: SleepLogRepository,
+        hydration_repo: HydrationLogRepository,
         central_food_repo: CentralFoodRepository,
         central_exercise_repo: CentralExerciseRepository,
     ):
         self.workout_repo = workout_repo
         self.meal_repo = meal_repo
         self.weight_repo = weight_repo
+        self.sleep_repo = sleep_repo
+        self.hydration_repo = hydration_repo
         self.central_food_repo = central_food_repo
         self.central_exercise_repo = central_exercise_repo
 
@@ -293,17 +301,42 @@ class TrackingService:
                 saved.append(WorkoutLogResponse.model_validate(log))
             return SaveLogsResponse(category="workout", saved_count=len(saved), workout_logs=saved)
 
-        # weight
+        if request.category == "weight":
+            saved = []
+            for entry in request.weight_entries:
+                log = self.weight_repo.create_log(
+                    user_id=user_id,
+                    log_date=request.log_date,
+                    weight=entry.weight,
+                    notes=entry.notes.strip() if entry.notes else None,
+                )
+                saved.append(WeightLogResponse.model_validate(log))
+            return SaveLogsResponse(category="weight", saved_count=len(saved), weight_logs=saved)
+
+        if request.category == "sleep":
+            saved = []
+            for entry in request.sleep_entries:
+                log = self.sleep_repo.create_log(
+                    user_id=user_id,
+                    log_date=request.log_date,
+                    sleep_hours=entry.sleep_hours,
+                    sleep_quality=entry.sleep_quality,
+                    notes=entry.notes.strip() if entry.notes else None,
+                )
+                saved.append(SleepLogResponse.model_validate(log))
+            return SaveLogsResponse(category="sleep", saved_count=len(saved), sleep_logs=saved)
+
+        # hydration
         saved = []
-        for entry in request.weight_entries:
-            log = self.weight_repo.create_log(
+        for entry in request.hydration_entries:
+            log = self.hydration_repo.create_log(
                 user_id=user_id,
                 log_date=request.log_date,
-                weight=entry.weight,
+                water_ml=entry.water_ml,
                 notes=entry.notes.strip() if entry.notes else None,
             )
-            saved.append(WeightLogResponse.model_validate(log))
-        return SaveLogsResponse(category="weight", saved_count=len(saved), weight_logs=saved)
+            saved.append(HydrationLogResponse.model_validate(log))
+        return SaveLogsResponse(category="hydration", saved_count=len(saved), hydration_logs=saved)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Get logs by date  (public — used by GET /tracking/logs/* endpoints)
@@ -317,6 +350,12 @@ class TrackingService:
 
     def get_weight_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
         return self.weight_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+
+    def get_sleep_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
+        return self.sleep_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+
+    def get_hydration_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
+        return self.hydration_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Catalog  (manual entries)

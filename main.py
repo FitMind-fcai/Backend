@@ -12,6 +12,7 @@ from app.planning_module.routes import (
     plan_generation_router
 )
 from app.tracking_module.routes import tracking_router
+from app.recommendation_system.routes.recommendations import recommendation_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -112,6 +113,7 @@ v1_router.include_router(plan_generation_router, tags=["Plan Generation"])
 v1_router.include_router(workout_router, tags=["Workout Plans"])
 v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
 v1_router.include_router(tracking_router)  # tags are set per-endpoint
+v1_router.include_router(recommendation_router)
 
 app.include_router(v1_router)
 
