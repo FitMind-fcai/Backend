@@ -1,15 +1,12 @@
-# Use Python 3.13 slim image
 FROM python:3.13-slim
 
-# Set working directory
 WORKDIR /app
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Install system dependencies (including C++ compiler for chromadb)
+# System deps (C++ compiler required by chromadb)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -17,17 +14,16 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
 COPY . .
 
-# Expose port
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-# Run the application
+# entrypoint.sh seeds the DB + builds ChromaDB on first run, then execs CMD
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

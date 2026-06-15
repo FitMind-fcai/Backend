@@ -3,6 +3,7 @@ import json
 import logging
 import shutil
 import re
+from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
@@ -25,9 +26,6 @@ class VectorDBService:
     # Embedding model configuration
     EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
     COLLECTION_NAME = "fitness_knowledge"
-
-    # Reranker model (Phase 4 — cross-encoder)
-    RERANKER_MODEL_NAME = "BAAI/bge-reranker-base"
 
     # Retrieval layers / sectioning
     WORKOUT_KEYWORDS = {
@@ -57,23 +55,19 @@ class VectorDBService:
     BM25_TOP_K   = 20
     DENSE_TOP_K  = 20
     RRF_K        = 60          # RRF constant (standard value)
-    RERANK_TOP_N = 5           # final top-n after reranking
 
     def __init__(
         self,
         persist_directory: Optional[str] = None,
         collection_name: Optional[str] = None,
-        use_reranker: bool = True,
     ):
         self.persist_directory = persist_directory or self.DEFAULT_PERSIST_DIR
         self.collection_name   = collection_name   or self.COLLECTION_NAME
-        self.use_reranker      = use_reranker
 
         self._embeddings   = None
         self._vectorstore  = None
-        self._bm25_index   = None   # Phase 4: BM25 index
-        self._bm25_docs: List[Dict[str, Any]] = []   # parallel list to BM25 corpus
-        self._reranker     = None   # Phase 4: cross-encoder reranker
+        self._bm25_index   = None
+        self._bm25_docs: List[Dict[str, Any]] = []
 
     # ------------------------------------------------------------------
     # Lazy-loaded properties
@@ -93,23 +87,9 @@ class VectorDBService:
 
     @property
     def bm25_index(self):
-        """Lazy-load BM25 index built from all ChromaDB documents (Phase 4)."""
         if self._bm25_index is None:
             self._build_bm25_index()
         return self._bm25_index
-
-    @property
-    def reranker(self):
-        """Lazy-load cross-encoder reranker (Phase 4)."""
-        if self._reranker is None and self.use_reranker:
-            try:
-                from sentence_transformers import CrossEncoder
-                self._reranker = CrossEncoder(self.RERANKER_MODEL_NAME)
-                logger.info("Cross-encoder reranker loaded: %s", self.RERANKER_MODEL_NAME)
-            except Exception as exc:
-                logger.warning("Could not load reranker (%s) — reranking disabled: %s", self.RERANKER_MODEL_NAME, exc)
-                self.use_reranker = False
-        return self._reranker
 
     # ------------------------------------------------------------------
     # Phase 4 — BM25 index
@@ -220,23 +200,6 @@ class VectorDBService:
         return [key_to_doc[k] for k, _ in ranked if k in key_to_doc]
 
     # ------------------------------------------------------------------
-    # Phase 4 — Cross-Encoder Reranker
-    # ------------------------------------------------------------------
-
-    def _rerank(self, query: str, docs: List[Document], top_k: int) -> List[Document]:
-        """Score (query, passage) pairs with the cross-encoder and return top-k."""
-        if not self.use_reranker or self.reranker is None or not docs:
-            return docs[:top_k]
-        try:
-            pairs  = [(query, doc.page_content) for doc in docs]
-            scores = self.reranker.predict(pairs)
-            ranked = sorted(zip(scores, docs), key=lambda x: x[0], reverse=True)
-            return [doc for _, doc in ranked[:top_k]]
-        except Exception as exc:
-            logger.warning("Reranker failed — falling back to RRF order: %s", exc)
-            return docs[:top_k]
-
-    # ------------------------------------------------------------------
     # Vectorstore helpers
     # ------------------------------------------------------------------
 
@@ -273,9 +236,17 @@ class VectorDBService:
         return "general"
 
     def _cleanup_existing_store(self) -> None:
-        if os.path.exists(self.persist_directory):
-            shutil.rmtree(self.persist_directory)
-            logger.info("Removed existing vector DB at %s", self.persist_directory)
+        path = Path(self.persist_directory)
+        if not path.exists():
+            return
+        # Delete contents only — don't remove the directory itself because it
+        # may be a Docker volume mount point (rmtree on a mount point → EBUSY).
+        for item in path.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
+        logger.info("Cleared existing vector DB at %s", self.persist_directory)
 
     def _clean_text(self, text: str) -> str:
         if not text:
@@ -514,11 +485,10 @@ class VectorDBService:
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Document]:
         """
-        Hybrid retrieval pipeline (Phase 4):
+        Hybrid retrieval pipeline:
           1. Dense retrieval  — top DENSE_TOP_K results per query variant
           2. BM25 retrieval   — top BM25_TOP_K results
-          3. RRF Fusion       — combine both ranked lists
-          4. Cross-Encoder    — rerank the fused candidates → final top-k
+          3. RRF Fusion       — combine both ranked lists → final top-k
         """
         formatted_filter = self._format_filters(filters)
         domain_filter    = (filters or {}).get("domain") if filters else None
@@ -562,11 +532,9 @@ class VectorDBService:
         # ── Step 2: BM25 retrieval ─────────────────────────────────────
         bm25_hits = self._bm25_search(query, k=self.BM25_TOP_K, domain_filter=domain_filter)
 
-        # ── Step 3: RRF Fusion ─────────────────────────────────────────
+        # ── Step 3: RRF Fusion → take top-k ───────────────────────────
         fused_docs = self._rrf_fusion(dense_docs, bm25_hits)
-
-        # ── Step 4: Cross-Encoder Reranker ─────────────────────────────
-        final_docs = self._rerank(query, fused_docs, top_k=k)
+        final_docs = fused_docs[:k]
 
         # ── Logging ────────────────────────────────────────────────────
         logger.info("=" * 60)
