@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import Session
 from typing import Optional
 from app.planning_module.services.workout_plan_service import WorkoutPlanService
@@ -26,6 +27,7 @@ from app.planning_module.services.converters import (
     nutrition_plan_model_to_dto
 )
 from app.ai_services.ai_coach import get_ai_coach_service
+from app.ai_services.ai_coach.context_builder import get_context_builder
 from app.planning_module.core.planning_engine import PlanningEngine
 
 
@@ -209,7 +211,8 @@ class PlanGenerationService:
         profile_dto     = profile_to_dto(profile)
         preferences_dto = workout_preferences_to_dto(preferences)
 
-        # Phase 1 — Planning Engine computes targets before the LLM is called
+        # Phase 1 — Planning Engine computes targets (fast, CPU-only; must run first
+        # because the exercise DB query needs planning_output.goal)
         planning_output = self.planning_engine.compute(
             weight_kg=float(profile.weight or 70),
             height_cm=float(profile.height or 170),
@@ -221,18 +224,30 @@ class PlanGenerationService:
             session_duration_minutes=int(preferences.session_duration_minutes or 60),
         )
 
-        # Phase 2 — Ranked exercise retrieval (goal + injury aware)
-        allowed_exercises_str = self.central_exercise_repo.get_equipment_friendly_exercises_for_ai(
-            equipment_availability=preferences.equipment_availability,
-            workout_difficulty=preferences.workout_difficulty,
-            focus_areas=preferences.focus_areas,
-            limit=60,
-            goal=planning_output.goal,
-            injuries=str(profile.injuries or ""),
-        )
+        ai_coach         = get_ai_coach_service()
+        context_builder  = get_context_builder(ai_coach.llm)
 
-        # Phase 5+6 — LLM refinement layer receives the structured draft
-        ai_coach = get_ai_coach_service()
+        # Phase 2 — three independent tasks run in parallel:
+        #   • DB exercise fetch   (SQL, ~100-200ms)
+        #   • Context builder     (targeted RAG queries + fast LLM → KB-grounded rules)
+        # Both depend only on planning_output which is already done.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            exercises_future = pool.submit(
+                self.central_exercise_repo.get_equipment_friendly_exercises_for_ai,
+                equipment_availability=preferences.equipment_availability,
+                workout_difficulty=preferences.workout_difficulty,
+                focus_areas=preferences.focus_areas,
+                limit=60,
+                goal=planning_output.goal,
+                injuries=str(profile.injuries or ""),
+            )
+            rules_future = pool.submit(
+                context_builder.build_workout_rules, profile_dto
+            )
+            allowed_exercises_str = exercises_future.result()
+            medical_rules         = rules_future.result()
+
+        # Phase 3 — LLM generation + single-pass judge/fix
         workout_plan_dto = ai_coach.generate_workout_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
@@ -240,6 +255,7 @@ class PlanGenerationService:
             existing_plan=existing_plan,
             allowed_exercises_str=allowed_exercises_str,
             planning_output=planning_output,
+            medical_rules=medical_rules,
         )
 
         plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
@@ -263,7 +279,8 @@ class PlanGenerationService:
         profile_dto     = profile_to_dto(profile)
         preferences_dto = nutrition_preferences_to_dto(preferences)
 
-        # Phase 1 — Planning Engine computes macro targets before the LLM is called
+        # Phase 1 — Planning Engine computes macro targets (fast, CPU-only; must run
+        # first because the food DB query needs planning_output.goal / calories / protein)
         planning_output = self.planning_engine.compute(
             weight_kg=float(profile.weight or 70),
             height_cm=float(profile.height or 170),
@@ -275,19 +292,30 @@ class PlanGenerationService:
             meals_per_day=int(getattr(preferences, "meals_per_day", 3) or 3),
         )
 
-        # Phase 3 — Scored food retrieval (goal + calorie/protein target aware)
-        allowed_foods_str = self.central_food_repo.get_diet_friendly_foods_for_ai(
-            diet_type=profile.dietary_preference if hasattr(profile, "dietary_preference") else "balanced",
-            allergies=getattr(profile, "allergies", ""),
-            exclude_ingredients=getattr(preferences, "exclude_ingredients", []),
-            limit=50,
-            goal=planning_output.goal,
-            target_calories=planning_output.nutrition.calories,
-            target_protein_g=planning_output.nutrition.protein_g,
-        )
+        ai_coach        = get_ai_coach_service()
+        context_builder = get_context_builder(ai_coach.llm)
 
-        # Phase 5+6 — LLM refinement layer receives the structured draft
-        ai_coach = get_ai_coach_service()
+        # Phase 2 — two independent tasks run in parallel:
+        #   • DB food fetch       (SQL, ~100-200ms)
+        #   • Context builder     (targeted RAG queries + fast LLM → KB-grounded rules)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            foods_future = pool.submit(
+                self.central_food_repo.get_diet_friendly_foods_for_ai,
+                diet_type=profile.dietary_preference if hasattr(profile, "dietary_preference") else "balanced",
+                allergies=getattr(profile, "allergies", ""),
+                exclude_ingredients=getattr(preferences, "exclude_ingredients", []),
+                limit=50,
+                goal=planning_output.goal,
+                target_calories=planning_output.nutrition.calories,
+                target_protein_g=planning_output.nutrition.protein_g,
+            )
+            rules_future = pool.submit(
+                context_builder.build_nutrition_rules, profile_dto
+            )
+            allowed_foods_str = foods_future.result()
+            medical_rules     = rules_future.result()
+
+        # Phase 3 — LLM generation + single-pass judge/fix
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
             user_profile=profile_dto,
             preferences=preferences_dto,
@@ -295,6 +323,7 @@ class PlanGenerationService:
             existing_plan=existing_plan,
             allowed_foods_str=allowed_foods_str,
             planning_output=planning_output,
+            medical_rules=medical_rules,
         )
 
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)

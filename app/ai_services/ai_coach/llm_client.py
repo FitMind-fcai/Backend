@@ -21,6 +21,9 @@ class LLMClient:
     # Override via AI_JUDGE_MODEL (e.g. google/gemini-flash-1.5, openai/gpt-4o).
     DEFAULT_JUDGE_MODEL      = "openai/gpt-4o-mini"
     DEFAULT_JUDGE_MAX_TOKENS = 2000
+    # Context builder: same fast model as judge, small output (rules list only)
+    DEFAULT_CONTEXT_BUILDER_MODEL      = "openai/gpt-4o-mini"
+    DEFAULT_CONTEXT_BUILDER_MAX_TOKENS = 1200
 
     PROVIDER_BASE_URLS: Dict[str, str] = {
         "groq":       "https://api.groq.com/openai/v1",
@@ -82,6 +85,16 @@ class LLMClient:
         self.judge_max_tokens = int(
             os.getenv("AI_JUDGE_MAX_TOKENS")
             or str(getattr(config, "AI_JUDGE_MAX_TOKENS", None) or self.DEFAULT_JUDGE_MAX_TOKENS)
+        )
+
+        self.context_builder_model = (
+            os.getenv("AI_CONTEXT_BUILDER_MODEL")
+            or getattr(config, "AI_CONTEXT_BUILDER_MODEL", None)
+            or self.DEFAULT_CONTEXT_BUILDER_MODEL
+        )
+        self.context_builder_max_tokens = int(
+            os.getenv("AI_CONTEXT_BUILDER_MAX_TOKENS")
+            or str(getattr(config, "AI_CONTEXT_BUILDER_MAX_TOKENS", None) or self.DEFAULT_CONTEXT_BUILDER_MAX_TOKENS)
         )
 
         self._client = OpenAI(
@@ -167,6 +180,25 @@ class LLMClient:
             response_format={"type": "json_object"},
         )
         self._log_usage("judge", completion)
+        return completion.choices[0].message.content
+
+    def call_context_builder_llm(self, system_prompt: str, user_prompt: str) -> str:
+        """
+        Context-builder call — fast model, plain-text output (rule list, not JSON).
+        Runs before main generation to synthesize KB-grounded safety rules from
+        targeted RAG results into a concrete, numbered rule block for Channel C.
+        """
+        completion = self._client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_prompt},
+            ],
+            model=self.context_builder_model,
+            temperature=0.1,
+            max_tokens=self.context_builder_max_tokens,
+            top_p=0.90,
+        )
+        self._log_usage("context_builder", completion)
         return completion.choices[0].message.content
 
     def _log_usage(self, label: str, completion) -> None:

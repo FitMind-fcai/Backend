@@ -4,9 +4,12 @@ Prompt construction for the AI Coach generation step.
 All functions are pure — they take data, return strings, and have no side effects.
 The prompts use a channel system:
   Channel P — Planning Engine output (macro/training targets, authoritative)
-  Channel C — Medical / medication / injury rules (safety, overrides everything)
-  Channel A — RAG-retrieved evidence-based guidelines
+  Channel C — KB-grounded safety rules from ContextBuilder (replaces inline medical block + RAG)
   Channel B — Database food/exercise constraints (only allowed IDs)
+
+Channel A (general RAG) has been removed: the ContextBuilder already performs
+targeted per-condition RAG queries and synthesizes the results into Channel C.
+Sending a second general RAG pass would be redundant noise in the prompt.
 """
 from typing import Optional, TYPE_CHECKING
 
@@ -30,6 +33,22 @@ if TYPE_CHECKING:
 # Medical / safety context blocks
 # ---------------------------------------------------------------------------
 
+_PLACEHOLDER_VALUES = {
+    "none", "n/a", "na", "nil", "null", "no specific preference",
+    "no allergies", "no medications", "no injuries", "no medical conditions",
+    "not applicable", "no known", "no known allergies", "no known conditions",
+}
+
+
+def _clean_field(value: Optional[str]) -> str:
+    """Return '' for placeholder values like 'None'/'N/A' so they don't get
+    treated as real medical content."""
+    stripped = (value or "").strip()
+    if stripped.lower() in _PLACEHOLDER_VALUES:
+        return ""
+    return stripped
+
+
 def build_medical_nutrition_block(user_profile: UserProfileDTO) -> str:
     """
     Dynamic medical nutrition guidance block.
@@ -39,9 +58,9 @@ def build_medical_nutrition_block(user_profile: UserProfileDTO) -> str:
     dietary rules, drug-food interactions, and nutrient thresholds for every
     condition and medication listed — handling any condition without a lookup table.
     """
-    conditions  = (user_profile.medical_conditions or "").strip()
-    medications = (user_profile.medications or "").strip()
-    allergies   = (user_profile.allergies or "").strip()
+    conditions  = _clean_field(user_profile.medical_conditions)
+    medications = _clean_field(user_profile.medications)
+    allergies   = _clean_field(user_profile.allergies)
 
     if not conditions and not medications and not allergies:
         return "No medical conditions, medications, or allergies reported for this user."
@@ -82,8 +101,8 @@ def build_medical_workout_block(user_profile: UserProfileDTO) -> str:
     Passes raw conditions and injuries to the LLM so it can apply comprehensive,
     evidence-based exercise restrictions for any condition — not just a fixed list.
     """
-    conditions = (user_profile.medical_conditions or "").strip()
-    injuries   = (user_profile.injuries or "").strip()
+    conditions = _clean_field(user_profile.medical_conditions)
+    injuries   = _clean_field(user_profile.injuries)
 
     if not conditions and not injuries:
         return "No specific medical conditions or injuries reported for this user."
@@ -122,7 +141,7 @@ def build_nutrition_prompt(
     user_profile: UserProfileDTO,
     preferences: NutritionPreferencesDTO,
     duration_weeks: int,
-    rag_context: str,
+    medical_rules: str,
     existing_plan: Optional[NutritionPlanDTO] = None,
     allowed_foods_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
@@ -152,8 +171,20 @@ def build_nutrition_prompt(
             "nuts (not peanuts), seeds, avocado, or fatty fish in that day's meals."
         )
 
-    # ── Section blocks ────────────────────────────────────────────────
-    medical_block = build_medical_nutrition_block(user_profile)
+    # ── Channel C — KB-grounded safety rules (from ContextBuilder) ───
+    if medical_rules:
+        channel_c_block = (
+            "=== CHANNEL C: KB-GROUNDED NUTRITION SAFETY RULES (NON-NEGOTIABLE) ===\n"
+            "The following rules were extracted from peer-reviewed clinical guidelines\n"
+            "specifically for this user's conditions, medications, and allergies.\n"
+            "Every rule MUST be followed. Any violation is a CRITICAL FAILURE.\n\n"
+            + medical_rules
+        )
+    else:
+        channel_c_block = (
+            "=== CHANNEL C: MEDICAL & SAFETY RULES ===\n"
+            + build_medical_nutrition_block(user_profile)
+        )
 
     allergy_block = (
         "ALLERGY SAFETY — zero tolerance, any violation is a critical failure:\n"
@@ -226,14 +257,11 @@ def build_nutrition_prompt(
         "=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===",
         macro_guidance_block,
         "",
-        medical_block,
+        channel_c_block,
         "",
         allergy_block,
         "",
         diversity_block,
-        "",
-        "=== CHANNEL A: EVIDENCE-BASED NUTRITION GUIDELINES (RAG) ===",
-        rag_context,
         "",
     ]
 
@@ -296,7 +324,7 @@ def build_workout_prompt(
     user_profile: UserProfileDTO,
     preferences: WorkoutPreferencesDTO,
     duration_weeks: int,
-    rag_context: str,
+    medical_rules: str,
     existing_plan: Optional[WorkoutPlanDTO] = None,
     allowed_exercises_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
@@ -319,8 +347,20 @@ def build_workout_prompt(
         days_per_week    = preferences.workout_days_per_week
         session_duration = preferences.session_duration_minutes
 
-    # ── Section blocks ────────────────────────────────────────────────
-    medical_block = build_medical_workout_block(user_profile)
+    # ── Channel C — KB-grounded safety rules (from ContextBuilder) ───
+    if medical_rules:
+        channel_c_block = (
+            "=== CHANNEL C: KB-GROUNDED WORKOUT SAFETY RULES (NON-NEGOTIABLE) ===\n"
+            "The following rules were extracted from peer-reviewed clinical guidelines\n"
+            "specifically for this user's injuries, conditions, and limitations.\n"
+            "Every rule MUST be followed. Any violation is a CRITICAL FAILURE.\n\n"
+            + medical_rules
+        )
+    else:
+        channel_c_block = (
+            "=== CHANNEL C: INJURY & MEDICAL EXERCISE RULES ===\n"
+            + build_medical_workout_block(user_profile)
+        )
 
     existing_ctx = ""
     regen_block  = ""
@@ -373,10 +413,7 @@ def build_workout_prompt(
         "=== CHANNEL P: PLANNING ENGINE OUTPUT (authoritative — do NOT override) ===",
         training_block,
         "",
-        medical_block,
-        "",
-        "=== CHANNEL A: EVIDENCE-BASED TRAINING GUIDELINES (RAG) ===",
-        rag_context,
+        channel_c_block,
         "",
     ]
 
