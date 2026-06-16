@@ -1,0 +1,4 @@
+# Force LF line endings for shell scripts regardless of OS/autocrlf settings,
+# so they keep working when executed inside Linux containers.
+*.sh text eol=lf
+entrypoint.sh text eol=lf
