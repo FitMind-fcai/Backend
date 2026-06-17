@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth_module.models.user import User
 from app.auth_module.schemas.user import (
@@ -14,6 +15,8 @@ from app.auth_module.core.dependencies import (
     get_otp_service,
     get_auth_email_service
 )
+
+AUTO_VERIFY = os.getenv("AUTO_VERIFY_USERS", "false").strip().lower() in {"1", "true", "yes"}
 
 authRouter = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -39,11 +42,12 @@ def signup(
     # Create user (service handles repository and verification service)
     new_user, verification_token = auth_service.create_user(user_data)
 
-    # Send verification email
-    email_sent = auth_email_service.send_verification_email(new_user.email, verification_token)
-
-    if not email_sent:
-        print(f"Warning: Could not send verification email to {new_user.email}")
+    if AUTO_VERIFY:
+        auth_service.user_repo.mark_as_verified(new_user)
+    else:
+        email_sent = auth_email_service.send_verification_email(new_user.email, verification_token)
+        if not email_sent:
+            print(f"Warning: Could not send verification email to {new_user.email}")
 
     return new_user
 
