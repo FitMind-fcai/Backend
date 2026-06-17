@@ -201,54 +201,58 @@ def import_exercises(db: Session, clear: bool):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def generate_embeddings(engine, model):
+    # Fetch the list of rows needing embeddings (short-lived connection)
     with engine.connect() as conn:
-        # ── Foods ──────────────────────────────────────────────────────────
-        rows = conn.execute(
+        food_rows = conn.execute(
             text("SELECT id, food_name FROM central_foods WHERE is_active = true AND name_embedding IS NULL ORDER BY id")
         ).fetchall()
-        log.info("%d foods need embeddings", len(rows))
+        conn.commit()
+    log.info("%d foods need embeddings", len(food_rows))
 
-        for start in range(0, len(rows), BATCH_SIZE):
-            batch = rows[start: start + BATCH_SIZE]
-            vecs  = model.encode([r.food_name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+    for start in range(0, len(food_rows), BATCH_SIZE):
+        batch = food_rows[start: start + BATCH_SIZE]
+        vecs  = model.encode([r.food_name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+        with engine.connect() as conn:
             for row, vec in zip(batch, vecs):
                 conn.execute(
                     text("UPDATE central_foods SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
                     {"vec": _vec_str(vec), "id": row.id},
                 )
             conn.commit()
-            log.info("  food embeddings … %d / %d", min(start + BATCH_SIZE, len(rows)), len(rows))
+        log.info("  food embeddings … %d / %d", min(start + BATCH_SIZE, len(food_rows)), len(food_rows))
 
-        # ── Exercises ──────────────────────────────────────────────────────
-        rows = conn.execute(
+    with engine.connect() as conn:
+        exercise_rows = conn.execute(
             text("SELECT id, name FROM central_exercises WHERE is_active = true AND name_embedding IS NULL ORDER BY id")
         ).fetchall()
-        log.info("%d exercises need embeddings", len(rows))
+        conn.commit()
+    log.info("%d exercises need embeddings", len(exercise_rows))
 
-        for start in range(0, len(rows), BATCH_SIZE):
-            batch = rows[start: start + BATCH_SIZE]
-            vecs  = model.encode([r.name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+    for start in range(0, len(exercise_rows), BATCH_SIZE):
+        batch = exercise_rows[start: start + BATCH_SIZE]
+        vecs  = model.encode([r.name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+        with engine.connect() as conn:
             for row, vec in zip(batch, vecs):
                 conn.execute(
                     text("UPDATE central_exercises SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
                     {"vec": _vec_str(vec), "id": row.id},
                 )
             conn.commit()
-            log.info("  exercise embeddings … %d / %d", min(start + BATCH_SIZE, len(rows)), len(rows))
+        log.info("  exercise embeddings … %d / %d", min(start + BATCH_SIZE, len(exercise_rows)), len(exercise_rows))
 
-        # ── IVFFlat indexes ────────────────────────────────────────────────
-        for ddl in [
-            "CREATE INDEX IF NOT EXISTS idx_central_foods_name_embedding "
-            "ON central_foods USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
-            "CREATE INDEX IF NOT EXISTS idx_central_exercises_name_embedding "
-            "ON central_exercises USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
-        ]:
-            try:
+    # ── IVFFlat indexes ────────────────────────────────────────────────
+    for ddl in [
+        "CREATE INDEX IF NOT EXISTS idx_central_foods_name_embedding "
+        "ON central_foods USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
+        "CREATE INDEX IF NOT EXISTS idx_central_exercises_name_embedding "
+        "ON central_exercises USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
+    ]:
+        try:
+            with engine.connect() as conn:
                 conn.execute(text(ddl))
                 conn.commit()
-            except Exception as exc:
-                log.warning("Index skipped (need more rows for IVFFlat): %s", exc)
-                conn.rollback()
+        except Exception as exc:
+            log.warning("Index skipped (need more rows for IVFFlat): %s", exc)
 
     log.info("Embeddings done.")
 
