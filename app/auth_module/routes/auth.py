@@ -26,7 +26,6 @@ authRouter = APIRouter(prefix="/auth", tags=["Authentication"])
 def signup(
     user_data: UserCreate,
     auth_service: AuthService = Depends(get_auth_service),
-    auth_email_service: AuthEmailService = Depends(get_auth_email_service)
 ):
     """
     Register a new user account.
@@ -39,16 +38,7 @@ def signup(
         - AuthService: Handles user creation and verification logic
         - AuthEmailService: Sends auth-specific emails
     """
-    # Create user (service handles repository and verification service)
-    new_user, verification_token = auth_service.create_user(user_data)
-
-    if AUTO_VERIFY:
-        auth_service.user_repo.mark_as_verified(new_user)
-    else:
-        email_sent = auth_email_service.send_verification_email(new_user.email, verification_token)
-        if not email_sent:
-            print(f"Warning: Could not send verification email to {new_user.email}")
-
+    new_user, _ = auth_service.create_user(user_data, auto_verify=AUTO_VERIFY)
     return new_user
 
 
