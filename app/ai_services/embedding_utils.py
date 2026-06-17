@@ -41,3 +41,28 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
 def vec_to_pg_str(embedding: List[float]) -> str:
     """Format a float list as a pgvector literal: '[0.1,0.2,…]'."""
     return "[" + ",".join(f"{v:.6f}" for v in embedding) + "]"
+
+
+class SharedHuggingFaceEmbeddings:
+    """LangChain-compatible embedding wrapper that reuses the singleton model."""
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._encode(t) for t in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._encode(text)
+
+    def _encode(self, text: str) -> List[float]:
+        vec = _get_model().encode(text, normalize_embeddings=True)
+        return vec.tolist()
+
+
+_shared_embeddings = None
+
+
+def get_shared_embeddings() -> SharedHuggingFaceEmbeddings:
+    global _shared_embeddings
+    if _shared_embeddings is None:
+        _get_model()
+        _shared_embeddings = SharedHuggingFaceEmbeddings()
+    return _shared_embeddings
