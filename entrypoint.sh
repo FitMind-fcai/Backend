@@ -18,6 +18,37 @@ echo "======================================================"
 echo "  FitMind API — Startup Initialization"
 echo "======================================================"
 
+# ── Step 0: Create tables + pgvector extension ────────────────────────────
+echo ""
+echo "[init] Creating database tables..."
+python -c "
+from dotenv import load_dotenv; load_dotenv()
+from sqlalchemy import text
+from app.db.database import engine, Base
+
+# Import all models so Base.metadata knows about them
+from app.auth_module.models.user import User
+from app.profile_module.models.profile import *
+from app.planning_module.models.plan import *
+from app.tracking_module.models.workout_log import *
+from app.tracking_module.models.meal_log import *
+from app.tracking_module.models.sleep_log import *
+from app.tracking_module.models.hydration_log import *
+from app.tracking_module.models.weight_log import *
+
+try:
+    with engine.connect() as conn:
+        conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
+        conn.commit()
+    print('[init] pgvector extension ready.')
+except Exception as e:
+    print(f'[init] pgvector not available (non-fatal): {e}')
+
+Base.metadata.create_all(bind=engine)
+print('[init] All tables created.')
+"
+echo "[init] Done."
+
 # ── Step 1: PostgreSQL seed ────────────────────────────────────────────────
 echo ""
 echo "[seed] Checking database state..."
