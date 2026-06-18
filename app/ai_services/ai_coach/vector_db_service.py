@@ -74,9 +74,10 @@ class VectorDBService:
     # ------------------------------------------------------------------
 
     @property
-    def embeddings(self) -> HuggingFaceEmbeddings:
+    def embeddings(self):
         if self._embeddings is None:
-            self._embeddings = HuggingFaceEmbeddings(model_name=self.EMBEDDING_MODEL_NAME)
+            from app.ai_services.embedding_utils import get_shared_embeddings
+            self._embeddings = get_shared_embeddings()
         return self._embeddings
 
     @property

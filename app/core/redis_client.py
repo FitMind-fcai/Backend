@@ -4,9 +4,12 @@ Available for use across all modules.
 """
 import redis
 from typing import Optional
+import os
 from app.core.config import (
     REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, REDIS_DECODE_RESPONSES
 )
+
+REDIS_SSL = os.getenv("REDIS_SSL", "false").strip().lower() in {"1", "true", "yes"}
 
 
 class RedisClient:
@@ -30,7 +33,8 @@ class RedisClient:
                 password=REDIS_PASSWORD,
                 decode_responses=REDIS_DECODE_RESPONSES,
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
+                ssl=REDIS_SSL,
             )
 
             # Test connection
