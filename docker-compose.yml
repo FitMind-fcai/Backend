@@ -57,6 +57,7 @@ services:
       RESEED_DB: "false"
       REBUILD_VECTOR_DB: "false"
       SCRAPE_RESOURCES: "false"
+      HF_HOME: /app/models_cache
     depends_on:
       db:
         condition: service_healthy
@@ -65,9 +66,11 @@ services:
     volumes:
       - .:/app
       - chroma_data:/app/app/ai_services/ai_coach/chroma_db
+      - models_cache:/app/models_cache
       - ./app/ai_services/evaluation/results:/app/app/ai_services/evaluation/results
 
 volumes:
   postgres_data:
   redis_data:
   chroma_data:
+  models_cache:

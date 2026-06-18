@@ -16,6 +16,7 @@ Steps:
 import argparse
 import csv
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -33,7 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 256
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 
 ROOT = Path(__file__).parent.parent
 FOOD_CSV = ROOT / "nutrition.csv"

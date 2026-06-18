@@ -24,7 +24,7 @@ class VectorDBService:
     DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
 
     # Embedding model configuration
-    EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+    EMBEDDING_MODEL_NAME = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
     COLLECTION_NAME = "fitness_knowledge"
 
     # Retrieval layers / sectioning

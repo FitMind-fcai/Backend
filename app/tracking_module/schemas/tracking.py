@@ -251,6 +251,7 @@ class MatchedFoodResponse(BaseModel):
     """
     id: int
     food_name: str
+    food_name_ar: Optional[str] = None
     food_category: Optional[str] = None
     calories_per_100g: float
     protein_per_100g: float

@@ -52,6 +52,7 @@ class AICoachService:
         allowed_foods_str: str = "",
         planning_output: Optional["PlanningEngineOutput"] = None,
         medical_rules: str = "",
+        language: str = "en",
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
@@ -89,6 +90,7 @@ class AICoachService:
         plan = self._generate_nutrition_once(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_foods_str, planning_output,
+            language=language,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
@@ -103,6 +105,7 @@ class AICoachService:
                 system_prompt, user_profile, preferences, duration_weeks,
                 medical_rules, existing_plan, allowed_foods_str, planning_output,
                 judge_feedback=feedback,
+                language=language,
             )
             if fixed is not None:
                 plan = fixed
@@ -123,6 +126,7 @@ class AICoachService:
         allowed_exercises_str: str = "",
         planning_output: Optional["PlanningEngineOutput"] = None,
         medical_rules: str = "",
+        language: str = "en",
     ) -> WorkoutPlanDTO:
         """
         Generate a personalised workout plan.
@@ -149,6 +153,7 @@ class AICoachService:
         plan = self._generate_workout_once(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_exercises_str, planning_output,
+            language=language,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
@@ -163,6 +168,7 @@ class AICoachService:
                 system_prompt, user_profile, preferences, duration_weeks,
                 medical_rules, existing_plan, allowed_exercises_str, planning_output,
                 judge_feedback=feedback,
+                language=language,
             )
             if fixed is not None:
                 plan = fixed
@@ -431,6 +437,7 @@ Respond with ONLY this JSON:
         allowed_foods_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        language: str = "en",
     ) -> Optional[NutritionPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
@@ -440,6 +447,7 @@ Respond with ONLY this JSON:
             medical_rules, existing_plan, allowed_foods_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            lang=language,
         )
 
         response = self.llm.call_llm(system_prompt, user_prompt)
@@ -475,6 +483,7 @@ Respond with ONLY this JSON:
         allowed_exercises_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        language: str = "en",
     ) -> Optional[WorkoutPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
@@ -484,6 +493,7 @@ Respond with ONLY this JSON:
             medical_rules, existing_plan, allowed_exercises_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            lang=language,
         )
 
         response = self.llm.call_llm(system_prompt, user_prompt)

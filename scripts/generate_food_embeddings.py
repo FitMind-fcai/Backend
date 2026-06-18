@@ -1,7 +1,7 @@
 """
-Populate name_embedding for all central_foods rows that currently have NULL embeddings.
+Populate / refresh name_embedding for all active central_foods rows.
 
-Run once after deploying the pgvector changes:
+Run after changing the embedding model to regenerate all vectors:
 
     python -m scripts.generate_food_embeddings
 
@@ -11,22 +11,19 @@ Batch-processes 256 rows at a time to avoid memory spikes.
 import os
 import sys
 import logging
-
+from sqlalchemy import create_engine, text
+from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Make the project root importable when run from the repo root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from sqlalchemy import create_engine, text
-from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/fitmind")
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 BATCH_SIZE = 256
 
 
@@ -40,7 +37,6 @@ def main():
     model = SentenceTransformer(EMBEDDING_MODEL)
 
     with engine.connect() as conn:
-        # Ensure pgvector extension and column exist.
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.execute(text(
             "ALTER TABLE central_foods "
@@ -48,22 +44,19 @@ def main():
         ))
         conn.commit()
 
-        total = conn.execute(
-            text("SELECT COUNT(*) FROM central_foods WHERE is_active = true AND name_embedding IS NULL")
-        ).scalar()
-        logger.info("%d foods need embeddings.", total)
+        all_rows = conn.execute(
+            text("SELECT id, food_name FROM central_foods WHERE is_active = true ORDER BY id"),
+        ).fetchall()
+
+        total = len(all_rows)
+        logger.info("%d foods to embed.", total)
 
         if total == 0:
             logger.info("Nothing to do.")
             return
 
-        # Fetch all IDs up-front so OFFSET doesn't shift as we write embeddings
-        all_rows = conn.execute(
-            text("SELECT id, food_name FROM central_foods WHERE is_active = true AND name_embedding IS NULL ORDER BY id"),
-        ).fetchall()
-
         processed = 0
-        for batch_start in range(0, len(all_rows), BATCH_SIZE):
+        for batch_start in range(0, total, BATCH_SIZE):
             batch = all_rows[batch_start: batch_start + BATCH_SIZE]
             names = [r.food_name for r in batch]
             embeddings = model.encode(names, normalize_embeddings=True, show_progress_bar=False)
@@ -78,11 +71,11 @@ def main():
             processed += len(batch)
             logger.info("Embedded %d / %d foods …", processed, total)
 
-        # Create an IVFFlat index for fast approximate search once embeddings are populated.
         logger.info("Creating IVFFlat index on name_embedding …")
         try:
+            conn.execute(text("DROP INDEX IF EXISTS idx_central_foods_name_embedding"))
             conn.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_central_foods_name_embedding "
+                "CREATE INDEX idx_central_foods_name_embedding "
                 "ON central_foods USING ivfflat (name_embedding vector_cosine_ops) "
                 "WITH (lists = 100)"
             ))

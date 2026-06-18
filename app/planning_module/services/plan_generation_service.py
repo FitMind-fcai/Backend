@@ -47,7 +47,8 @@ class PlanGenerationService:
         self,
         profile: Profile,
         preferences: WorkoutPreferences,
-        duration_weeks: int = 4
+        duration_weeks: int = 4,
+        lang: str = "en",
     ) -> dict:
         """
         Generate an AI workout plan DRAFT without saving it to the database.
@@ -74,14 +75,16 @@ class PlanGenerationService:
             preferences=preferences,
             duration_weeks=duration_weeks,
             existing_plan=existing_plan_dto,
-            update_plan_id=existing_plan_id
+            update_plan_id=existing_plan_id,
+            lang=lang,
         )
 
     def generate_nutrition_plan(
         self,
         profile: Profile,
         preferences: NutritionPreferences,
-        duration_weeks: int = 4
+        duration_weeks: int = 4,
+        lang: str = "en",
     ) -> dict:
         """
         Generate an AI nutrition plan DRAFT without saving it to the database.
@@ -108,7 +111,8 @@ class PlanGenerationService:
             preferences=preferences,
             duration_weeks=duration_weeks,
             existing_plan=existing_plan_dto,
-            update_plan_id=existing_plan_id
+            update_plan_id=existing_plan_id,
+            lang=lang,
         )
 
     def generate_combined_plans(
@@ -117,6 +121,7 @@ class PlanGenerationService:
         workout_preferences: "WorkoutPreferences",
         nutrition_preferences: "NutritionPreferences",
         duration_weeks: int = 4,
+        lang: str = "en",
     ) -> dict:
         """
         Generate workout and nutrition plan drafts concurrently.
@@ -127,10 +132,10 @@ class PlanGenerationService:
         """
         with ThreadPoolExecutor(max_workers=2) as pool:
             workout_future = pool.submit(
-                self.generate_workout_plan, profile, workout_preferences, duration_weeks
+                self.generate_workout_plan, profile, workout_preferences, duration_weeks, lang
             )
             nutrition_future = pool.submit(
-                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks
+                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks, lang
             )
             workout_draft   = workout_future.result()
             nutrition_draft = nutrition_future.result()
@@ -231,7 +236,8 @@ class PlanGenerationService:
         preferences: WorkoutPreferences,
         duration_weeks: int = 4,
         existing_plan=None,
-        update_plan_id: int = None
+        update_plan_id: int = None,
+        lang: str = "en",
     ) -> dict:
         """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -282,9 +288,11 @@ class PlanGenerationService:
             allowed_exercises_str=allowed_exercises_str,
             planning_output=planning_output,
             medical_rules=medical_rules,
+            language=lang,
         )
 
         plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
+        plan_create.language = lang
         preferences_dict = preferences.model_dump()
 
         return {
@@ -299,7 +307,8 @@ class PlanGenerationService:
         preferences: NutritionPreferences,
         duration_weeks: int = 4,
         existing_plan=None,
-        update_plan_id: int = None
+        update_plan_id: int = None,
+        lang: str = "en",
     ) -> dict:
         """Internal: call AI and return NutritionPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -350,9 +359,11 @@ class PlanGenerationService:
             allowed_foods_str=allowed_foods_str,
             planning_output=planning_output,
             medical_rules=medical_rules,
+            language=lang,
         )
 
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
+        plan_create.language = lang
 
         # Authoritative macro numbers are always recomputed from DB ingredient records.
         self._hydrate_nutrition_macros_from_ingredients(plan_create)
@@ -440,9 +451,10 @@ class PlanGenerationService:
             "frequency": plan_create.frequency,
             "difficulty_level": plan_create.difficulty_level,
             "estimated_duration_per_session": plan_create.estimated_duration_per_session,
-            "generated_from_preferences": generated_from_preferences
+            "generated_from_preferences": generated_from_preferences,
+            "language": getattr(plan_create, "language", "en"),
         }
-        
+
         plan = self.workout_repo.create_plan(
             user_id=user_id,
             profile_id=profile_id,
@@ -516,7 +528,8 @@ class PlanGenerationService:
             "daily_protein_g": plan_create.daily_protein_g,
             "daily_carbs_g": plan_create.daily_carbs_g,
             "daily_fats_g": plan_create.daily_fats_g,
-            "generated_from_preferences": generated_from_preferences
+            "generated_from_preferences": generated_from_preferences,
+            "language": getattr(plan_create, "language", "en"),
         }
 
         plan = self.nutrition_repo.create_plan(
@@ -588,9 +601,10 @@ class PlanGenerationService:
             "frequency": plan_create.frequency,
             "difficulty_level": plan_create.difficulty_level,
             "estimated_duration_per_session": plan_create.estimated_duration_per_session,
-            "generated_from_preferences": generated_from_preferences
+            "generated_from_preferences": generated_from_preferences,
+            "language": getattr(plan_create, "language", "en"),
         }
-        
+
         plan = self.workout_repo.update_plan(plan_id, plan_data)
         if plan is None:
             raise ValueError(f"Workout plan {plan_id} not found")
@@ -660,7 +674,8 @@ class PlanGenerationService:
             "daily_protein_g": plan_create.daily_protein_g,
             "daily_carbs_g": plan_create.daily_carbs_g,
             "daily_fats_g": plan_create.daily_fats_g,
-            "generated_from_preferences": generated_from_preferences
+            "generated_from_preferences": generated_from_preferences,
+            "language": getattr(plan_create, "language", "en"),
         }
 
         plan = self.nutrition_repo.update_plan(plan_id, plan_data)

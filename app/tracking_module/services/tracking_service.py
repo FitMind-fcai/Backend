@@ -170,7 +170,7 @@ class TrackingService:
             vec = vec_to_pg_str(embed_text(query.strip()))
             rows = self.meal_repo.db.execute(
                 sql_text("""
-                    SELECT id, food_name, food_category,
+                    SELECT id, food_name, food_name_ar, food_category,
                            calories_per_100g, protein_per_100g, carbs_per_100g,
                            fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
                            1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
@@ -183,7 +183,8 @@ class TrackingService:
             ).fetchall()
             return [
                 MatchedFoodResponse(
-                    id=r.id, food_name=r.food_name, food_category=r.food_category,
+                    id=r.id, food_name=r.food_name, food_name_ar=r.food_name_ar,
+                    food_category=r.food_category,
                     calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
                     carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
                     fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
