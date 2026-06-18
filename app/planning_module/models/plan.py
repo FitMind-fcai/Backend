@@ -52,6 +52,7 @@ class CentralFood(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     food_name = Column(String(255), nullable=False, index=True)
+    food_name_ar = Column(String(255), nullable=True)
     food_category = Column(String(100), nullable=True, index=True)
 
     # Macros per 100g (USDA standard) — multiply by (serving_size_g / 100) for per-serving values
