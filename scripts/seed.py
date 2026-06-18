@@ -37,6 +37,7 @@ EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 
 ROOT = Path(__file__).parent.parent
 FOOD_CSV = ROOT / "nutrition.csv"
+ARABIC_FOOD_CSV = ROOT / "data" / "arabic_foods_nutrition.csv"
 EXERCISE_CSV = ROOT / "megaGymDataset.csv"
 
 
@@ -129,6 +130,89 @@ def import_foods(db: Session, clear: bool):
 
     db.commit()
     log.info("Foods done — inserted: %d  updated: %d", inserted, updated)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 1b — Import Arabic foods
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _transform_arabic_food(row: dict) -> Optional[dict]:
+    name = row.get("food_name", "").strip()
+    if not name:
+        return None
+
+    calories = _extract_float(row.get("calories_per_100g"))
+    protein  = _extract_float(row.get("protein_per_100g"))
+    carbs    = _extract_float(row.get("carbs_per_100g"))
+    fats     = _extract_float(row.get("fats_per_100g"))
+    if any(v is None for v in (calories, protein, carbs, fats)):
+        return None
+    if calories == 0 and protein == 0 and carbs == 0 and fats == 0:
+        return None
+
+    import json
+    tags_raw = row.get("dietary_tags", "[]")
+    try:
+        tags = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
+    except (json.JSONDecodeError, TypeError):
+        tags = []
+
+    name_ar = row.get("food_name_ar", "").strip()
+    serving_desc = row.get("serving_description", "100 g").strip()
+    serving_g = _extract_float(row.get("serving_size_g")) or 100.0
+
+    return {
+        "food_name":         name,
+        "food_name_ar":      name_ar if name_ar and name_ar != "nan" else None,
+        "food_category":     row.get("food_category", "").strip() or None,
+        "calories_per_100g": calories,
+        "protein_per_100g":  protein,
+        "carbs_per_100g":    carbs,
+        "fats_per_100g":     fats,
+        "fiber_per_100g":    _extract_float(row.get("fiber_per_100g")),
+        "serving_size_g":    serving_g,
+        "serving_description": serving_desc,
+        "dietary_tags":      tags,
+        "source":            row.get("source", "kaggle-egyptian-foods").strip(),
+        "is_active":         True,
+    }
+
+
+def import_arabic_foods(db: Session):
+    from app.planning_module.models.plan import CentralFood
+
+    if not ARABIC_FOOD_CSV.exists():
+        log.info("No Arabic foods CSV found at %s — skipping", ARABIC_FOOD_CSV)
+        return
+
+    log.info("Reading %s …", ARABIC_FOOD_CSV)
+    records = []
+    with open(ARABIC_FOOD_CSV, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            r = _transform_arabic_food(row)
+            if r:
+                records.append(r)
+    log.info("  %d valid Arabic food rows", len(records))
+
+    inserted = updated = 0
+    for i, data in enumerate(records):
+        existing = db.query(CentralFood).filter(
+            sql_func.lower(CentralFood.food_name) == data["food_name"].lower()
+        ).first()
+        if existing:
+            for k, v in data.items():
+                setattr(existing, k, v)
+            updated += 1
+        else:
+            db.add(CentralFood(**data))
+            inserted += 1
+
+        if (i + 1) % BATCH_SIZE == 0:
+            db.commit()
+            log.info("  Arabic foods … %d / %d", i + 1, len(records))
+
+    db.commit()
+    log.info("Arabic foods done — inserted: %d  updated: %d", inserted, updated)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -276,6 +360,7 @@ def main():
         db: Session = SessionLocal()
         try:
             import_foods(db, clear=args.clear)
+            import_arabic_foods(db)
             import_exercises(db, clear=args.clear)
         finally:
             db.close()
