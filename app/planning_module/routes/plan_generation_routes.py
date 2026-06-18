@@ -28,6 +28,8 @@ from app.planning_module.schemas.plan import (
     NutritionPlanSaveRequest,
     NutritionPlanResponse,
     CombinedPlanResponse,
+    CombinedPlanGenerationRequest,
+    CombinedPlanDraftResponse,
 )
 
 plan_generation_router = APIRouter(prefix="/plans", tags=["Plan Generation"])
@@ -247,6 +249,51 @@ def save_nutrition_plan(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     return NutritionPlanResponse.model_validate(saved)
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# COMBINED — GENERATE BOTH PLANS CONCURRENTLY
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/generate/combined",
+    response_model=CombinedPlanDraftResponse,
+    summary="Generate Workout + Nutrition Plan Drafts Concurrently (AI only, not saved)",
+)
+def generate_combined_plans(
+    request: CombinedPlanGenerationRequest,
+    current_user: User = Depends(get_current_verified_user),
+    profile_service: ProfileService = Depends(get_profile_service),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
+):
+    """
+    **Step 1 of 2 (combined)** — Generate both a workout plan draft and a nutrition plan draft
+    in a single request. Both LLM generations run **concurrently**, cutting total wait time
+    roughly in half compared to calling the two separate generate endpoints back-to-back.
+
+    Neither plan is saved to the database. After reviewing the response:
+    - Send `workout_draft` to `POST /plans/save/workout` to persist the workout plan.
+    - Send `nutrition_draft` to `POST /plans/save/nutrition` to persist the nutrition plan.
+    """
+    profile = profile_service.get_profile_by_user_id(current_user.id)
+    _require_complete_profile(profile)
+
+    try:
+        result = plan_service.generate_combined_plans(
+            profile=profile,
+            workout_preferences=request.workout_preferences,
+            nutrition_preferences=request.nutrition_preferences,
+            duration_weeks=request.duration_weeks,
+        )
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    return CombinedPlanDraftResponse(
+        workout_draft=WorkoutPlanDraftResponse(**result["workout_draft"]),
+        nutrition_draft=NutritionPlanDraftResponse(**result["nutrition_draft"]),
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────────

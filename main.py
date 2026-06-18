@@ -6,7 +6,7 @@ from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables, engine
-from app.core.config import SQLALCHEMY_LOG_LEVEL
+from app.core.config import SQLALCHEMY_LOG_LEVEL, CORS_ALLOWED_ORIGINS
 from app.profile_module.routes import profileRouter
 from app.planning_module.routes import (
     workout_router,
@@ -91,6 +91,14 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create database tables on startup
 @app.on_event("startup")

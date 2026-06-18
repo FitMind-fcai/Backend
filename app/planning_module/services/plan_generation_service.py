@@ -111,6 +111,32 @@ class PlanGenerationService:
             update_plan_id=existing_plan_id
         )
 
+    def generate_combined_plans(
+        self,
+        profile: Profile,
+        workout_preferences: "WorkoutPreferences",
+        nutrition_preferences: "NutritionPreferences",
+        duration_weeks: int = 4,
+    ) -> dict:
+        """
+        Generate workout and nutrition plan drafts concurrently.
+
+        Both LLM generations run in parallel via ThreadPoolExecutor — cuts total
+        wall-clock time roughly in half compared to calling each endpoint separately.
+        Returns a dict with 'workout_draft' and 'nutrition_draft' keys.
+        """
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            workout_future = pool.submit(
+                self.generate_workout_plan, profile, workout_preferences, duration_weeks
+            )
+            nutrition_future = pool.submit(
+                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks
+            )
+            workout_draft   = workout_future.result()
+            nutrition_draft = nutrition_future.result()
+
+        return {"workout_draft": workout_draft, "nutrition_draft": nutrition_draft}
+
     def get_user_active_plans(self, user_id: int) -> CombinedPlanResponse:
         """
         Get user's currently active workout and nutrition plans.

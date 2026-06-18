@@ -493,6 +493,22 @@ class NutritionPlanSaveRequest(BaseModel):
     )
 
 
+class CombinedPlanGenerationRequest(BaseModel):
+    """Request body for POST /plans/generate/combined — generates both plans concurrently."""
+    duration_weeks: int = Field(4, ge=1, le=52, description="Plan duration in weeks (applies to both plans)")
+    workout_preferences: WorkoutPreferences
+    nutrition_preferences: NutritionPreferences
+
+
+class CombinedPlanDraftResponse(BaseModel):
+    """
+    Returned by POST /plans/generate/combined.
+    Both drafts are generated concurrently. Pass each draft to its respective save endpoint.
+    """
+    workout_draft: WorkoutPlanDraftResponse
+    nutrition_draft: NutritionPlanDraftResponse
+
+
 # Aliases for route compatibility
 ExerciseResponse = WorkoutDayExerciseResponse
 MealResponse = NutritionPlanMealResponse

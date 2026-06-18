@@ -47,6 +47,17 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")  # Set in environment
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")  # Set in environment
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")  # Change in production
 
+# ========== CORS Configuration ==========
+# Comma-separated list of allowed origins (e.g. landing page domains)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
+
 # ========== Password Configuration ==========
 MIN_PASSWORD_LENGTH = 6
 MAX_PASSWORD_LENGTH = 50
