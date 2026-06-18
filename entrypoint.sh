@@ -18,7 +18,20 @@ echo "======================================================"
 echo "  FitMind API — Startup Initialization"
 echo "======================================================"
 
-# ── Step 0: Create tables + pgvector extension ────────────────────────────
+# ── Step 0a: Ensure embedding model is cached ─────────────────────────────
+echo ""
+echo "[model] Checking embedding model..."
+python -c "
+import os
+from sentence_transformers import SentenceTransformer
+model_name = os.getenv('AI_EMBEDDING_MODEL', 'paraphrase-multilingual-MiniLM-L12-v2')
+print(f'[model] Loading: {model_name}')
+SentenceTransformer(model_name)
+print('[model] Embedding model ready.')
+"
+echo "[model] Done."
+
+# ── Step 0b: Create tables + pgvector extension ───────────────────────────
 echo ""
 echo "[init] Creating database tables..."
 python -c "

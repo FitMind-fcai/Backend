@@ -40,7 +40,7 @@ class CentralExercise(Base):
     is_public = Column(Boolean, nullable=False, default=True, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    name_embedding = Column(Vector(384), nullable=True, comment="BAAI/bge-small-en-v1.5 embedding of name for vector similarity search")
+    name_embedding = Column(Vector(384), nullable=True, comment="paraphrase-multilingual-MiniLM-L12-v2 embedding of name for vector similarity search")
 
     # Relationships
     exercises = relationship("WorkoutDayExercise", back_populates="central_exercise")
@@ -69,7 +69,7 @@ class CentralFood(Base):
     # Metadata
     dietary_tags = Column(JSON, nullable=True, default=list)
     usda_fdc_id = Column(Integer, nullable=True, index=True)
-    name_embedding = Column(Vector(384), nullable=True, comment="BAAI/bge-small-en-v1.5 embedding of food_name for vector similarity search")
+    name_embedding = Column(Vector(384), nullable=True, comment="paraphrase-multilingual-MiniLM-L12-v2 embedding of food_name for vector similarity search")
     created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     is_verified = Column(Boolean, nullable=False, default=True, index=True)
     is_public = Column(Boolean, nullable=False, default=True, index=True)
@@ -104,10 +104,11 @@ class WorkoutPlan(Base):
     
     # Store preferences that generated this plan (for history and regeneration)
     generated_from_preferences = Column(JSON, nullable=True, comment="User preferences used to generate this plan")
-    
+    language = Column(String(5), nullable=True, default="en", comment="Language the plan was generated in: en | ar")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # Relationships
     workout_days = relationship("WorkoutDay", back_populates="workout_plan", cascade="all, delete-orphan")
 
@@ -172,10 +173,11 @@ class NutritionPlan(Base):
     
     # Store preferences that generated this plan (for history and regeneration)
     generated_from_preferences = Column(JSON, nullable=True, comment="User preferences used to generate this plan")
-    
+    language = Column(String(5), nullable=True, default="en", comment="Language the plan was generated in: en | ar")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # Relationships
     days = relationship("NutritionPlanDay", back_populates="nutrition_plan", cascade="all, delete-orphan", order_by="NutritionPlanDay.day_number")
 

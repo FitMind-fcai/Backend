@@ -2,16 +2,17 @@
 Shared embedding utility used by meal scanner, voice transcriber, and any other
 service that needs semantic vector search against central_foods / central_exercises.
 
-Model: BAAI/bge-small-en-v1.5  (384-dim, same as the AI coach RAG pipeline).
-Loaded lazily as a module-level singleton so the 420 MB weights are downloaded
+Model is configured via AI_EMBEDDING_MODEL in .env.
+Loaded lazily as a module-level singleton so the weights are downloaded
 and cached once per process.
 """
+import os
 import logging
 from typing import List
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL_NAME = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 EMBEDDING_DIM = 384
 
 _model = None

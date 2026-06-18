@@ -146,6 +146,7 @@ def build_nutrition_prompt(
     allowed_foods_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
     judge_feedback: str = "",
+    lang: str = "en",
 ) -> str:
 
     user_context  = user_profile.to_context_string()
@@ -311,6 +312,8 @@ def build_nutrition_prompt(
         '}',
         "",
         "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.",
+        "",
+        f"LANGUAGE: {'Write ALL text fields (plan_name, description, meal_name, instructions, day_name, notes) in Arabic.' if lang == 'ar' else 'Write ALL text fields in English.'}",
     ]
 
     return "\n".join(sections).strip()
@@ -329,6 +332,7 @@ def build_workout_prompt(
     allowed_exercises_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
     judge_feedback: str = "",
+    lang: str = "en",
 ) -> str:
 
     user_context  = user_profile.to_context_string()
@@ -465,6 +469,8 @@ def build_workout_prompt(
         "}",
         "",
         "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.",
+        "",
+        f"LANGUAGE: {'Write ALL text fields (plan_name, description, day_name, focus_area, notes, instructions) in Arabic.' if lang == 'ar' else 'Write ALL text fields in English.'}",
     ]
 
     return "\n".join(parts).strip()
