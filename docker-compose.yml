@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   db:
     image: pgvector/pgvector:pg16
     container_name: FitMind_DB
@@ -15,12 +14,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: FitMind_Redis
@@ -30,13 +28,12 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
     command: redis-server --appendonly yes
 
-  # FastAPI Application
   web:
     build: .
     container_name: FitMind_APIs
@@ -49,6 +46,18 @@ services:
       DATABASE_URL: postgresql+psycopg://postgres:postgres123@db:5432/fastapi_db
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # ── Startup control ──────────────────────────────────────────────────
+      # Auto-detection: editing merged_resources.csv triggers re-scrape +
+      # rebuild automatically on the next container start (MD5-based).
+      #
+      # Manual overrides (set to "true" when needed):
+      #   RESEED_DB=true          → wipe + re-import foods/exercises from CSV
+      #   REBUILD_VECTOR_DB=true  → force-rebuild ChromaDB from existing JSON
+      #   SCRAPE_RESOURCES=true   → re-scrape CSV first (use with REBUILD_VECTOR_DB)
+      RESEED_DB: "false"
+      REBUILD_VECTOR_DB: "false"
+      SCRAPE_RESOURCES: "false"
+      HF_HOME: /app/models_cache
     depends_on:
       db:
         condition: service_healthy
@@ -56,8 +65,9 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+      - chroma_data:/app/app/ai_services/ai_coach/chroma_db
+      - models_cache:/app/models_cache
       - ./app/ai_services/evaluation/results:/app/app/ai_services/evaluation/results
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   # Celery worker — executes notification tasks
   celery_worker:
@@ -104,3 +114,5 @@ volumes:
   postgres_data:
   redis_data:
   celery_beat_data:
+  chroma_data:
+  models_cache:

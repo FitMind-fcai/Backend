@@ -35,12 +35,13 @@ class AuthService:
         self.verification_service = verification_service
         self.email_service = auth_email_service
 
-    def create_user(self, user_data: UserCreate) -> tuple[User, str]:
+    def create_user(self, user_data: UserCreate, auto_verify: bool = False) -> tuple[User, str]:
         """
         Create a new user account and generate verification token.
 
         Args:
             user_data: User registration data
+            auto_verify: If True, skip email and auto-verify
 
         Returns:
             tuple[User, str]: User object and verification token
@@ -48,25 +49,43 @@ class AuthService:
         Raises:
             HTTPException 400: If email already exists
         """
-        # Check if user exists
         if self.user_repo.email_exists(user_data.email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
 
-        # Create user
         hashed_password = hash_password(user_data.password)
-        new_user = self.user_repo.create_user(
+        db = self.user_repo.db
+
+        user = User(
             name=user_data.name,
             email=user_data.email,
-            hashed_password=hashed_password
+            password=hashed_password,
+            is_verified=auto_verify,
         )
+        db.add(user)
+        db.flush()
 
-        # Create verification token
-        verification_token = self.verification_service.create_verification_token(new_user.email)
+        if auto_verify:
+            db.commit()
+            db.refresh(user)
+            return user, ""
 
-        return new_user, verification_token
+        verification_token = self.verification_service.create_verification_token(user.email)
+        email_sent = self.email_service.send_verification_email(user.email, verification_token)
+
+        if not email_sent:
+            db.rollback()
+            self.verification_service.delete_verification_token(verification_token)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Could not send verification email. Please try again later."
+            )
+
+        db.commit()
+        db.refresh(user)
+        return user, verification_token
 
     def authenticate_user(self, credentials: UserLogin) -> tuple[User, str]:
         """

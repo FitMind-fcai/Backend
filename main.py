@@ -1,10 +1,12 @@
+import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
 from app.db.database import create_tables, engine
-from app.core.config import SQLALCHEMY_LOG_LEVEL
+from app.core.config import SQLALCHEMY_LOG_LEVEL, CORS_ALLOWED_ORIGINS
 from app.profile_module.routes import profileRouter
 from app.planning_module.routes import (
     workout_router,
@@ -40,7 +42,7 @@ logging.getLogger('sqlalchemy.pool').setLevel(_sql_log_level)
 app = FastAPI(
     title="FitMind API",
     description="""FitMind Backend API with Authentication, Profile Management, and AI-Powered Fitness Planning.
-    
+
     ## Authentication
     Most endpoints require a JWT Bearer token. To authenticate:
     1. Use `/v1/auth/login` to get your token
@@ -52,6 +54,17 @@ app = FastAPI(
     swagger_ui_parameters={
         "persistAuthorization": True  # Keeps auth token after page refresh
     }
+)
+
+_raw_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Custom OpenAPI schema to properly document Bearer token
@@ -80,6 +93,14 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create database tables on startup
 @app.on_event("startup")

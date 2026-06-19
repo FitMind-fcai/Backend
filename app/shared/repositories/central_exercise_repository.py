@@ -52,20 +52,6 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
             query = query.filter(CentralExercise.exercise_type.ilike(f"%{exercise_type}%"))
         return query.limit(limit).all()
 
-    def search_for_tracking(self, query: str, user_id: int, limit: int = 20) -> List[CentralExercise]:
-        """Search exercises visible to user: verified/public + user's private entries."""
-        q = (
-            self.db.query(CentralExercise)
-            .filter(CentralExercise.is_active == True)
-            .filter(CentralExercise.name.ilike(f"%{query}%"))
-            .filter(
-                (CentralExercise.is_verified == True)
-                | (CentralExercise.is_public == True)
-                | (CentralExercise.created_by_user_id == user_id)
-            )
-        )
-        return q.order_by(CentralExercise.name.asc()).limit(limit).all()
-
     def create_manual_exercise(self, user_id: int, exercise_data: dict) -> CentralExercise:
         """Create a user-scoped manual exercise in central_exercises with governance flags."""
         payload = dict(exercise_data)

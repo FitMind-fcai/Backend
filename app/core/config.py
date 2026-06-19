@@ -6,10 +6,15 @@ import os
 from typing import Optional
 
 # ========== Database Configuration ==========
-DATABASE_URL = os.getenv(
+_raw_db_url = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg://postgres:postgres@localhost:5432/fitmind"
 )
+if _raw_db_url.startswith("postgres://"):
+    _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif _raw_db_url.startswith("postgresql://") and not _raw_db_url.startswith("postgresql+"):
+    _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+DATABASE_URL = _raw_db_url
 SQLALCHEMY_ECHO = os.getenv("SQLALCHEMY_ECHO", "false").strip().lower() in {"1", "true", "yes", "on"}
 SQLALCHEMY_LOG_LEVEL = os.getenv("SQLALCHEMY_LOG_LEVEL", "WARNING").upper()
 
@@ -41,6 +46,17 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")  # Set in environment
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")  # Set in environment
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")  # Change in production
+
+# ========== CORS Configuration ==========
+# Comma-separated list of allowed origins (e.g. landing page domains)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000"
+    ).split(",")
+    if origin.strip()
+]
 
 # ========== Password Configuration ==========
 MIN_PASSWORD_LENGTH = 6

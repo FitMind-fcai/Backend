@@ -47,15 +47,31 @@ class NutritionPreferences(BaseModel):
 
 
 class WorkoutPlanGenerationRequest(BaseModel):
-    """Request for generating/updating workout plan"""
+    """Request for generating a workout plan draft."""
     duration_weeks: int = Field(..., ge=1, le=52, description="Plan duration in weeks")
     workout_preferences: WorkoutPreferences
+    lang: str = Field(
+        "en",
+        description=(
+            "Language for all generated text fields (plan_name, day_name, focus_area, notes, instructions). "
+            "'en' = English (default). 'ar' = Arabic. "
+            "catalog exercise names (central_exercise.name) are always English regardless of this setting."
+        ),
+    )
 
 
 class NutritionPlanGenerationRequest(BaseModel):
-    """Request for generating/updating nutrition plan"""
+    """Request for generating a nutrition plan draft."""
     duration_weeks: int = Field(..., ge=1, le=52, description="Plan duration in weeks")
     nutrition_preferences: NutritionPreferences
+    lang: str = Field(
+        "en",
+        description=(
+            "Language for all generated text fields (plan_name, day_name, meal_name, instructions, notes). "
+            "'en' = English (default). 'ar' = Arabic. "
+            "Ingredient responses always include both food_name (English) and food_name_ar (Arabic, nullable)."
+        ),
+    )
 
 
 # ========================================
@@ -178,6 +194,11 @@ class WorkoutPlanBase(BaseModel):
     frequency: Optional[str] = Field(None, max_length=100)
     difficulty_level: Optional[str] = Field(None, max_length=50)
     estimated_duration_per_session: Optional[int] = Field(None, ge=0)
+    language: Optional[str] = Field(
+        "en",
+        max_length=5,
+        description="Language this plan was generated in. 'en' = English, 'ar' = Arabic.",
+    )
 
 
 class WorkoutPlanCreate(WorkoutPlanBase):
@@ -236,7 +257,15 @@ class NutritionPlanMealIngredientResponse(BaseModel):
     amount_g: float
 
     # Food identity
-    food_name: str = ""
+    food_name: str = Field("", description="English food name from the central catalog (always present).")
+    food_name_ar: Optional[str] = Field(
+        None,
+        description=(
+            "Arabic food name from the central catalog. "
+            "Present for foods that have an Arabic name; null otherwise. "
+            "Display this when lang=ar; fall back to food_name when null."
+        ),
+    )
     food_category: Optional[str] = None
 
     # Macros scaled to amount_g  (not per-100g)
@@ -274,6 +303,7 @@ class NutritionPlanMealIngredientResponse(BaseModel):
             central_food_id=ing.central_food_id,
             amount_g=ing.amount_g,
             food_name=food.food_name,
+            food_name_ar=getattr(food, "food_name_ar", None),
             food_category=food.food_category,
             calories=round(food.calories_per_100g * ratio, 2),
             protein_g=round(food.protein_per_100g * ratio, 2),
@@ -382,6 +412,11 @@ class NutritionPlanBase(BaseModel):
     daily_protein_g: float = Field(..., ge=0)
     daily_carbs_g: float = Field(..., ge=0)
     daily_fats_g: float = Field(..., ge=0)
+    language: Optional[str] = Field(
+        "en",
+        max_length=5,
+        description="Language this plan was generated in. 'en' = English, 'ar' = Arabic.",
+    )
 
 
 class NutritionPlanCreate(NutritionPlanBase):
@@ -491,6 +526,33 @@ class NutritionPlanSaveRequest(BaseModel):
         None,
         description="ID of the existing plan to update. Null to create a new plan."
     )
+
+
+class CombinedPlanGenerationRequest(BaseModel):
+    """
+    Request body for POST /plans/generate/combined.
+    Generates both a workout and a nutrition plan concurrently.
+    """
+    duration_weeks: int = Field(4, ge=1, le=52, description="Plan duration in weeks (applies to both plans)")
+    workout_preferences: WorkoutPreferences
+    nutrition_preferences: NutritionPreferences
+    lang: str = Field(
+        "en",
+        description=(
+            "Language for all generated text fields in both plans. "
+            "'en' = English (default). 'ar' = Arabic. "
+            "Applies equally to the workout draft and the nutrition draft."
+        ),
+    )
+
+
+class CombinedPlanDraftResponse(BaseModel):
+    """
+    Returned by POST /plans/generate/combined.
+    Both drafts are generated concurrently. Pass each draft to its respective save endpoint.
+    """
+    workout_draft: WorkoutPlanDraftResponse
+    nutrition_draft: NutritionPlanDraftResponse
 
 
 # Aliases for route compatibility

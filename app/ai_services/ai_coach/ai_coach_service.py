@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Optional, TYPE_CHECKING
 
 from app.ai_services.ai_coach import plan_validator, prompt_builder
@@ -16,7 +15,6 @@ from app.ai_services.ai_coach.dtos import (
 )
 from app.ai_services.ai_coach.llm_client import LLMClient
 from app.ai_services.ai_coach.plan_judge import PlanJudge
-from app.ai_services.ai_coach.vector_db_service import VectorDBService, get_vector_db_service
 
 if TYPE_CHECKING:
     from app.planning_module.core.planning_engine import PlanningEngineOutput
@@ -32,16 +30,9 @@ class AICoachService:
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         model: Optional[str] = None,
-        vector_db_service: Optional[VectorDBService] = None,
     ):
-        self.llm    = LLMClient(provider=provider, api_key=api_key, base_url=base_url, model=model)
-        self.judge  = PlanJudge(self.llm)
-        self.vector_db = vector_db_service or get_vector_db_service()
-
-        self.rag_top_k = int(os.getenv("AI_RAG_TOP_K", "3"))
-        # Max judge-fix iterations after the initial generation.
-        # 2 means: generate → judge → fix → judge → fix → judge → done (3 generations, 3 judge calls max).
-        self.max_judge_iterations = int(os.getenv("AI_JUDGE_MAX_ITERATIONS", "2"))
+        self.llm   = LLMClient(provider=provider, api_key=api_key, base_url=base_url, model=model)
+        self.judge = PlanJudge(self.llm)
 
         logger.info(
             "AI Coach initialised — provider=%s model=%s judge_model=%s",
@@ -60,15 +51,17 @@ class AICoachService:
         existing_plan: Optional[NutritionPlanDTO] = None,
         allowed_foods_str: str = "",
         planning_output: Optional["PlanningEngineOutput"] = None,
+        medical_rules: str = "",
+        language: str = "en",
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
 
-        Workflow: Generate → Judge → Fix (if failed) → Allergy gate → Return
+        Workflow: Generate → Judge → Fix once (if failed) → Allergy gate → Return
 
-        The AI uses portion-sizing guidance (TDEE-based calorie + macro targets) to
-        decide ingredient amounts. It does NOT write macro/calorie numbers into JSON;
-        the backend recomputes those from exact CentralFood DB records.
+        medical_rules is a pre-built, KB-grounded rule block from ContextBuilder
+        (runs in a parallel thread in plan_generation_service).  It replaces both
+        the inline Channel C medical block and the general RAG Channel A.
         """
         target_calories = calculate_target_calories(user_profile, preferences.custom_calorie_target)
         macros          = calculate_macro_guidance(user_profile, target_calories)
@@ -76,8 +69,6 @@ class AICoachService:
             "Portion-sizing guidance — calories=%d protein=%dg fat=%dg carbs=%dg",
             target_calories, macros["protein_g"], macros["fat_g"], macros["carb_g"],
         )
-
-        rag_context = self._fetch_nutrition_rag(user_profile, preferences)
 
         logger.info("===================================")
         logger.info("INJECTED DB FOODS STRING:")
@@ -94,40 +85,32 @@ class AICoachService:
             "Any allergy violation is a critical failure."
         )
 
-        # ── Generate → Judge → Fix loop ──────────────────────────────
-        # Initial generation (no feedback yet).
-        logger.info("Nutrition — iteration 0: generating plan")
+        # ── Generate ──────────────────────────────────────────────────
+        logger.info("Nutrition — generating plan")
         plan = self._generate_nutrition_once(
             system_prompt, user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_foods_str, planning_output,
+            medical_rules, existing_plan, allowed_foods_str, planning_output,
+            language=language,
         )
 
-        # Up to max_judge_iterations judge-fix cycles.
-        # Each iteration judges the *current* plan so the feedback always reflects
-        # whatever issues remain — no stale or already-resolved complaints.
-        for iteration in range(1, self.max_judge_iterations + 1):
-            passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
-            if passed:
-                logger.info("Nutrition — judge passed on iteration %d", iteration)
-                break
-            if not feedback:
-                logger.info("Nutrition — judge failed but gave no feedback; stopping loop")
-                break
-            logger.info("Nutrition — iteration %d: judge failed, regenerating with feedback", iteration)
+        # ── Judge once → Fix once if failed ──────────────────────────
+        passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
+        if passed:
+            logger.info("Nutrition — judge passed on first try")
+        elif not feedback:
+            logger.info("Nutrition — judge failed but gave no feedback; skipping fix pass")
+        else:
+            logger.info("Nutrition — judge failed, applying one-time fix pass")
             fixed = self._generate_nutrition_once(
                 system_prompt, user_profile, preferences, duration_weeks,
-                rag_context, existing_plan, allowed_foods_str, planning_output,
+                medical_rules, existing_plan, allowed_foods_str, planning_output,
                 judge_feedback=feedback,
+                language=language,
             )
             if fixed is not None:
                 plan = fixed
             else:
-                logger.warning("Nutrition — fix-pass iteration %d produced invalid output; keeping current plan", iteration)
-                break
-        else:
-            # Loop exhausted — judge the final plan once more just for logging.
-            passed, _ = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
-            logger.info("Nutrition — max iterations reached, final judge passed=%s", passed)
+                logger.warning("Nutrition — fix pass produced invalid output; keeping original plan")
 
         # ── Allergy safety gate (last-resort deterministic check) ─────
         plan_validator.validate_nutrition_semantics(plan, user_profile)
@@ -142,14 +125,16 @@ class AICoachService:
         existing_plan: Optional[WorkoutPlanDTO] = None,
         allowed_exercises_str: str = "",
         planning_output: Optional["PlanningEngineOutput"] = None,
+        medical_rules: str = "",
+        language: str = "en",
     ) -> WorkoutPlanDTO:
         """
         Generate a personalised workout plan.
 
-        Workflow: Generate → Judge → Fix (if failed) → Return
-        """
-        rag_context = self._fetch_workout_rag(user_profile, preferences)
+        Workflow: Generate → Judge → Fix once (if failed) → Return
 
+        medical_rules is a pre-built, KB-grounded rule block from ContextBuilder.
+        """
         logger.info("===================================")
         logger.info("INJECTED DB EXERCISES STRING:")
         logger.info(allowed_exercises_str)
@@ -163,35 +148,32 @@ class AICoachService:
             "Never suggest exercises that could harm the user."
         )
 
-        # ── Generate → Judge → Fix loop ──────────────────────────────
-        logger.info("Workout — iteration 0: generating plan")
+        # ── Generate ──────────────────────────────────────────────────
+        logger.info("Workout — generating plan")
         plan = self._generate_workout_once(
             system_prompt, user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_exercises_str, planning_output,
+            medical_rules, existing_plan, allowed_exercises_str, planning_output,
+            language=language,
         )
 
-        for iteration in range(1, self.max_judge_iterations + 1):
-            passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
-            if passed:
-                logger.info("Workout — judge passed on iteration %d", iteration)
-                break
-            if not feedback:
-                logger.info("Workout — judge failed but gave no feedback; stopping loop")
-                break
-            logger.info("Workout — iteration %d: judge failed, regenerating with feedback", iteration)
+        # ── Judge once → Fix once if failed ──────────────────────────
+        passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
+        if passed:
+            logger.info("Workout — judge passed on first try")
+        elif not feedback:
+            logger.info("Workout — judge failed but gave no feedback; skipping fix pass")
+        else:
+            logger.info("Workout — judge failed, applying one-time fix pass")
             fixed = self._generate_workout_once(
                 system_prompt, user_profile, preferences, duration_weeks,
-                rag_context, existing_plan, allowed_exercises_str, planning_output,
+                medical_rules, existing_plan, allowed_exercises_str, planning_output,
                 judge_feedback=feedback,
+                language=language,
             )
             if fixed is not None:
                 plan = fixed
             else:
-                logger.warning("Workout — fix-pass iteration %d produced invalid output; keeping current plan", iteration)
-                break
-        else:
-            passed, _ = self.judge.judge_workout_plan(plan, user_profile, preferences)
-            logger.info("Workout — max iterations reached, final judge passed=%s", passed)
+                logger.warning("Workout — fix pass produced invalid output; keeping original plan")
 
         return plan
 
@@ -450,20 +432,22 @@ Respond with ONLY this JSON:
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
         duration_weeks: int,
-        rag_context: str,
+        medical_rules: str,
         existing_plan: Optional[NutritionPlanDTO],
         allowed_foods_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        language: str = "en",
     ) -> Optional[NutritionPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
 
         user_prompt = prompt_builder.build_nutrition_prompt(
             user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_foods_str,
+            medical_rules, existing_plan, allowed_foods_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            lang=language,
         )
 
         response = self.llm.call_llm(system_prompt, user_prompt)
@@ -494,20 +478,22 @@ Respond with ONLY this JSON:
         user_profile: UserProfileDTO,
         preferences: WorkoutPreferencesDTO,
         duration_weeks: int,
-        rag_context: str,
+        medical_rules: str,
         existing_plan: Optional[WorkoutPlanDTO],
         allowed_exercises_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        language: str = "en",
     ) -> Optional[WorkoutPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
 
         user_prompt = prompt_builder.build_workout_prompt(
             user_profile, preferences, duration_weeks,
-            rag_context, existing_plan, allowed_exercises_str,
+            medical_rules, existing_plan, allowed_exercises_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            lang=language,
         )
 
         response = self.llm.call_llm(system_prompt, user_prompt)
@@ -532,45 +518,6 @@ Respond with ONLY this JSON:
                 return None
             raise
 
-    # ------------------------------------------------------------------
-    # RAG helpers
-    # ------------------------------------------------------------------
-
-    def _fetch_nutrition_rag(
-        self,
-        user_profile: UserProfileDTO,
-        preferences: NutritionPreferencesDTO,
-    ) -> str:
-        profile_tags = " ".join(filter(None, [
-            user_profile.allergies          and f"allergies:{user_profile.allergies}",
-            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
-            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
-        ]))
-        query = (
-            f"nutrition meal plan {preferences.cuisine_preference} "
-            f"{preferences.calorie_preference} {profile_tags}"
-        )
-        logger.info("Nutrition RAG query: %s", query)
-        raw = self.vector_db.get_context(query, k=self.rag_top_k, domain="nutrition")
-        return self.llm.trim_rag_context(raw, "nutrition")
-
-    def _fetch_workout_rag(
-        self,
-        user_profile: UserProfileDTO,
-        preferences: WorkoutPreferencesDTO,
-    ) -> str:
-        profile_tags = " ".join(filter(None, [
-            user_profile.injuries           and f"injuries:{user_profile.injuries}",
-            user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
-            user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
-        ]))
-        query = (
-            f"workout plan {preferences.workout_focus} {preferences.workout_difficulty} "
-            f"{preferences.workout_location} {profile_tags}"
-        )
-        logger.info("Workout RAG query: %s", query)
-        raw = self.vector_db.get_context(query, k=self.rag_top_k, domain="workout")
-        return self.llm.trim_rag_context(raw, "workout")
 
 
 # ---------------------------------------------------------------------------

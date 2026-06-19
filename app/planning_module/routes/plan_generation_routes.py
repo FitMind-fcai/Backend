@@ -28,6 +28,8 @@ from app.planning_module.schemas.plan import (
     NutritionPlanSaveRequest,
     NutritionPlanResponse,
     CombinedPlanResponse,
+    CombinedPlanGenerationRequest,
+    CombinedPlanDraftResponse,
 )
 
 plan_generation_router = APIRouter(prefix="/plans", tags=["Plan Generation"])
@@ -87,6 +89,12 @@ def generate_workout_plan(
     - `workout_days_per_week`: 1–7
     - `session_duration_minutes`: 15–180
     - `focus_areas`: optional list of muscle groups
+
+    **Localization (`lang`):**
+    - `"en"` *(default)* — all plan text fields (plan name, day names, notes, exercise instructions) are written in English.
+    - `"ar"` — all plan text fields are written in Arabic.
+    - The `language` field in the returned draft and in the saved plan record reflects this value.
+    - Exercise names from the catalog (`central_exercise.name`) are always in English regardless of `lang` — exercise names are internationally standardized.
     """
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
@@ -96,6 +104,7 @@ def generate_workout_plan(
             profile=profile,
             preferences=request.workout_preferences,
             duration_weeks=request.duration_weeks,
+            lang=request.lang,
         )
     except ValueError as exc:
         import traceback, logging
@@ -127,6 +136,10 @@ def save_workout_plan(
     Send the exact body you received from `POST /plans/generate/workout`.
     If `update_plan_id` is set, the existing plan's days and exercises are deleted
     and replaced with the new data. Returns the full saved `WorkoutPlanResponse` with IDs.
+
+    The `language` field inside `draft_plan` (set automatically by the generate step) is
+    saved to the database and returned in the response — the frontend can use it to know
+    which language this plan was generated in.
     """
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
@@ -184,6 +197,13 @@ def generate_nutrition_plan(
     - `meal_complexity`: Quick | Moderate | Elaborate | Mixed
     - `cuisine_preference`: Mediterranean | Asian | Western | Middle Eastern | Latin American | Vegetarian | Vegan | Mixed
     - `exclude_ingredients`: optional list of ingredients to avoid
+
+    **Localization (`lang`):**
+    - `"en"` *(default)* — all plan text fields (plan name, day names, meal names, cooking instructions, notes) are written in English.
+    - `"ar"` — all plan text fields are written in Arabic.
+    - The `language` field in the returned draft and in the saved plan record reflects this value.
+    - Each ingredient in the response includes both `food_name` (English, always present) and `food_name_ar` (Arabic, may be `null` if no Arabic name exists in the catalog). The frontend should display `food_name_ar` when `lang=ar` and fall back to `food_name` when it is `null`.
+    - Food IDs (`central_food_id`) are language-neutral — the same catalog records are used regardless of `lang`.
     """
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
@@ -193,6 +213,7 @@ def generate_nutrition_plan(
             profile=profile,
             preferences=request.nutrition_preferences,
             duration_weeks=request.duration_weeks,
+            lang=request.lang,
         )
     except ValueError as exc:
         import traceback, logging
@@ -224,6 +245,10 @@ def save_nutrition_plan(
     Send the exact body you received from `POST /plans/generate/nutrition`.
     If `update_plan_id` is set, the existing plan's days, meals and ingredients are
     deleted and replaced with the new data. Returns the full saved `NutritionPlanResponse` with IDs.
+
+    The `language` field inside `draft_plan` (set automatically by the generate step) is
+    saved to the database and returned in the response. Each ingredient in the saved plan
+    includes `food_name` (English) and `food_name_ar` (Arabic, nullable) for bilingual display.
     """
     profile = profile_service.get_profile_by_user_id(current_user.id)
     _require_complete_profile(profile)
@@ -247,6 +272,57 @@ def save_nutrition_plan(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     return NutritionPlanResponse.model_validate(saved)
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# COMBINED — GENERATE BOTH PLANS CONCURRENTLY
+# ────────────────────────────────────────────────────────────────────────────────
+
+@plan_generation_router.post(
+    "/generate/combined",
+    response_model=CombinedPlanDraftResponse,
+    summary="Generate Workout + Nutrition Plan Drafts Concurrently (AI only, not saved)",
+)
+def generate_combined_plans(
+    request: CombinedPlanGenerationRequest,
+    current_user: User = Depends(get_current_verified_user),
+    profile_service: ProfileService = Depends(get_profile_service),
+    plan_service: PlanGenerationService = Depends(get_plan_generation_service),
+):
+    """
+    **Step 1 of 2 (combined)** — Generate both a workout plan draft and a nutrition plan draft
+    in a single request. Both LLM generations run **concurrently**, cutting total wait time
+    roughly in half compared to calling the two separate generate endpoints back-to-back.
+
+    Neither plan is saved to the database. After reviewing the response:
+    - Send `workout_draft` to `POST /plans/save/workout` to persist the workout plan.
+    - Send `nutrition_draft` to `POST /plans/save/nutrition` to persist the nutrition plan.
+
+    **Localization (`lang`):**
+    - `"en"` *(default)* — both plans are generated in English.
+    - `"ar"` — both plans are generated in Arabic. The single `lang` value applies to both the workout and nutrition plan.
+    - All localization rules from the individual generate endpoints apply here (see `/plans/generate/workout` and `/plans/generate/nutrition` for details).
+    """
+    profile = profile_service.get_profile_by_user_id(current_user.id)
+    _require_complete_profile(profile)
+
+    try:
+        result = plan_service.generate_combined_plans(
+            profile=profile,
+            workout_preferences=request.workout_preferences,
+            nutrition_preferences=request.nutrition_preferences,
+            duration_weeks=request.duration_weeks,
+            lang=request.lang,
+        )
+    except ValueError as exc:
+        import traceback, logging
+        logging.getLogger(__name__).error(traceback.format_exc())
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    return CombinedPlanDraftResponse(
+        workout_draft=WorkoutPlanDraftResponse(**result["workout_draft"]),
+        nutrition_draft=NutritionPlanDraftResponse(**result["nutrition_draft"]),
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────────

@@ -2,16 +2,17 @@
 Shared embedding utility used by meal scanner, voice transcriber, and any other
 service that needs semantic vector search against central_foods / central_exercises.
 
-Model: BAAI/bge-small-en-v1.5  (384-dim, same as the AI coach RAG pipeline).
-Loaded lazily as a module-level singleton so the 420 MB weights are downloaded
+Model is configured via AI_EMBEDDING_MODEL in .env.
+Loaded lazily as a module-level singleton so the weights are downloaded
 and cached once per process.
 """
+import os
 import logging
 from typing import List
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL_NAME = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 EMBEDDING_DIM = 384
 
 _model = None
@@ -41,3 +42,28 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
 def vec_to_pg_str(embedding: List[float]) -> str:
     """Format a float list as a pgvector literal: '[0.1,0.2,…]'."""
     return "[" + ",".join(f"{v:.6f}" for v in embedding) + "]"
+
+
+class SharedHuggingFaceEmbeddings:
+    """LangChain-compatible embedding wrapper that reuses the singleton model."""
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._encode(t) for t in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._encode(text)
+
+    def _encode(self, text: str) -> List[float]:
+        vec = _get_model().encode(text, normalize_embeddings=True)
+        return vec.tolist()
+
+
+_shared_embeddings = None
+
+
+def get_shared_embeddings() -> SharedHuggingFaceEmbeddings:
+    global _shared_embeddings
+    if _shared_embeddings is None:
+        _get_model()
+        _shared_embeddings = SharedHuggingFaceEmbeddings()
+    return _shared_embeddings

@@ -16,6 +16,7 @@ Steps:
 import argparse
 import csv
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -33,10 +34,11 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
 BATCH_SIZE = 256
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 
 ROOT = Path(__file__).parent.parent
 FOOD_CSV = ROOT / "nutrition.csv"
+ARABIC_FOOD_CSV = ROOT / "data" / "arabic_foods_nutrition.csv"
 EXERCISE_CSV = ROOT / "megaGymDataset.csv"
 
 
@@ -132,6 +134,89 @@ def import_foods(db: Session, clear: bool):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Step 1b — Import Arabic foods
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _transform_arabic_food(row: dict) -> Optional[dict]:
+    name = row.get("food_name", "").strip()
+    if not name:
+        return None
+
+    calories = _extract_float(row.get("calories_per_100g"))
+    protein  = _extract_float(row.get("protein_per_100g"))
+    carbs    = _extract_float(row.get("carbs_per_100g"))
+    fats     = _extract_float(row.get("fats_per_100g"))
+    if any(v is None for v in (calories, protein, carbs, fats)):
+        return None
+    if calories == 0 and protein == 0 and carbs == 0 and fats == 0:
+        return None
+
+    import json
+    tags_raw = row.get("dietary_tags", "[]")
+    try:
+        tags = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
+    except (json.JSONDecodeError, TypeError):
+        tags = []
+
+    name_ar = row.get("food_name_ar", "").strip()
+    serving_desc = row.get("serving_description", "100 g").strip()
+    serving_g = _extract_float(row.get("serving_size_g")) or 100.0
+
+    return {
+        "food_name":         name,
+        "food_name_ar":      name_ar if name_ar and name_ar != "nan" else None,
+        "food_category":     row.get("food_category", "").strip() or None,
+        "calories_per_100g": calories,
+        "protein_per_100g":  protein,
+        "carbs_per_100g":    carbs,
+        "fats_per_100g":     fats,
+        "fiber_per_100g":    _extract_float(row.get("fiber_per_100g")),
+        "serving_size_g":    serving_g,
+        "serving_description": serving_desc,
+        "dietary_tags":      tags,
+        "source":            row.get("source", "kaggle-egyptian-foods").strip(),
+        "is_active":         True,
+    }
+
+
+def import_arabic_foods(db: Session):
+    from app.planning_module.models.plan import CentralFood
+
+    if not ARABIC_FOOD_CSV.exists():
+        log.info("No Arabic foods CSV found at %s — skipping", ARABIC_FOOD_CSV)
+        return
+
+    log.info("Reading %s …", ARABIC_FOOD_CSV)
+    records = []
+    with open(ARABIC_FOOD_CSV, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            r = _transform_arabic_food(row)
+            if r:
+                records.append(r)
+    log.info("  %d valid Arabic food rows", len(records))
+
+    inserted = updated = 0
+    for i, data in enumerate(records):
+        existing = db.query(CentralFood).filter(
+            sql_func.lower(CentralFood.food_name) == data["food_name"].lower()
+        ).first()
+        if existing:
+            for k, v in data.items():
+                setattr(existing, k, v)
+            updated += 1
+        else:
+            db.add(CentralFood(**data))
+            inserted += 1
+
+        if (i + 1) % BATCH_SIZE == 0:
+            db.commit()
+            log.info("  Arabic foods … %d / %d", i + 1, len(records))
+
+    db.commit()
+    log.info("Arabic foods done — inserted: %d  updated: %d", inserted, updated)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Step 2 — Import exercises
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -201,54 +286,58 @@ def import_exercises(db: Session, clear: bool):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def generate_embeddings(engine, model):
+    # Fetch the list of rows needing embeddings (short-lived connection)
     with engine.connect() as conn:
-        # ── Foods ──────────────────────────────────────────────────────────
-        rows = conn.execute(
+        food_rows = conn.execute(
             text("SELECT id, food_name FROM central_foods WHERE is_active = true AND name_embedding IS NULL ORDER BY id")
         ).fetchall()
-        log.info("%d foods need embeddings", len(rows))
+        conn.commit()
+    log.info("%d foods need embeddings", len(food_rows))
 
-        for start in range(0, len(rows), BATCH_SIZE):
-            batch = rows[start: start + BATCH_SIZE]
-            vecs  = model.encode([r.food_name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+    for start in range(0, len(food_rows), BATCH_SIZE):
+        batch = food_rows[start: start + BATCH_SIZE]
+        vecs  = model.encode([r.food_name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+        with engine.connect() as conn:
             for row, vec in zip(batch, vecs):
                 conn.execute(
                     text("UPDATE central_foods SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
                     {"vec": _vec_str(vec), "id": row.id},
                 )
             conn.commit()
-            log.info("  food embeddings … %d / %d", min(start + BATCH_SIZE, len(rows)), len(rows))
+        log.info("  food embeddings … %d / %d", min(start + BATCH_SIZE, len(food_rows)), len(food_rows))
 
-        # ── Exercises ──────────────────────────────────────────────────────
-        rows = conn.execute(
+    with engine.connect() as conn:
+        exercise_rows = conn.execute(
             text("SELECT id, name FROM central_exercises WHERE is_active = true AND name_embedding IS NULL ORDER BY id")
         ).fetchall()
-        log.info("%d exercises need embeddings", len(rows))
+        conn.commit()
+    log.info("%d exercises need embeddings", len(exercise_rows))
 
-        for start in range(0, len(rows), BATCH_SIZE):
-            batch = rows[start: start + BATCH_SIZE]
-            vecs  = model.encode([r.name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+    for start in range(0, len(exercise_rows), BATCH_SIZE):
+        batch = exercise_rows[start: start + BATCH_SIZE]
+        vecs  = model.encode([r.name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+        with engine.connect() as conn:
             for row, vec in zip(batch, vecs):
                 conn.execute(
                     text("UPDATE central_exercises SET name_embedding = CAST(:vec AS vector) WHERE id = :id"),
                     {"vec": _vec_str(vec), "id": row.id},
                 )
             conn.commit()
-            log.info("  exercise embeddings … %d / %d", min(start + BATCH_SIZE, len(rows)), len(rows))
+        log.info("  exercise embeddings … %d / %d", min(start + BATCH_SIZE, len(exercise_rows)), len(exercise_rows))
 
-        # ── IVFFlat indexes ────────────────────────────────────────────────
-        for ddl in [
-            "CREATE INDEX IF NOT EXISTS idx_central_foods_name_embedding "
-            "ON central_foods USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
-            "CREATE INDEX IF NOT EXISTS idx_central_exercises_name_embedding "
-            "ON central_exercises USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
-        ]:
-            try:
+    # ── IVFFlat indexes ────────────────────────────────────────────────
+    for ddl in [
+        "CREATE INDEX IF NOT EXISTS idx_central_foods_name_embedding "
+        "ON central_foods USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
+        "CREATE INDEX IF NOT EXISTS idx_central_exercises_name_embedding "
+        "ON central_exercises USING ivfflat (name_embedding vector_cosine_ops) WITH (lists = 100)",
+    ]:
+        try:
+            with engine.connect() as conn:
                 conn.execute(text(ddl))
                 conn.commit()
-            except Exception as exc:
-                log.warning("Index skipped (need more rows for IVFFlat): %s", exc)
-                conn.rollback()
+        except Exception as exc:
+            log.warning("Index skipped (need more rows for IVFFlat): %s", exc)
 
     log.info("Embeddings done.")
 
@@ -272,6 +361,7 @@ def main():
         db: Session = SessionLocal()
         try:
             import_foods(db, clear=args.clear)
+            import_arabic_foods(db)
             import_exercises(db, clear=args.clear)
         finally:
             db.close()
