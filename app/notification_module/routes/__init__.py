@@ -1,6 +1,5 @@
-"""
-Notification Routes
-API endpoints for notifications.
-"""
+"""Notification route exports."""
 
-__all__ = []
+from app.notification_module.routes.notifications import notification_router
+
+__all__ = ["notification_router"]

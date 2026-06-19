@@ -62,6 +62,13 @@ CORS_ALLOWED_ORIGINS = [
 MIN_PASSWORD_LENGTH = 6
 MAX_PASSWORD_LENGTH = 50
 
+# ========== Firebase / FCM Configuration ==========
+# Provide one of these two; FIREBASE_CREDENTIALS_JSON takes priority.
+# FIREBASE_CREDENTIALS_JSON: the full service-account JSON as a single-line env var string
+# FIREBASE_CREDENTIALS_PATH: path to the service-account JSON file inside the container
+FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
+
 # ========== AI Coach Configuration ==========
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # Set in environment
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
