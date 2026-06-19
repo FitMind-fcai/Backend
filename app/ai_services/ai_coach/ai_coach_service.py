@@ -53,6 +53,8 @@ class AICoachService:
         planning_output: Optional["PlanningEngineOutput"] = None,
         medical_rules: str = "",
         language: str = "en",
+        model_override: Optional[str] = None,
+        skip_judge: bool = False,
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
@@ -86,31 +88,36 @@ class AICoachService:
         )
 
         # ── Generate ──────────────────────────────────────────────────
-        logger.info("Nutrition — generating plan")
+        logger.info("Nutrition — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
         plan = self._generate_nutrition_once(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_foods_str, planning_output,
             language=language,
+            model_override=model_override,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
-        passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
-        if passed:
-            logger.info("Nutrition — judge passed on first try")
-        elif not feedback:
-            logger.info("Nutrition — judge failed but gave no feedback; skipping fix pass")
+        if skip_judge:
+            logger.info("Nutrition — judge skipped (skip_judge=True)")
         else:
-            logger.info("Nutrition — judge failed, applying one-time fix pass")
-            fixed = self._generate_nutrition_once(
-                system_prompt, user_profile, preferences, duration_weeks,
-                medical_rules, existing_plan, allowed_foods_str, planning_output,
-                judge_feedback=feedback,
-                language=language,
-            )
-            if fixed is not None:
-                plan = fixed
+            passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
+            if passed:
+                logger.info("Nutrition — judge passed on first try")
+            elif not feedback:
+                logger.info("Nutrition — judge failed but gave no feedback; skipping fix pass")
             else:
-                logger.warning("Nutrition — fix pass produced invalid output; keeping original plan")
+                logger.info("Nutrition — judge failed, applying one-time fix pass")
+                fixed = self._generate_nutrition_once(
+                    system_prompt, user_profile, preferences, duration_weeks,
+                    medical_rules, existing_plan, allowed_foods_str, planning_output,
+                    judge_feedback=feedback,
+                    language=language,
+                    model_override=model_override,
+                )
+                if fixed is not None:
+                    plan = fixed
+                else:
+                    logger.warning("Nutrition — fix pass produced invalid output; keeping original plan")
 
         # ── Allergy safety gate (last-resort deterministic check) ─────
         plan_validator.validate_nutrition_semantics(plan, user_profile)
@@ -127,6 +134,8 @@ class AICoachService:
         planning_output: Optional["PlanningEngineOutput"] = None,
         medical_rules: str = "",
         language: str = "en",
+        model_override: Optional[str] = None,
+        skip_judge: bool = False,
     ) -> WorkoutPlanDTO:
         """
         Generate a personalised workout plan.
@@ -149,31 +158,36 @@ class AICoachService:
         )
 
         # ── Generate ──────────────────────────────────────────────────
-        logger.info("Workout — generating plan")
+        logger.info("Workout — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
         plan = self._generate_workout_once(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_exercises_str, planning_output,
             language=language,
+            model_override=model_override,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
-        passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
-        if passed:
-            logger.info("Workout — judge passed on first try")
-        elif not feedback:
-            logger.info("Workout — judge failed but gave no feedback; skipping fix pass")
+        if skip_judge:
+            logger.info("Workout — judge skipped (skip_judge=True)")
         else:
-            logger.info("Workout — judge failed, applying one-time fix pass")
-            fixed = self._generate_workout_once(
-                system_prompt, user_profile, preferences, duration_weeks,
-                medical_rules, existing_plan, allowed_exercises_str, planning_output,
-                judge_feedback=feedback,
-                language=language,
-            )
-            if fixed is not None:
-                plan = fixed
+            passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
+            if passed:
+                logger.info("Workout — judge passed on first try")
+            elif not feedback:
+                logger.info("Workout — judge failed but gave no feedback; skipping fix pass")
             else:
-                logger.warning("Workout — fix pass produced invalid output; keeping original plan")
+                logger.info("Workout — judge failed, applying one-time fix pass")
+                fixed = self._generate_workout_once(
+                    system_prompt, user_profile, preferences, duration_weeks,
+                    medical_rules, existing_plan, allowed_exercises_str, planning_output,
+                    judge_feedback=feedback,
+                    language=language,
+                    model_override=model_override,
+                )
+                if fixed is not None:
+                    plan = fixed
+                else:
+                    logger.warning("Workout — fix pass produced invalid output; keeping original plan")
 
         return plan
 
@@ -438,6 +452,7 @@ Respond with ONLY this JSON:
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
         language: str = "en",
+        model_override: Optional[str] = None,
     ) -> Optional[NutritionPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
@@ -450,7 +465,7 @@ Respond with ONLY this JSON:
             lang=language,
         )
 
-        response = self.llm.call_llm(system_prompt, user_prompt)
+        response = self.llm.call_llm(system_prompt, user_prompt, model=model_override)
         logger.info("Nutrition LLM output (first 3000 chars): %s", response[:3000])
 
         try:
@@ -484,6 +499,7 @@ Respond with ONLY this JSON:
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
         language: str = "en",
+        model_override: Optional[str] = None,
     ) -> Optional[WorkoutPlanDTO]:
         """Single generation attempt. Returns None on parse/validation failure during fix-pass."""
         is_fix_pass = bool(judge_feedback)
@@ -496,7 +512,7 @@ Respond with ONLY this JSON:
             lang=language,
         )
 
-        response = self.llm.call_llm(system_prompt, user_prompt)
+        response = self.llm.call_llm(system_prompt, user_prompt, model=model_override)
         logger.info("Workout LLM output (first 3000 chars): %s", response[:3000])
 
         try:

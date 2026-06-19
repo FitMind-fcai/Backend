@@ -49,6 +49,8 @@ class PlanGenerationService:
         preferences: WorkoutPreferences,
         duration_weeks: int = 4,
         lang: str = "en",
+        model_override: str = None,
+        skip_judge: bool = False,
     ) -> dict:
         """
         Generate an AI workout plan DRAFT without saving it to the database.
@@ -77,6 +79,8 @@ class PlanGenerationService:
             existing_plan=existing_plan_dto,
             update_plan_id=existing_plan_id,
             lang=lang,
+            model_override=model_override,
+            skip_judge=skip_judge,
         )
 
     def generate_nutrition_plan(
@@ -85,6 +89,8 @@ class PlanGenerationService:
         preferences: NutritionPreferences,
         duration_weeks: int = 4,
         lang: str = "en",
+        model_override: str = None,
+        skip_judge: bool = False,
     ) -> dict:
         """
         Generate an AI nutrition plan DRAFT without saving it to the database.
@@ -113,6 +119,8 @@ class PlanGenerationService:
             existing_plan=existing_plan_dto,
             update_plan_id=existing_plan_id,
             lang=lang,
+            model_override=model_override,
+            skip_judge=skip_judge,
         )
 
     def generate_combined_plans(
@@ -122,6 +130,8 @@ class PlanGenerationService:
         nutrition_preferences: "NutritionPreferences",
         duration_weeks: int = 4,
         lang: str = "en",
+        model_override: str = None,
+        skip_judge: bool = False,
     ) -> dict:
         """
         Generate workout and nutrition plan drafts concurrently.
@@ -132,10 +142,10 @@ class PlanGenerationService:
         """
         with ThreadPoolExecutor(max_workers=2) as pool:
             workout_future = pool.submit(
-                self.generate_workout_plan, profile, workout_preferences, duration_weeks, lang
+                self.generate_workout_plan, profile, workout_preferences, duration_weeks, lang, model_override, skip_judge
             )
             nutrition_future = pool.submit(
-                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks, lang
+                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks, lang, model_override, skip_judge
             )
             workout_draft   = workout_future.result()
             nutrition_draft = nutrition_future.result()
@@ -238,6 +248,8 @@ class PlanGenerationService:
         existing_plan=None,
         update_plan_id: int = None,
         lang: str = "en",
+        model_override: str = None,
+        skip_judge: bool = False,
     ) -> dict:
         """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -289,6 +301,8 @@ class PlanGenerationService:
             planning_output=planning_output,
             medical_rules=medical_rules,
             language=lang,
+            model_override=model_override,
+            skip_judge=skip_judge,
         )
 
         plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
@@ -309,6 +323,8 @@ class PlanGenerationService:
         existing_plan=None,
         update_plan_id: int = None,
         lang: str = "en",
+        model_override: str = None,
+        skip_judge: bool = False,
     ) -> dict:
         """Internal: call AI and return NutritionPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -360,6 +376,8 @@ class PlanGenerationService:
             planning_output=planning_output,
             medical_rules=medical_rules,
             language=lang,
+            model_override=model_override,
+            skip_judge=skip_judge,
         )
 
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)

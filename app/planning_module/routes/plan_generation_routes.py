@@ -105,6 +105,8 @@ def generate_workout_plan(
             preferences=request.workout_preferences,
             duration_weeks=request.duration_weeks,
             lang=request.lang,
+            model_override=request.model_override,
+            skip_judge=request.skip_judge,
         )
     except ValueError as exc:
         import traceback, logging
@@ -214,6 +216,8 @@ def generate_nutrition_plan(
             preferences=request.nutrition_preferences,
             duration_weeks=request.duration_weeks,
             lang=request.lang,
+            model_override=request.model_override,
+            skip_judge=request.skip_judge,
         )
     except ValueError as exc:
         import traceback, logging
@@ -313,6 +317,8 @@ def generate_combined_plans(
             nutrition_preferences=request.nutrition_preferences,
             duration_weeks=request.duration_weeks,
             lang=request.lang,
+            model_override=request.model_override,
+            skip_judge=request.skip_judge,
         )
     except ValueError as exc:
         import traceback, logging
