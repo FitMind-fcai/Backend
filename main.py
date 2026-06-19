@@ -15,8 +15,10 @@ from app.planning_module.routes import (
 )
 from app.tracking_module.routes import tracking_router
 from app.recommendation_system.routes.recommendations import recommendation_router
+from app.recommendation_system.routes.coaching import coaching_router
 from app.notification_module.routes import notification_router
 import app.notification_module.models  # noqa: F401 — registers tables with Base
+import app.recommendation_system.models.coaching_message  # noqa: F401 — registers tables with Base
 
 # Load environment variables from .env file
 load_dotenv()
@@ -119,6 +121,14 @@ def startup_event():
                 "ALTER TABLE central_exercises "
                 "ADD COLUMN IF NOT EXISTS name_embedding vector(384)"
             ))
+            conn.execute(text(
+                "ALTER TABLE notification_preferences "
+                "ADD COLUMN IF NOT EXISTS coaching_reminders_enabled BOOLEAN NOT NULL DEFAULT true"
+            ))
+            conn.execute(text(
+                "ALTER TABLE notification_preferences "
+                "ADD COLUMN IF NOT EXISTS coaching_daily_hour INTEGER NOT NULL DEFAULT 20"
+            ))
             conn.commit()
         print("✅ pgvector extension and name_embedding columns ready.")
     except Exception as exc:
@@ -137,6 +147,7 @@ v1_router.include_router(workout_router, tags=["Workout Plans"])
 v1_router.include_router(nutrition_router, tags=["Nutrition Plans"])
 v1_router.include_router(tracking_router)       # tags are set per-endpoint
 v1_router.include_router(recommendation_router)
+v1_router.include_router(coaching_router)
 v1_router.include_router(notification_router)
 
 app.include_router(v1_router)

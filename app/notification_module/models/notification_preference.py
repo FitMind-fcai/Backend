@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, text
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -23,6 +23,11 @@ class NotificationPreference(Base):
     workout_reminder_hour = Column(Integer, default=7, nullable=False)
     # UTC hour at which to send the sleep reminder (0-23)
     sleep_reminder_hour = Column(Integer, default=21, nullable=False)
+
+    # Coaching
+    coaching_reminders_enabled = Column(Boolean, default=True, server_default=text("true"), nullable=False)
+    # UTC hour for the daily coaching check (0-23)
+    coaching_daily_hour = Column(Integer, default=20, server_default=text("20"), nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

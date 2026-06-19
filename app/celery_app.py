@@ -42,5 +42,15 @@ celery_app.conf.update(
             "task": "app.notification_module.tasks.send_sleep_reminders",
             "schedule": crontab(minute="0"),
         },
+        # Every hour — service filters by each user's preferred UTC hour
+        "daily-coaching": {
+            "task": "app.notification_module.tasks.run_daily_coaching",
+            "schedule": crontab(minute="0"),
+        },
+        # Once a week on Sunday at 09:00 UTC
+        "weekly-coaching": {
+            "task": "app.notification_module.tasks.run_weekly_coaching",
+            "schedule": crontab(hour="9", minute="0", day_of_week="0"),
+        },
     },
 )

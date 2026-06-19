@@ -47,3 +47,8 @@ class NotificationPreferenceRepository:
         return self.db.query(NotificationPreference).filter(
             NotificationPreference.sleep_reminders_enabled == True
         ).all()
+
+    def get_with_coaching_enabled(self) -> List[NotificationPreference]:
+        return self.db.query(NotificationPreference).filter(
+            NotificationPreference.coaching_reminders_enabled == True
+        ).all()
