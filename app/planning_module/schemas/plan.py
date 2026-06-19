@@ -58,6 +58,14 @@ class WorkoutPlanGenerationRequest(BaseModel):
             "catalog exercise names (central_exercise.name) are always English regardless of this setting."
         ),
     )
+    model_override: Optional[str] = Field(
+        None,
+        description="OpenRouter model ID to use instead of the default (e.g. 'openai/gpt-4.1-mini'). For A/B testing.",
+    )
+    skip_judge: bool = Field(
+        False,
+        description="Skip the AI judge/fix pass. Used for model benchmarking to get raw model output.",
+    )
 
 
 class NutritionPlanGenerationRequest(BaseModel):
@@ -71,6 +79,14 @@ class NutritionPlanGenerationRequest(BaseModel):
             "'en' = English (default). 'ar' = Arabic. "
             "Ingredient responses always include both food_name (English) and food_name_ar (Arabic, nullable)."
         ),
+    )
+    model_override: Optional[str] = Field(
+        None,
+        description="OpenRouter model ID to use instead of the default (e.g. 'openai/gpt-4.1-mini'). For A/B testing.",
+    )
+    skip_judge: bool = Field(
+        False,
+        description="Skip the AI judge/fix pass. Used for model benchmarking to get raw model output.",
     )
 
 
@@ -543,6 +559,14 @@ class CombinedPlanGenerationRequest(BaseModel):
             "'en' = English (default). 'ar' = Arabic. "
             "Applies equally to the workout draft and the nutrition draft."
         ),
+    )
+    model_override: Optional[str] = Field(
+        None,
+        description="OpenRouter model ID to use instead of the default. For A/B testing.",
+    )
+    skip_judge: bool = Field(
+        False,
+        description="Skip the AI judge/fix pass on both plans. Used for model benchmarking.",
     )
 
 

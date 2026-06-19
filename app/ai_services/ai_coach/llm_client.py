@@ -142,14 +142,14 @@ class LLMClient:
     # LLM call paths
     # ------------------------------------------------------------------
 
-    def call_llm(self, system_prompt: str, user_prompt: str, json_mode: bool = True) -> str:
-        """Main generation call — large model, configured temperature."""
+    def call_llm(self, system_prompt: str, user_prompt: str, json_mode: bool = True, model: Optional[str] = None) -> str:
+        """Main generation call. Uses model override if given, else configured default."""
         call_kwargs: Dict[str, Any] = dict(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": user_prompt},
             ],
-            model=self.model,
+            model=model or self.model,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=0.90,
