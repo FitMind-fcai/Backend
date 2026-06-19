@@ -46,7 +46,67 @@ class CoachingService:
     def _get_active_tokens(self, user_id: int) -> List[str]:
         return [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
 
-    # ── Daily coaching check ──────────────────────────────────────────────────
+    def _send_and_persist(self, user_id: int, category: str, urgency: str,
+                          title: str, body: str, push_data: dict) -> dict:
+        msg = self.message_repo.create(
+            user_id=user_id,
+            category=category,
+            urgency=urgency,
+            title=title,
+            body=body,
+        )
+        push_count = 0
+        tokens = self._get_active_tokens(user_id)
+        if tokens:
+            push_count = send_push_multi(tokens, title, body[:200], push_data)
+
+        return {
+            "message_id": msg.id,
+            "urgency": urgency,
+            "title": title,
+            "body": body,
+            "push_sent_to": len(tokens),
+            "push_delivered": push_count,
+        }
+
+    # ── Trigger endpoints (instant, bypasses schedule) ───────────────────────
+
+    def trigger_daily_for_user(self, user_id: int) -> dict:
+        rec_service = self._build_recommendation_service()
+        suggestion = rec_service.get_daily_suggestion(user_id)
+
+        title = self._daily_title(suggestion.urgency)
+        result = self._send_and_persist(
+            user_id, "daily", suggestion.urgency,
+            title, suggestion.suggestion,
+            {"type": "coaching", "urgency": suggestion.urgency},
+        )
+        return result
+
+    def trigger_weekly_for_user(self, user_id: int) -> dict:
+        rec_service = self._build_recommendation_service()
+        report = rec_service.get_progress_report(user_id, period="week")
+
+        urgency = "on_track" if report.features.on_track else "needs_attention"
+        title = "📊 Your Weekly Progress Report"
+
+        parts = [report.assessment]
+        if report.improvements:
+            parts.append("Focus on: " + "; ".join(report.improvements[:2]))
+        if report.suggestions:
+            parts.append("Tip: " + report.suggestions[0])
+        body = "\n".join(parts)
+
+        result = self._send_and_persist(
+            user_id, "weekly", urgency,
+            title, body,
+            {"type": "coaching", "category": "weekly"},
+        )
+        result["on_track"] = report.features.on_track
+        result["overall_score"] = report.features.overall_consistency_score
+        return result
+
+    # ── Batch coaching (called by Celery tasks) ──────────────────────────────
 
     def run_daily_coaching(self):
         now = datetime.now(timezone.utc)
@@ -67,31 +127,12 @@ class CoachingService:
                 continue
 
             title = self._daily_title(suggestion.urgency)
-            body = suggestion.suggestion
-
-            self.message_repo.create(
-                user_id=user_id,
-                category="daily",
-                urgency=suggestion.urgency,
-                title=title,
-                body=body,
+            self._send_and_persist(
+                user_id, "daily", suggestion.urgency,
+                title, suggestion.suggestion,
+                {"type": "coaching", "urgency": suggestion.urgency},
             )
-
-            tokens = self._get_active_tokens(user_id)
-            if tokens:
-                send_push_multi(
-                    tokens,
-                    title,
-                    body[:200],
-                    {"type": "coaching", "urgency": suggestion.urgency},
-                )
-
-            logger.info(
-                "Daily coaching sent to user %s — urgency=%s",
-                user_id, suggestion.urgency,
-            )
-
-    # ── Weekly coaching review ────────────────────────────────────────────────
+            logger.info("Daily coaching sent to user %s — urgency=%s", user_id, suggestion.urgency)
 
     def run_weekly_coaching(self):
         rec_service = self._build_recommendation_service()
@@ -114,23 +155,11 @@ class CoachingService:
                 parts.append("Tip: " + report.suggestions[0])
             body = "\n".join(parts)
 
-            self.message_repo.create(
-                user_id=user_id,
-                category="weekly",
-                urgency=urgency,
-                title=title,
-                body=body,
+            self._send_and_persist(
+                user_id, "weekly", urgency,
+                title, body,
+                {"type": "coaching", "category": "weekly"},
             )
-
-            tokens = self._get_active_tokens(user_id)
-            if tokens:
-                send_push_multi(
-                    tokens,
-                    title,
-                    report.assessment[:200],
-                    {"type": "coaching", "category": "weekly"},
-                )
-
             logger.info("Weekly coaching sent to user %s — on_track=%s", user_id, report.features.on_track)
 
     # ── Helpers ───────────────────────────────────────────────────────────────

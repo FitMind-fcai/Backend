@@ -12,7 +12,9 @@ from app.recommendation_system.schemas.coaching import (
     CoachingMessageListResponse,
     CoachingMessageResponse,
     CoachingStatusResponse,
+    CoachingTriggerResponse,
 )
+from app.recommendation_system.services.coaching_service import CoachingService
 from app.recommendation_system.services.recommendation_service import RecommendationService
 from sqlalchemy.orm import Session
 
@@ -128,3 +130,45 @@ def dismiss_message(
     msg = repo.dismiss(message_id, current_user.id)
     if not msg:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+
+
+# ── Instant trigger endpoints (bypass Celery schedule) ──────────────────────
+
+@coaching_router.post(
+    "/trigger/daily",
+    response_model=CoachingTriggerResponse,
+    tags=["Coaching"],
+    summary="Trigger daily coaching now",
+    description=(
+        "Immediately runs the daily coaching pipeline for the current user, "
+        "bypassing the Celery Beat schedule. Generates and persists a coaching "
+        "message and sends a push notification if device tokens are registered."
+    ),
+)
+def trigger_daily(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+) -> CoachingTriggerResponse:
+    svc = CoachingService(db)
+    result = svc.trigger_daily_for_user(current_user.id)
+    return CoachingTriggerResponse(**result)
+
+
+@coaching_router.post(
+    "/trigger/weekly",
+    response_model=CoachingTriggerResponse,
+    tags=["Coaching"],
+    summary="Trigger weekly coaching now",
+    description=(
+        "Immediately runs the weekly progress report pipeline for the current user, "
+        "bypassing the Celery Beat schedule. Generates and persists a coaching "
+        "message and sends a push notification if device tokens are registered."
+    ),
+)
+def trigger_weekly(
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+) -> CoachingTriggerResponse:
+    svc = CoachingService(db)
+    result = svc.trigger_weekly_for_user(current_user.id)
+    return CoachingTriggerResponse(**result)

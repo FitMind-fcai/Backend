@@ -29,3 +29,12 @@ class CoachingStatusResponse(BaseModel):
     workout_frequency_adherence_pct: Optional[float] = None
     suggestion: str
     generated_at: datetime
+
+
+class CoachingTriggerResponse(BaseModel):
+    message_id: int
+    urgency: str
+    title: str
+    body: str
+    push_sent_to: int
+    push_delivered: int

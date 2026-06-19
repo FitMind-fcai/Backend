@@ -1,7 +1,11 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
 
 from app.auth_module.core.dependencies import get_current_verified_user
 from app.auth_module.models.user import User
+from app.db.database import get_db
 from app.notification_module.core.dependencies import get_notification_service
 from app.notification_module.schemas.notifications import (
     DeviceTokenRegister,
@@ -10,6 +14,7 @@ from app.notification_module.schemas.notifications import (
     NotificationPreferenceUpdate,
 )
 from app.notification_module.services.notification_service import NotificationService
+from app.notification_module.services.reminder_service import ReminderService
 
 notification_router = APIRouter(prefix="/notifications")
 
@@ -93,3 +98,30 @@ def update_preferences(
     service: NotificationService = Depends(get_notification_service),
 ) -> NotificationPreferenceResponse:
     return service.update_preferences(user_id=current_user.id, payload=payload)
+
+
+# ── Instant trigger endpoints (bypass Celery schedule) ──────────────────────
+
+@notification_router.post(
+    "/trigger/{reminder_type}",
+    tags=["Notifications"],
+    summary="Trigger a reminder notification now",
+    description=(
+        "Immediately sends a reminder notification for the current user, "
+        "bypassing the Celery Beat schedule. Useful for testing.\n\n"
+        "**Types:** `hydration`, `meal`, `workout`, `sleep`"
+    ),
+)
+def trigger_reminder(
+    reminder_type: Literal["hydration", "meal", "workout", "sleep"],
+    current_user: User = Depends(get_current_verified_user),
+    db: Session = Depends(get_db),
+):
+    svc = ReminderService(db)
+    triggers = {
+        "hydration": svc.trigger_hydration_for_user,
+        "meal": svc.trigger_meal_for_user,
+        "workout": svc.trigger_workout_for_user,
+        "sleep": svc.trigger_sleep_for_user,
+    }
+    return triggers[reminder_type](current_user.id)
