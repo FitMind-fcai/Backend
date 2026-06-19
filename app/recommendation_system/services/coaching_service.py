@@ -1,18 +1,16 @@
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.ai_services.ai_coach.ai_coach_service import AICoachService, get_ai_coach_service
-from app.notification_module.models.notification_preference import NotificationPreference
 from app.notification_module.repositories.device_token_repository import DeviceTokenRepository
 from app.notification_module.repositories.notification_preference_repository import NotificationPreferenceRepository
 from app.notification_module.services.push_service import send_push_multi
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
 from app.profile_module.repositories.profile_repository import ProfileRepository
-from app.recommendation_system.models.coaching_message import CoachingMessage
 from app.recommendation_system.repositories.coaching_message_repository import CoachingMessageRepository
 from app.recommendation_system.services.recommendation_service import RecommendationService
 from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
