@@ -260,8 +260,8 @@ urgency rules:
             "Keep suggestion under 60 words. Be direct and specific."
         )
 
-        raw = self._call_llm(system_prompt, user_prompt, json_mode=True)
-        result = self._parse_json_response(raw)
+        raw = self.llm.call_llm(system_prompt, user_prompt, json_mode=True)
+        result = self.llm.parse_json_response(raw)
         return {
             "urgency": result.get("urgency", "needs_attention"),
             "suggestion": result.get(
@@ -368,8 +368,8 @@ Respond with ONLY this JSON:
             "Reference actual numbers. Be direct. Max 25 words per bullet."
         )
 
-        raw = self._call_llm(system_prompt, user_prompt, json_mode=True)
-        result = self._parse_json_response(raw)
+        raw = self.llm.call_llm(system_prompt, user_prompt, json_mode=True)
+        result = self.llm.parse_json_response(raw)
 
         def _to_list(v, max_n: int = 3):
             if isinstance(v, list):

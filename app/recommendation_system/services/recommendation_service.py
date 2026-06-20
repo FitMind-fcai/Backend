@@ -737,8 +737,8 @@ class RecommendationService:
 
         logging_consistency = len(days_with_meals) / 7 * 100
 
-        calorie_adherence = 100.0
-        protein_adherence = 100.0
+        calorie_adherence = 0.0
+        protein_adherence = 0.0
         if days_with_meals and calorie_target:
             day_cals = [sum(l.calories or 0 for l in logs) for logs in days_with_meals.values()]
             avg_cals = sum(day_cals) / len(day_cals)

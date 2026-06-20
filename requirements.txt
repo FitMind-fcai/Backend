@@ -50,7 +50,7 @@ mkdocs==1.6.1
 mkdocs-material==9.6.22
 
 # Caching
-redis==7.0.1
+redis==5.2.1
 # aioredis  # Deprecated, use redis[async] instead
 
 # Task queue + scheduler

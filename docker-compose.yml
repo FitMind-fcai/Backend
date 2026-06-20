@@ -74,6 +74,7 @@ services:
     build: .
     container_name: FitMind_Celery_Worker
     restart: always
+    entrypoint: []
     env_file:
       - .env
     environment:
@@ -81,6 +82,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
+      web:
+        condition: service_started
       db:
         condition: service_healthy
       redis:
@@ -94,6 +97,7 @@ services:
     build: .
     container_name: FitMind_Celery_Beat
     restart: always
+    entrypoint: []
     env_file:
       - .env
     environment:
@@ -101,6 +105,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     depends_on:
+      web:
+        condition: service_started
       db:
         condition: service_healthy
       redis:

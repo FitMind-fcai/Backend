@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import logging
 from app.auth_module.routes import authRouter
-from app.db.database import create_tables, engine
 from app.core.config import SQLALCHEMY_LOG_LEVEL, CORS_ALLOWED_ORIGINS
 from app.profile_module.routes import profileRouter
 from app.planning_module.routes import (
@@ -92,38 +91,6 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# Create database tables on startup
-@app.on_event("startup")
-def startup_event():
-    # Enable pgvector extension and ensure the name_embedding column exists.
-    # This is idempotent — safe to run on every start.
-    try:
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            conn.execute(text(
-                "ALTER TABLE central_foods "
-                "ADD COLUMN IF NOT EXISTS name_embedding vector(384)"
-            ))
-            conn.execute(text(
-                "ALTER TABLE central_exercises "
-                "ADD COLUMN IF NOT EXISTS name_embedding vector(384)"
-            ))
-            conn.execute(text(
-                "ALTER TABLE notification_preferences "
-                "ADD COLUMN IF NOT EXISTS coaching_reminders_enabled BOOLEAN NOT NULL DEFAULT true"
-            ))
-            conn.execute(text(
-                "ALTER TABLE notification_preferences "
-                "ADD COLUMN IF NOT EXISTS coaching_daily_hour INTEGER NOT NULL DEFAULT 20"
-            ))
-            conn.commit()
-        print("✅ pgvector extension and name_embedding columns ready.")
-    except Exception as exc:
-        print(f"⚠️  pgvector setup skipped (non-fatal): {exc}")
-
-    create_tables()
-    print("✅ Database tables created successfully!")
 
 # ── API v1 Router ────────────────────────────────────────────────────────────
 v1_router = APIRouter(prefix="/v1")

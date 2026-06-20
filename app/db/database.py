@@ -24,12 +24,6 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# Create all tables
-def create_tables():
-    # Import models here to register them with Base
-    Base.metadata.create_all(bind=engine)
-
-
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()
