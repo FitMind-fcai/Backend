@@ -54,6 +54,48 @@ class ReminderService:
             if tokens:
                 yield pref.user_id, tokens, pref
 
+    # ── Instant triggers (bypass schedule, single user) ─────────────────────
+
+    def trigger_hydration_for_user(self, user_id: int) -> dict:
+        tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
+        title = "💧 Hydration Reminder"
+        body = "This is a test hydration reminder — drink some water!"
+        push_count = 0
+        if tokens:
+            push_count = send_push_multi(tokens, title, body) or 0
+        return {"type": "hydration", "title": title, "body": body,
+                "push_sent_to": len(tokens), "push_delivered": push_count}
+
+    def trigger_sleep_for_user(self, user_id: int) -> dict:
+        tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
+        title = "😴 Log Your Sleep"
+        body = "Don't forget to log last night's sleep — it counts toward your FitMind Score!"
+        push_count = 0
+        if tokens:
+            push_count = send_push_multi(tokens, title, body) or 0
+        return {"type": "sleep", "title": title, "body": body,
+                "push_sent_to": len(tokens), "push_delivered": push_count}
+
+    def trigger_workout_for_user(self, user_id: int) -> dict:
+        tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
+        title = "💪 Workout Time!"
+        body = "This is a test workout reminder — time to get moving!"
+        push_count = 0
+        if tokens:
+            push_count = send_push_multi(tokens, title, body) or 0
+        return {"type": "workout", "title": title, "body": body,
+                "push_sent_to": len(tokens), "push_delivered": push_count}
+
+    def trigger_meal_for_user(self, user_id: int) -> dict:
+        tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
+        title = "🍽️ Meal Reminder"
+        body = "This is a test meal reminder — time to eat and log your meal!"
+        push_count = 0
+        if tokens:
+            push_count = send_push_multi(tokens, title, body) or 0
+        return {"type": "meal", "title": title, "body": body,
+                "push_sent_to": len(tokens), "push_delivered": push_count}
+
     # ── Hydration ──────────────────────────────────────────────────────────────
 
     def send_hydration_reminders(self):
