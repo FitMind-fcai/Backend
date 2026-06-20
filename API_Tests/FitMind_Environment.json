@@ -150,6 +150,20 @@
       "type": "default",
       "enabled": true,
       "description": "A real central_exercises.id from your DB — needed for Voice+Log with exercise override."
+    },
+    {
+      "key": "coachingMessageId",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by 09 Coaching / Trigger Daily or List Messages. Used by mark-read and dismiss requests."
+    },
+    {
+      "key": "deviceToken",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by 08 Notifications / Register Device Token. The FCM token string."
     }
   ],
   "_postman_exported_at": "2026-06-11T00:00:00.000Z",

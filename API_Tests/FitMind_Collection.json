@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "FitMind API",
-    "description": "Complete test collection for the FitMind Backend API.\n\nCovers all endpoints with happy-path and error scenarios:\n- Authentication (signup, login, email verification, OTP, password reset)\n- Profile management (create, read, update)\n- AI Plan Generation (workout, nutrition)\n- Workout Plans & Days & Exercises\n- Nutrition Plans & Meals\n- Tracking (foods, exercises, meal logs, workout logs, weight logs, scan, voice)\n- Recommendation System (next meal by time, next workout, daily AI suggestion, progress report)\n\n**Setup:** Import `FitMind_Environment.json` alongside this collection and select the \"FitMind Local\" environment before running.",
+    "description": "Complete test collection for the FitMind Backend API.\n\nCovers all endpoints with happy-path and error scenarios:\n- Authentication (signup, login, email verification, OTP, password reset)\n- Profile management (create, read, update)\n- AI Plan Generation (workout, nutrition)\n- Workout Plans & Days & Exercises\n- Nutrition Plans & Meals\n- Tracking (foods, exercises, meal logs, workout logs, weight logs, scan, voice)\n- Recommendation System (next meal by time, next workout, daily AI suggestion, progress report)\n- AI Coaching Engine (status, messages, instant triggers for daily/weekly coaching)\n- Notifications (device tokens, preferences, instant triggers for reminders)\n\n**Setup:** Import `FitMind_Environment.json` alongside this collection and select the \"FitMind Local\" environment before running.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -5794,8 +5794,10 @@
                       "  const body = pm.response.json();",
                       "  ['meal_reminders_enabled','workout_reminders_enabled',",
                       "   'hydration_reminders_enabled','sleep_reminders_enabled',",
+                      "   'coaching_reminders_enabled',",
                       "   'hydration_interval_hours','meal_reminder_minutes_before',",
-                      "   'workout_reminder_hour','sleep_reminder_hour'].forEach(k => {",
+                      "   'workout_reminder_hour','sleep_reminder_hour',",
+                      "   'coaching_daily_hour'].forEach(k => {",
                       "    pm.expect(body).to.have.property(k);",
                       "  });",
                       "});"
@@ -6003,6 +6005,838 @@
                     "v1",
                     "notifications",
                     "preferences"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Triggers (Instant)",
+          "item": [
+            {
+              "name": "Trigger Hydration Reminder - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Response has trigger fields', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.type).to.eql('hydration');",
+                      "  pm.expect(body).to.have.property('title');",
+                      "  pm.expect(body).to.have.property('body');",
+                      "  pm.expect(body).to.have.property('push_sent_to');",
+                      "  pm.expect(body).to.have.property('push_delivered');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/hydration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "hydration"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Meal Reminder - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Response has meal trigger', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.type).to.eql('meal');",
+                      "  pm.expect(body).to.have.property('title');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/meal",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "meal"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Workout Reminder - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Response has workout trigger', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.type).to.eql('workout');",
+                      "  pm.expect(body).to.have.property('title');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/workout",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "workout"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Sleep Reminder - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Response has sleep trigger', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.type).to.eql('sleep');",
+                      "  pm.expect(body).to.have.property('title');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/sleep",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "sleep"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Reminder - Invalid Type (422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 422 Unprocessable', () => pm.response.to.have.status(422));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/invalid_type",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "invalid_type"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Reminder - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/trigger/hydration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "trigger",
+                    "hydration"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 Coaching",
+      "item": [
+        {
+          "name": "Status",
+          "item": [
+            {
+              "name": "Get Coaching Status - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Has coaching status fields', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('urgency');",
+                      "  pm.expect(body.urgency).to.be.oneOf(['on_track', 'needs_attention', 'off_track']);",
+                      "  pm.expect(body).to.have.property('overall_score');",
+                      "  pm.expect(body).to.have.property('on_track');",
+                      "  pm.expect(body).to.have.property('suggestion');",
+                      "  pm.expect(body).to.have.property('generated_at');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "status"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Coaching Status - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "status"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Triggers (Instant)",
+          "item": [
+            {
+              "name": "Trigger Daily Coaching - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Daily coaching triggered and persisted', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('message_id');",
+                      "  pm.expect(body).to.have.property('urgency');",
+                      "  pm.expect(body.urgency).to.be.oneOf(['on_track', 'needs_attention', 'off_track']);",
+                      "  pm.expect(body).to.have.property('title');",
+                      "  pm.expect(body).to.have.property('body');",
+                      "  pm.expect(body).to.have.property('push_sent_to');",
+                      "  pm.expect(body).to.have.property('push_delivered');",
+                      "  pm.environment.set('coachingMessageId', body.message_id);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/trigger/daily",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "trigger",
+                    "daily"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Weekly Coaching - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Weekly coaching triggered and persisted', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('message_id');",
+                      "  pm.expect(body).to.have.property('urgency');",
+                      "  pm.expect(body).to.have.property('title');",
+                      "  pm.expect(body).to.have.property('body');",
+                      "  pm.expect(body).to.have.property('push_sent_to');",
+                      "  pm.expect(body).to.have.property('push_delivered');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/trigger/weekly",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "trigger",
+                    "weekly"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Daily Coaching - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/trigger/daily",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "trigger",
+                    "daily"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Messages",
+          "item": [
+            {
+              "name": "List Coaching Messages - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Has messages list and unread count', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('messages');",
+                      "  pm.expect(body.messages).to.be.an('array');",
+                      "  pm.expect(body).to.have.property('unread_count');",
+                      "  if (body.messages.length > 0) {",
+                      "    const msg = body.messages[0];",
+                      "    pm.expect(msg).to.have.property('id');",
+                      "    pm.expect(msg).to.have.property('category');",
+                      "    pm.expect(msg).to.have.property('urgency');",
+                      "    pm.expect(msg).to.have.property('title');",
+                      "    pm.expect(msg).to.have.property('body');",
+                      "    pm.expect(msg).to.have.property('is_read');",
+                      "    pm.environment.set('coachingMessageId', msg.id);",
+                      "  }",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages?skip=0&limit=20",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "skip",
+                      "value": "0"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Coaching Messages - Filter by Daily",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('All messages are daily category', () => {",
+                      "  const body = pm.response.json();",
+                      "  body.messages.forEach(msg => {",
+                      "    pm.expect(msg.category).to.eql('daily');",
+                      "  });",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages?category=daily",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "category",
+                      "value": "daily"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Coaching Messages - Unread Only",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('All returned messages are unread', () => {",
+                      "  const body = pm.response.json();",
+                      "  body.messages.forEach(msg => {",
+                      "    pm.expect(msg.is_read).to.be.false;",
+                      "  });",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages?unread_only=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages"
+                  ],
+                  "query": [
+                    {
+                      "key": "unread_only",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Message as Read - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Message marked as read', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.is_read).to.be.true;",
+                      "  pm.expect(body.id).to.eql(parseInt(pm.environment.get('coachingMessageId')));",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages/{{coachingMessageId}}/read",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages",
+                    "{{coachingMessageId}}",
+                    "read"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Message as Read - Not Found (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages/999999/read",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages",
+                    "999999",
+                    "read"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Mark All Messages as Read - Success",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                      "pm.test('Returns count of marked messages', () => {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body).to.have.property('marked_read');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages/read-all",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages",
+                    "read-all"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Dismiss Message - Success (204)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages/{{coachingMessageId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages",
+                    "{{coachingMessageId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Dismiss Message - Not Found (404)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages/999999",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages",
+                    "999999"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Messages - No Auth (401)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/coaching/messages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "coaching",
+                    "messages"
                   ]
                 }
               },
