@@ -1,0 +1,40 @@
+sequenceDiagram
+    actor User
+    participant API as FastAPI Route
+    participant TrackingService
+    participant VoiceService as VoiceTranscriberService
+    participant Whisper as Groq Whisper API
+    participant LLM as LLM Gateway
+    participant PgVector as pgvector (CentralFood)
+
+    User->>+API: POST /tracking/meals/voice<br/>(audio file)
+    Note over API: JWT auth extracts user_id
+
+    API->>+TrackingService: voice_meal(user_id, audio)
+    TrackingService->>+VoiceService: transcribe_and_parse_meal_log(audio)
+
+    rect rgb(230, 240, 255)
+        Note over VoiceService,Whisper: Step 1: Speech-to-Text
+        VoiceService->>+Whisper: Transcribe audio
+        Whisper-->>-VoiceService: Raw text transcript
+    end
+
+    rect rgb(255, 240, 230)
+        Note over VoiceService,LLM: Step 2: Extract Structured Data
+        VoiceService->>+LLM: Parse transcript into food items<br/>(names, quantities, units)
+        LLM-->>-VoiceService: Structured JSON (food items)
+    end
+
+    rect rgb(230, 255, 230)
+        Note over VoiceService,PgVector: Step 3: Match Foods
+        loop For each identified food
+            VoiceService->>+PgVector: Vector similarity search<br/>on CentralFood table
+            PgVector-->>-VoiceService: Matched food with nutritional info
+        end
+    end
+
+    VoiceService-->>-TrackingService: Matched foods + nutrition data
+    TrackingService-->>-API: MealVoiceResponse
+    API-->>-User: 200 OK<br/>{matched_foods[], nutritional_data}
+
+    Note over User: User reviews matches,<br/>confirms via POST /tracking/logs

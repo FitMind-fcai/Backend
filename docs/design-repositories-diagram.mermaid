@@ -3,200 +3,190 @@ title: FitMind Design - Repositories (Data Access Layer)
 ---
 classDiagram
     %% ========== BASE REPOSITORY ==========
-    
-    class BaseRepository {
+
+    class BaseRepository~T~ {
         <<Abstract Repository>>
         #Session db
         +get_by_id(id) T
-        +get_all() list[T]
+        +get_by_filter(filter) T
+        +get_all_by_filter(filter) list[T]
         +create(data) T
         +update(id, data) T
         +delete(id) bool
+        +exists(filter) bool
     }
 
     %% ========== AUTHENTICATION MODULE - REPOSITORIES ==========
-    
+
     namespace AuthModule {
         class UserRepository {
             <<Repository>>
-            -Session db
-            +create_user(name, email, hashed_password) User
-            +get_by_id(user_id) User
             +get_by_email(email) User
             +email_exists(email) bool
+            +create_user(name, email, hashed_pw) User
+            +update_password(user, hashed_pw) User
             +mark_as_verified(user) User
-            +update_password(user, hashed_password) User
-            +delete_user(user_id) bool
         }
     }
 
     %% ========== PROFILE MODULE - REPOSITORIES ==========
-    
+
     namespace ProfileModule {
         class ProfileRepository {
             <<Repository>>
-            -Session db
-            +create_profile(user_id, profile_data) Profile
             +get_by_user_id(user_id) Profile
-            +get_by_id(profile_id) Profile
-            +update_profile(user_id, profile_data) Profile
-            +delete_profile(user_id) bool
-            +profile_exists(user_id) bool
+            +create_profile(user_id, data) Profile
         }
     }
 
     %% ========== PLANNING MODULE - REPOSITORIES ==========
-    
+
     namespace PlanningModule {
         class WorkoutPlanRepository {
             <<Repository>>
-            -Session db
-            +create_plan(user_id, plan_data) WorkoutPlan
-            +get_by_user_id(user_id) WorkoutPlan
-            +get_by_id(plan_id) WorkoutPlan
+            +get_by_user_id(user_id) list[WorkoutPlan]
             +get_active_plan(user_id) WorkoutPlan
-            +update_plan(plan_id, plan_data) WorkoutPlan
+            +get_with_full_details(plan_id) WorkoutPlan
+            +create_plan(data) WorkoutPlan
+            +update_plan(plan_id, data) WorkoutPlan
             +delete_plan(plan_id) bool
-            +get_plan_with_days(plan_id) WorkoutPlan
-        }
-
-        class WorkoutDayRepository {
-            <<Repository>>
-            -Session db
-            +create_workout_day(plan_id, day_data) WorkoutDay
-            +get_by_plan_id(plan_id) list[WorkoutDay]
-            +get_by_id(day_id) WorkoutDay
-            +update_workout_day(day_id, day_data) WorkoutDay
-            +delete_workout_day(day_id) bool
-        }
-
-        class ExerciseRepository {
-            <<Repository>>
-            -Session db
-            +create_exercise(day_id, exercise_data) Exercise
-            +get_by_workout_day_id(day_id) list[Exercise]
-            +get_by_id(exercise_id) Exercise
-            +update_exercise(exercise_id, exercise_data) Exercise
-            +delete_exercise(exercise_id) bool
+            +get_days_by_plan_id(plan_id) list[WorkoutDay]
+            +get_day_with_exercises(day_id) WorkoutDay
+            +create_day(data) WorkoutDay
+            +get_exercises_by_day_id(day_id) list
+            +create_exercise_slot(data) WorkoutDayExercise
+            +delete_exercise_slots_by_day_id(day_id) bool
         }
 
         class NutritionPlanRepository {
             <<Repository>>
-            -Session db
-            +create_plan(user_id, plan_data) NutritionPlan
-            +get_by_user_id(user_id) NutritionPlan
-            +get_by_id(plan_id) NutritionPlan
+            +get_by_user_id(user_id) list[NutritionPlan]
             +get_active_plan(user_id) NutritionPlan
-            +update_plan(plan_id, plan_data) NutritionPlan
+            +get_with_full_details(plan_id) NutritionPlan
+            +create_plan(data) NutritionPlan
+            +update_plan(plan_id, data) NutritionPlan
             +delete_plan(plan_id) bool
-            +get_plan_with_meals(plan_id) NutritionPlan
+            +get_days_by_plan_id(plan_id) list[NutritionPlanDay]
+            +create_day(data) NutritionPlanDay
+            +get_meals_by_day_id(day_id) list[NutritionPlanMeal]
+            +get_meals_by_type(day_id, type) list
+            +create_meal_slot(data) NutritionPlanMeal
+            +delete_meal_slots_by_day_id(day_id) bool
         }
 
-        class MealRepository {
+        class CentralFoodRepository {
             <<Repository>>
-            -Session db
-            +create_meal(plan_id, meal_data) Meal
-            +get_by_plan_id(plan_id) list[Meal]
-            +get_by_id(meal_id) Meal
-            +get_by_meal_type(plan_id, meal_type) list[Meal]
-            +update_meal(meal_id, meal_data) Meal
-            +delete_meal(meal_id) bool
+            +get_by_name(name) CentralFood
+            +search(query) list[CentralFood]
+            +create_manual_food(data) CentralFood
+            +search_by_vector(embedding) list[CentralFood]
+            +set_embedding(food_id, embedding) void
+            +find_or_create(data) CentralFood
+            +get_diet_friendly_foods_for_ai(prefs) list
+        }
+
+        class CentralExerciseRepository {
+            <<Repository>>
+            +get_by_name(name) CentralExercise
+            +search(query) list[CentralExercise]
+            +create_manual_exercise(data) CentralExercise
+            +search_by_vector(embedding) list[CentralExercise]
+            +set_embedding(exercise_id, embedding) void
+            +find_or_create(data) CentralExercise
         }
     }
 
     %% ========== TRACKING MODULE - REPOSITORIES ==========
-    
+
     namespace TrackingModule {
         class WorkoutLogRepository {
             <<Repository>>
-            -Session db
-            +create_log(user_id, log_data) WorkoutLog
-            +get_by_user_id(user_id, start_date, end_date) list[WorkoutLog]
-            +get_by_id(log_id) WorkoutLog
-            +get_by_date_range(user_id, start, end) list[WorkoutLog]
-            +get_by_exercise(user_id, exercise_id) list[WorkoutLog]
-            +get_completion_rate(user_id, days) float
-            +delete_log(log_id) bool
+            +create_log(user_id, data) WorkoutLog
+            +list_logs(user_id, filters) list[WorkoutLog]
+            +list_logs_since(user_id, since) list[WorkoutLog]
         }
 
         class MealLogRepository {
             <<Repository>>
-            -Session db
-            +create_log(user_id, log_data) MealLog
-            +get_by_user_id(user_id, start_date, end_date) list[MealLog]
-            +get_by_id(log_id) MealLog
-            +get_daily_nutrition(user_id, date) dict
-            +get_by_meal_type(user_id, meal_type, date) list[MealLog]
-            +get_weekly_nutrition(user_id, start_date) dict
-            +delete_log(log_id) bool
+            +create_log(user_id, data) MealLog
+            +list_logs(user_id, filters) list[MealLog]
+            +list_logs_since(user_id, since) list[MealLog]
         }
 
         class WeightLogRepository {
             <<Repository>>
-            -Session db
-            +create_log(user_id, log_data) WeightLog
-            +get_by_user_id(user_id) list[WeightLog]
-            +get_by_id(log_id) WeightLog
-            +get_latest_weight(user_id) WeightLog
-            +get_weight_trend(user_id, days) list[WeightLog]
-            +get_by_date_range(user_id, start, end) list[WeightLog]
-            +delete_log(log_id) bool
+            +create_log(user_id, data) WeightLog
+            +list_logs(user_id, filters) list[WeightLog]
+            +list_logs_since(user_id, since) list[WeightLog]
         }
-    }
 
-    %% ========== CHATBOT MODULE - REPOSITORIES ==========
-    
-    namespace ChatbotModule {
-        class ChatMessageRepository {
+        class SleepLogRepository {
             <<Repository>>
-            -Session db
-            +create_message(user_id, message_data) ChatMessage
-            +get_conversation_history(user_id, limit) list[ChatMessage]
-            +get_by_user_id(user_id) list[ChatMessage]
-            +get_by_id(message_id) ChatMessage
-            +delete_message(message_id) bool
-            +delete_conversation(user_id) bool
-            +get_recent_context(user_id, messages_count) list[ChatMessage]
+            +create_log(user_id, data) SleepLog
+            +list_logs(user_id, filters) list[SleepLog]
+            +list_logs_since(user_id, since) list[SleepLog]
+        }
+
+        class HydrationLogRepository {
+            <<Repository>>
+            +create_log(user_id, data) HydrationLog
+            +list_logs(user_id, filters) list[HydrationLog]
+            +list_logs_since(user_id, since) list[HydrationLog]
         }
     }
 
     %% ========== NOTIFICATION MODULE - REPOSITORIES ==========
-    
+
     namespace NotificationModule {
-        class NotificationRepository {
+        class DeviceTokenRepository {
             <<Repository>>
-            -Session db
-            +create_notification(user_id, notification_data) Notification
-            +get_by_user_id(user_id) list[Notification]
-            +get_by_id(notification_id) Notification
-            +get_unread_notifications(user_id) list[Notification]
-            +get_unread_count(user_id) int
-            +mark_as_read(notification_id) Notification
-            +mark_all_as_read(user_id) bool
-            +delete_notification(notification_id) bool
-            +get_scheduled_notifications(current_time) list[Notification]
+            +upsert(user_id, token, platform) DeviceToken
+            +deactivate(user_id, token) void
+            +get_active_tokens_for_user(user_id) list[DeviceToken]
+        }
+
+        class NotificationPreferenceRepository {
+            <<Repository>>
+            +get_or_create(user_id) NotificationPreference
+            +update(user_id, prefs) NotificationPreference
+            +get_with_coaching_enabled() list[NotificationPreference]
+        }
+    }
+
+    %% ========== RECOMMENDATION MODULE - REPOSITORIES ==========
+
+    namespace RecommendationModule {
+        class CoachingMessageRepository {
+            <<Repository>>
+            +create(user_id, data) CoachingMessage
+            +list_for_user(user_id) list[CoachingMessage]
+            +count_unread(user_id) int
+            +mark_read(message_id) CoachingMessage
+            +mark_all_read(user_id) bool
+            +dismiss(message_id) CoachingMessage
         }
     }
 
     %% ========== INHERITANCE RELATIONSHIPS ==========
-    
-    UserRepository --|> BaseRepository
-    ProfileRepository --|> BaseRepository
-    WorkoutPlanRepository --|> BaseRepository
-    WorkoutDayRepository --|> BaseRepository
-    ExerciseRepository --|> BaseRepository
-    NutritionPlanRepository --|> BaseRepository
-    MealRepository --|> BaseRepository
-    WorkoutLogRepository --|> BaseRepository
-    MealLogRepository --|> BaseRepository
-    WeightLogRepository --|> BaseRepository
-    ChatMessageRepository --|> BaseRepository
-    NotificationRepository --|> BaseRepository
+
+    UserRepository --|> BaseRepository~T~
+    ProfileRepository --|> BaseRepository~T~
+    WorkoutPlanRepository --|> BaseRepository~T~
+    NutritionPlanRepository --|> BaseRepository~T~
+    CentralFoodRepository --|> BaseRepository~T~
+    CentralExerciseRepository --|> BaseRepository~T~
+    WorkoutLogRepository --|> BaseRepository~T~
+    MealLogRepository --|> BaseRepository~T~
+    WeightLogRepository --|> BaseRepository~T~
+    SleepLogRepository --|> BaseRepository~T~
+    HydrationLogRepository --|> BaseRepository~T~
+    DeviceTokenRepository --|> BaseRepository~T~
+    NotificationPreferenceRepository --|> BaseRepository~T~
+    CoachingMessageRepository --|> BaseRepository~T~
 
     %% ========== REPOSITORY RELATIONSHIPS ==========
-    
-    WorkoutPlanRepository ..> WorkoutDayRepository : coordinates_with
-    WorkoutDayRepository ..> ExerciseRepository : coordinates_with
-    NutritionPlanRepository ..> MealRepository : coordinates_with
-    WorkoutLogRepository ..> ExerciseRepository : references
-    
+
+    WorkoutPlanRepository ..> CentralExerciseRepository : references_exercises
+    NutritionPlanRepository ..> CentralFoodRepository : references_foods
+    WorkoutLogRepository ..> CentralExerciseRepository : references
+    MealLogRepository ..> CentralFoodRepository : references

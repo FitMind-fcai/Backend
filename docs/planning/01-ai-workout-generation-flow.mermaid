@@ -2,93 +2,59 @@ sequenceDiagram
     actor User
     participant API as FastAPI Route
     participant PlanService as PlanGenerationService
-    participant ProfileService
+    participant Executor as ThreadPoolExecutor
     participant AICoach as AICoachService
-    participant VectorDB as VectorDBService
     participant ChromaDB
-    participant LLM as Groq LLM
-    participant WorkoutRepo as WorkoutPlanRepository
+    participant LLM as LLM Gateway
+    participant PgVector as pgvector
     participant DB as PostgreSQL
 
-    User->>+API: POST /plans/generate/workout<br/>(workout_preferences, duration_weeks)
+    User->>+API: POST /plans/generate<br/>(preferences, duration_weeks)
     Note over API: JWT auth extracts user_id
-    
-    API->>+PlanService: generate_workout_plan(profile, preferences)
-    
+
+    API->>+PlanService: generate_plan(profile, preferences)
+
     rect rgb(230, 240, 255)
-        Note over PlanService,ProfileService: Step 1: Get User Profile
-        PlanService->>+ProfileService: get_profile_by_user_id(user_id)
-        ProfileService->>DB: SELECT * FROM profiles
-        DB-->>ProfileService: Profile data
-        ProfileService-->>-PlanService: UserProfileDTO
-    end
-    
-    rect rgb(255, 240, 230)
-        Note over PlanService,WorkoutRepo: Step 2: Check Existing Plan
-        PlanService->>+WorkoutRepo: get_active_workout_plan(user_id, profile_id)
-        WorkoutRepo->>+DB: SELECT * FROM workout_plans<br/>WHERE user_id = ? AND profile_id = ?<br/>AND end_date >= NOW()
-        DB-->>-WorkoutRepo: Existing plan or None
-        WorkoutRepo-->>-PlanService: Optional[WorkoutPlanDTO]
-    end
-    
-    rect rgb(230, 255, 240)
-        Note over PlanService,LLM: Step 3: AI Generation with RAG
-        PlanService->>+AICoach: generate_workout_plan(profile, preferences, existing_plan)
-        
-        par Build Enhanced RAG Query
-            Note over AICoach: Construct context-aware query
-            AICoach->>AICoach: query = "workout plan {focus} {difficulty}<br/>fitness level: {activity_level}<br/>injuries: {injuries}<br/>medical: {conditions}<br/>goal: {fitness_goal}"
+        Note over PlanService,Executor: Step 1: Parallel AI Generation
+        PlanService->>+Executor: submit(workout_task, nutrition_task)
+
+        par Workout Generation
+            Executor->>+AICoach: generate_workout_plan(profile, preferences)
+        and Nutrition Generation
+            Executor->>+AICoach: generate_nutrition_plan(profile, preferences)
         end
-        
-        AICoach->>+VectorDB: get_context(query, k=5)
-        
-        rect rgb(200, 220, 255)
-            Note over VectorDB,ChromaDB: Semantic Search
-            VectorDB->>VectorDB: Load embeddings model<br/>(all-MiniLM-L6-v2)
-            VectorDB->>VectorDB: Embed query → 384-dim vector
-            
-            VectorDB->>+ChromaDB: similarity_search(query_embedding, k=5)
-            Note over ChromaDB: Search 1944 document chunks<br/>from ACSM, NSCA, WHO, etc.
-            ChromaDB-->>-VectorDB: Top 5 relevant chunks with metadata
-        end
-        
-        VectorDB->>VectorDB: Log retrieved documents:<br/>- Source URLs<br/>- Titles<br/>- Categories<br/>- Organizations
-        VectorDB-->>-AICoach: Concatenated context (~15,000 chars)
-        
-        AICoach->>AICoach: Build comprehensive prompt:<br/>- User profile context<br/>- Workout preferences<br/>- RAG knowledge context<br/>- Existing plan (if updating)<br/>- Safety instructions
-        
-        AICoach->>+LLM: chat.completions.create()<br/>Model: llama-3.3-70b<br/>Temp: 0.0, Max tokens: 4000
-        Note over LLM: Generate JSON workout plan:<br/>- Plan metadata<br/>- {N} workout days<br/>- Exercises with sets/reps<br/>- Safety modifications
+
+        Note over AICoach,LLM: Each task follows the same pipeline
+        AICoach->>AICoach: context_builder: gather user context<br/>(profile, goals, injuries, conditions)
+        AICoach->>+ChromaDB: RAG similarity search<br/>(evidence-based knowledge)
+        ChromaDB-->>-AICoach: Relevant document chunks
+
+        AICoach->>AICoach: prompt_builder: build structured prompt<br/>(user context + RAG context)
+
+        AICoach->>+LLM: Generate plan via OpenRouter
         LLM-->>-AICoach: JSON response
-        
-        AICoach->>AICoach: Parse JSON response<br/>Clean markdown blocks
-        AICoach->>AICoach: Convert to WorkoutPlanDTO<br/>with exercises
-        AICoach-->>-PlanService: WorkoutPlanDTO
+
+        AICoach->>AICoach: plan_validator: validate structure
+        AICoach->>AICoach: plan_judge: quality check
+
+        AICoach-->>-Executor: WorkoutPlanDTO / NutritionPlanDTO
+        AICoach-->>-Executor: (parallel result)
+        Executor-->>-PlanService: Both plans ready
     end
-    
-    rect rgb(255, 230, 230)
-        Note over PlanService,DB: Step 4: Persist to Database
-        
-        alt Updating existing plan
-            PlanService->>+WorkoutRepo: update_workout_plan(plan_id, new_data)
-            Note over WorkoutRepo: Delete old exercises
-            WorkoutRepo->>DB: DELETE FROM exercises<br/>WHERE workout_day_id IN (...)
-            Note over WorkoutRepo: Update plan & insert new data
-            WorkoutRepo->>DB: UPDATE workout_plans<br/>INSERT INTO workout_days<br/>INSERT INTO exercises
-        else Creating new plan
-            PlanService->>+WorkoutRepo: create_workout_plan(plan_data)
-            WorkoutRepo->>+DB: BEGIN TRANSACTION
-            WorkoutRepo->>DB: INSERT INTO workout_plans
-            WorkoutRepo->>DB: INSERT INTO workout_days (batch)
-            WorkoutRepo->>DB: INSERT INTO exercises (batch)
-            DB-->>WorkoutRepo: COMMIT TRANSACTION
-            DB-->>-WorkoutRepo: Created plan with relationships
-        end
-        
-        WorkoutRepo-->>-PlanService: Persisted WorkoutPlan
+
+    rect rgb(255, 240, 230)
+        Note over PlanService,DB: Step 2: Food & Exercise Matching
+        PlanService->>+PgVector: Vector similarity search<br/>on CentralFood / exercises
+        PgVector-->>-PlanService: Matched items with metadata
     end
-    
-    PlanService-->>-API: WorkoutPlanResponse
-    API-->>-User: 201 Created<br/>{plan_id, plan_name, description,<br/>workout_days[], exercises[]}
-    
-    Note over User: Receives personalized<br/>workout plan based on:<br/>- Profile (injuries, goals)<br/>- Preferences (location, equipment)<br/>- Evidence-based knowledge
+
+    rect rgb(230, 255, 230)
+        Note over PlanService,DB: Step 3: Persist to Database
+        PlanService->>+DB: BEGIN TRANSACTION
+        PlanService->>DB: INSERT workout_plan + days + exercises
+        PlanService->>DB: INSERT nutrition_plan + meals + foods
+        DB-->>-PlanService: COMMIT
+    end
+
+    PlanService-->>-API: CombinedPlanResponse
+    API-->>-User: 201 Created<br/>{workout_plan, nutrition_plan}
