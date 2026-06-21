@@ -80,6 +80,60 @@ class HydrationLogResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Update schemas  (PATCH per log type)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MealLogUpdate(BaseModel):
+    meal_type: Optional[str] = Field(default=None, min_length=2, max_length=50)
+    meal_name: Optional[str] = Field(default=None, max_length=255)
+    servings: Optional[float] = Field(default=None, gt=0)
+    calories: Optional[float] = Field(default=None, ge=0)
+    protein_g: Optional[float] = Field(default=None, ge=0)
+    carbs_g: Optional[float] = Field(default=None, ge=0)
+    fats_g: Optional[float] = Field(default=None, ge=0)
+
+
+class WorkoutLogUpdate(BaseModel):
+    sets_completed: Optional[int] = Field(default=None, ge=1)
+    reps_completed: Optional[int] = Field(default=None, ge=1)
+    weight_used: Optional[float] = Field(default=None, ge=0)
+    duration_seconds: Optional[int] = Field(default=None, ge=1)
+    notes: Optional[str] = None
+
+
+class WeightLogUpdate(BaseModel):
+    weight: Optional[float] = Field(default=None, gt=0)
+    notes: Optional[str] = None
+
+
+class SleepLogUpdate(BaseModel):
+    sleep_hours: Optional[float] = Field(default=None, gt=0, le=24)
+    sleep_quality: Optional[int] = Field(default=None, ge=1, le=10)
+    notes: Optional[str] = None
+
+
+class HydrationLogUpdate(BaseModel):
+    water_ml: Optional[float] = Field(default=None, gt=0)
+    notes: Optional[str] = None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Daily calorie / macro summary
+# ──────────────────────────────────────────────────────────────────────────────
+
+class DailyMacroSummary(BaseModel):
+    date: date
+    total_calories: float
+    total_protein_g: float
+    total_carbs_g: float
+    total_fats_g: float
+    protein_pct: float = Field(description="Percentage of calories from protein")
+    carbs_pct: float = Field(description="Percentage of calories from carbs")
+    fats_pct: float = Field(description="Percentage of calories from fats")
+    meal_count: int
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Unified save endpoint schemas
 # ──────────────────────────────────────────────────────────────────────────────
 

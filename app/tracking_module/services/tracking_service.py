@@ -30,6 +30,12 @@ from app.tracking_module.schemas.tracking import (
     WeightVoiceResponse,
     MatchedExerciseResponse,
     ParsedExerciseResponse,
+    MealLogUpdate,
+    WorkoutLogUpdate,
+    WeightLogUpdate,
+    SleepLogUpdate,
+    HydrationLogUpdate,
+    DailyMacroSummary,
 )
 from app.ai_services.meal_scanner.dtos import MealScanRequestDTO
 from app.ai_services.voice_transcriber.dtos import TranscriptionRequestDTO, TranscriptionContextType
@@ -357,6 +363,100 @@ class TrackingService:
 
     def get_hydration_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
         return self.hydration_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Update log
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _get_user_log(self, repo, log_id: int, user_id: int):
+        log = repo.get_by_id(log_id)
+        if not log or log.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Log not found.")
+        return log
+
+    def update_meal_log(self, log_id: int, user_id: int, data: MealLogUpdate):
+        self._get_user_log(self.meal_repo, log_id, user_id)
+        updates = data.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+        return self.meal_repo.update(log_id, updates)
+
+    def update_workout_log(self, log_id: int, user_id: int, data: WorkoutLogUpdate):
+        self._get_user_log(self.workout_repo, log_id, user_id)
+        updates = data.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+        return self.workout_repo.update(log_id, updates)
+
+    def update_weight_log(self, log_id: int, user_id: int, data: WeightLogUpdate):
+        self._get_user_log(self.weight_repo, log_id, user_id)
+        updates = data.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+        return self.weight_repo.update(log_id, updates)
+
+    def update_sleep_log(self, log_id: int, user_id: int, data: SleepLogUpdate):
+        self._get_user_log(self.sleep_repo, log_id, user_id)
+        updates = data.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+        return self.sleep_repo.update(log_id, updates)
+
+    def update_hydration_log(self, log_id: int, user_id: int, data: HydrationLogUpdate):
+        self._get_user_log(self.hydration_repo, log_id, user_id)
+        updates = data.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+        return self.hydration_repo.update(log_id, updates)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Delete log
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def delete_log(self, category: str, log_id: int, user_id: int):
+        repo_map = {
+            "meal": self.meal_repo,
+            "workout": self.workout_repo,
+            "weight": self.weight_repo,
+            "sleep": self.sleep_repo,
+            "hydration": self.hydration_repo,
+        }
+        repo = repo_map.get(category)
+        if not repo:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
+        self._get_user_log(repo, log_id, user_id)
+        repo.delete(log_id)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Daily macro summary
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def get_daily_macro_summary(self, user_id: int, log_date: date) -> DailyMacroSummary:
+        meals = self.meal_repo.list_logs(user_id=user_id, log_date=log_date, limit=200)
+
+        total_cal = sum(m.calories or 0 for m in meals)
+        total_prot = sum(m.protein_g or 0 for m in meals)
+        total_carbs = sum(m.carbs_g or 0 for m in meals)
+        total_fats = sum(m.fats_g or 0 for m in meals)
+
+        if total_cal > 0:
+            protein_pct = round(total_prot * 4 / total_cal * 100, 1)
+            carbs_pct = round(total_carbs * 4 / total_cal * 100, 1)
+            fats_pct = round(total_fats * 9 / total_cal * 100, 1)
+        else:
+            protein_pct = carbs_pct = fats_pct = 0.0
+
+        return DailyMacroSummary(
+            date=log_date,
+            total_calories=round(total_cal, 1),
+            total_protein_g=round(total_prot, 1),
+            total_carbs_g=round(total_carbs, 1),
+            total_fats_g=round(total_fats, 1),
+            protein_pct=protein_pct,
+            carbs_pct=carbs_pct,
+            fats_pct=fats_pct,
+            meal_count=len(meals),
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Catalog  (manual entries)

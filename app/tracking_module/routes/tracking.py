@@ -28,6 +28,12 @@ from app.tracking_module.schemas.tracking import (
     WeightVoiceResponse,
     MatchedFoodResponse,
     MatchedExerciseResponse,
+    MealLogUpdate,
+    WorkoutLogUpdate,
+    WeightLogUpdate,
+    SleepLogUpdate,
+    HydrationLogUpdate,
+    DailyMacroSummary,
 )
 from app.tracking_module.services.tracking_service import TrackingService
 from app.ai_services.meal_scanner.meal_scanner_service import MealScannerService
@@ -354,6 +360,128 @@ def get_hydration_logs(
     service: TrackingService = Depends(get_tracking_service),
 ):
     return service.get_hydration_logs(user_id=current_user.id, log_date=log_date, limit=limit)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logs  ·  daily macro summary
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.get(
+    "/logs/meals/summary",
+    response_model=DailyMacroSummary,
+    tags=["Logs"],
+    summary="Daily calorie & macro breakdown",
+    description=(
+        "Returns total calories, protein, carbs, fats and their percentage breakdown "
+        "for a given day. Defaults to today if no date is passed."
+    ),
+)
+def get_daily_macro_summary(
+    log_date: Optional[date] = Query(default=None, alias="date", description="Date (YYYY-MM-DD), defaults to today"),
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    target_date = log_date or date.today()
+    return service.get_daily_macro_summary(user_id=current_user.id, log_date=target_date)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logs  ·  update
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.patch(
+    "/logs/meals/{log_id}",
+    response_model=MealLogResponse,
+    tags=["Logs"],
+    summary="Update a meal log",
+)
+def update_meal_log(
+    log_id: int,
+    payload: MealLogUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.update_meal_log(log_id=log_id, user_id=current_user.id, data=payload)
+
+
+@tracking_router.patch(
+    "/logs/workouts/{log_id}",
+    response_model=WorkoutLogResponse,
+    tags=["Logs"],
+    summary="Update a workout log",
+)
+def update_workout_log(
+    log_id: int,
+    payload: WorkoutLogUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.update_workout_log(log_id=log_id, user_id=current_user.id, data=payload)
+
+
+@tracking_router.patch(
+    "/logs/weights/{log_id}",
+    response_model=WeightLogResponse,
+    tags=["Logs"],
+    summary="Update a weight log",
+)
+def update_weight_log(
+    log_id: int,
+    payload: WeightLogUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.update_weight_log(log_id=log_id, user_id=current_user.id, data=payload)
+
+
+@tracking_router.patch(
+    "/logs/sleep/{log_id}",
+    response_model=SleepLogResponse,
+    tags=["Logs"],
+    summary="Update a sleep log",
+)
+def update_sleep_log(
+    log_id: int,
+    payload: SleepLogUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.update_sleep_log(log_id=log_id, user_id=current_user.id, data=payload)
+
+
+@tracking_router.patch(
+    "/logs/hydration/{log_id}",
+    response_model=HydrationLogResponse,
+    tags=["Logs"],
+    summary="Update a hydration log",
+)
+def update_hydration_log(
+    log_id: int,
+    payload: HydrationLogUpdate,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    return service.update_hydration_log(log_id=log_id, user_id=current_user.id, data=payload)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logs  ·  delete
+# ──────────────────────────────────────────────────────────────────────────────
+
+@tracking_router.delete(
+    "/logs/{category}/{log_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["Logs"],
+    summary="Delete a log entry",
+    description="Delete a log by category (`meal`, `workout`, `weight`, `sleep`, `hydration`) and ID.",
+)
+def delete_log(
+    category: str,
+    log_id: int,
+    current_user: User = Depends(get_current_verified_user),
+    service: TrackingService = Depends(get_tracking_service),
+):
+    service.delete_log(category=category, log_id=log_id, user_id=current_user.id)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
