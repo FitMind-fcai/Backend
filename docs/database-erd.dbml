@@ -8,405 +8,40 @@ Project FitMind {
 }
 
 // ========================================
-// AUTHENTICATION MODULE
-// ========================================
-
-Table users {
-  id integer [pk, increment, note: 'Primary key']
-  name varchar(255) [not null, note: 'User full name']
-  email varchar(255) [unique, not null, note: 'User email address']
-  password varchar(255) [not null, note: 'Hashed password']
-  is_verified boolean [not null, default: false, note: 'Email verification status']
-  created_at timestamp [not null, default: `now()`, note: 'Account creation timestamp']
-  updated_at timestamp [note: 'Last update timestamp']
-  
-  Indexes {
-    email [unique]
-    id [name: 'idx_users_id']
-  }
-  
-  Note: 'Core user authentication and account management'
-}
-
-// ========================================
-// PROFILE MODULE
-// ========================================
-
-Table profiles {
-  id integer [pk, increment]
-  user_id integer [unique, not null, ref: - users.id, note: 'One-to-one relationship with user']
-  age integer [not null, note: 'User age in years']
-  gender varchar(20) [not null, note: 'Male or Female']
-  height float [not null, note: 'Height in cm']
-  weight float [not null, note: 'Current weight in kg']
-  fitness_goal varchar(50) [not null, note: 'Lose Weight, Maintain Weight, or Build Muscle']
-  activity_level varchar(50) [not null, note: 'Sedentary to Extra Active']
-  dietary_preference varchar(255) [not null, note: 'Dietary restrictions or preferences']
-  medical_conditions text [not null, default: '', note: 'Pre-existing medical conditions']
-  allergies text [not null, default: '', note: 'Food allergies']
-  injuries text [not null, default: '', note: 'Physical injuries or limitations']
-  medications text [not null, default: '', note: 'Current medications']
-  updated_at timestamp [note: 'Last profile update']
-  
-  Indexes {
-    user_id [unique, name: 'idx_profiles_user_id']
-  }
-  
-  Note: 'Comprehensive user health and fitness profile for AI personalization'
-}
-
-// ========================================
-// CATALOG MODULE - CENTRAL EXERCISE LIBRARY
-// ========================================
-
-Table central_exercises {
-  id integer [pk, increment]
-  name varchar(255) [not null, note: 'Exercise name']
-  exercise_type varchar(50) [not null, note: 'Strength, Cardio, Flexibility, Balance, HIIT']
-  primary_muscle_group varchar(100) [not null, note: 'Main muscle group targeted']
-  secondary_muscles varchar(255) [note: 'Secondary muscles involved (comma-separated)']
-  equipment_required varchar(100) [not null, note: 'Bodyweight, Dumbbells, Barbell, Machine, Resistance Band, etc.']
-  difficulty_level varchar(50) [not null, note: 'Beginner, Intermediate, Advanced']
-  location varchar(50) [not null, note: 'Gym, Home, Outdoor, Any']
-  instructions text [note: 'How to perform the exercise safely']
-  video_url varchar(500) [note: 'Tutorial video URL']
-  image_url varchar(500) [note: 'Exercise demonstration image']
-  is_active boolean [not null, default: true, note: 'Whether this exercise is available in the catalog']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    (exercise_type, difficulty_level) [name: 'idx_central_exercises_type_difficulty']
-    (primary_muscle_group, equipment_required) [name: 'idx_central_exercises_muscle_equipment']
-    location [name: 'idx_central_exercises_location']
-    is_active [name: 'idx_central_exercises_active']
-  }
-  
-  Note: 'Central exercise catalog — admin-populated, shared across all users, referenced by plans and logs'
-}
-
-// ========================================
-// CATALOG MODULE - CENTRAL FOOD LIBRARY
-// ========================================
-
-Table central_foods {
-  id integer [pk, increment]
-  food_name varchar(255) [not null, note: 'Food item name from USDA or manual entry']
-  food_category varchar(100) [note: 'USDA category (e.g. Poultry Products, Vegetables and Vegetable Products)']
-
-  // Macros per 100g — multiply by (serving_size_g / 100) to get per-serving values
-  calories_per_100g float [not null, note: 'Calories per 100g']
-  protein_per_100g float [not null, note: 'Protein per 100g in grams']
-  carbs_per_100g float [not null, note: 'Carbohydrates per 100g in grams']
-  fats_per_100g float [not null, note: 'Fats per 100g in grams']
-  fiber_per_100g float [note: 'Fiber per 100g in grams']
-
-  // Serving info
-  serving_size_g float [note: 'Gram weight of one standard serving']
-  serving_description varchar(100) [note: "Standard serving label e.g. '1 cup (152g)', '1 medium apple'"]
-
-  // Metadata
-  dietary_tags json [note: 'Array: [vegan, vegetarian, gluten-free, high-protein, etc.]']
-  usda_fdc_id integer [note: 'USDA FoodData Central FDC ID — null for manual entries']
-  source varchar(50) [not null, default: 'USDA', note: 'Data source: USDA or Manual']
-  is_active boolean [not null, default: true, note: 'Whether this food is searchable']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    food_name [name: 'idx_central_foods_name']
-    food_category [name: 'idx_central_foods_category']
-    usda_fdc_id [name: 'idx_central_foods_fdc_id']
-    is_active [name: 'idx_central_foods_active']
-  }
-  
-  Note: 'Central food catalog — 340 USDA Foundation Foods + manual entries. Used for food logging search (MyFitnessPal-style) and AI context during plan generation.'
-}
-
-// ========================================
-// PLANNING MODULE - WORKOUT
-// ========================================
-
-Table workout_plans {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User who owns this plan']
-  profile_id integer [not null, ref: > profiles.id, note: 'Profile used for plan generation']
-  plan_name varchar(255) [not null, note: 'Name of the workout plan']
-  description text [note: 'Plan description and goals']
-  start_date date [not null, note: 'Plan start date']
-  end_date date [note: 'Plan end date']
-  frequency varchar(50) [note: 'Weekly frequency (e.g., 3x per week)']
-  difficulty_level varchar(50) [note: 'Beginner, Intermediate, Advanced']
-  estimated_duration_per_session integer [note: 'Minutes per session']
-  generated_from_preferences json [note: 'User preferences used to generate plan (workout_days_per_week, location, equipment, focus, etc.)']
-  created_at timestamp [not null, default: `now()`]
-  updated_at timestamp [note: 'Last update timestamp']
-  
-  Indexes {
-    user_id [name: 'idx_workout_plans_user_id']
-    profile_id [name: 'idx_workout_plans_profile_id']
-    (user_id, start_date) [name: 'idx_workout_plans_user_date']
-  }
-  
-  Note: 'AI-generated personalized workout plans based on Profile and user preferences'
-}
-
-Table workout_days {
-  id integer [pk, increment]
-  workout_plan_id integer [not null, ref: > workout_plans.id, note: 'Parent workout plan']
-  day_name varchar(50) [not null, note: 'Day name (e.g., Monday, Day 1)']
-  day_number integer [not null, note: 'Sequential day number in plan']
-  focus_area varchar(100) [note: 'Muscle group or training focus']
-  estimated_duration integer [note: 'Estimated duration in minutes']
-  
-  Indexes {
-    workout_plan_id [name: 'idx_workout_days_plan_id']
-    (workout_plan_id, day_number) [name: 'idx_workout_days_plan_day']
-  }
-  
-  Note: 'Individual workout sessions within a plan'
-}
-
-Table workout_day_exercises {
-  id integer [pk, increment]
-  workout_day_id integer [not null, ref: > workout_days.id, note: 'Parent workout day']
-  central_exercise_id integer [not null, ref: > central_exercises.id, note: 'Exercise from central catalog']
-  sets integer [note: 'Number of sets prescribed for this user']
-  reps integer [note: 'Number of reps per set']
-  weight_kg float [note: 'Recommended starting weight in kg']
-  duration_seconds integer [note: 'Duration for time-based exercises']
-  rest_seconds integer [note: 'Rest between sets in seconds']
-  order_index integer [not null, default: 0, note: 'Exercise order in the day']
-  notes text [note: 'AI-generated personalization notes for this exercise slot']
-  
-  Indexes {
-    workout_day_id [name: 'idx_wde_day_id']
-    central_exercise_id [name: 'idx_wde_exercise_id']
-  }
-  
-  Note: 'Junction: links a workout day to exercises from the central catalog with user-specific parameters'
-}
-
-// ========================================
-// PLANNING MODULE - NUTRITION
-// ========================================
-
-Table nutrition_plans {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User who owns this plan']
-  profile_id integer [not null, ref: > profiles.id, note: 'Profile used for plan generation']
-  plan_name varchar(255) [not null, note: 'Name of the nutrition plan']
-  description text [note: 'Plan description and guidelines']
-  daily_calories integer [not null, note: 'Target daily calories']
-  daily_protein_g integer [not null, note: 'Target daily protein in grams']
-  daily_carbs_g integer [not null, note: 'Target daily carbs in grams']
-  daily_fats_g integer [not null, note: 'Target daily fats in grams']
-  start_date date [not null, note: 'Plan start date']
-  end_date date [note: 'Plan end date']
-  generated_from_preferences json [note: 'User preferences used to generate plan (calorie_preference, meals_per_day, meal_complexity, cuisine, etc.)']
-  created_at timestamp [not null, default: `now()`]
-  updated_at timestamp [note: 'Last update timestamp']
-  
-  Indexes {
-    user_id [name: 'idx_nutrition_plans_user_id']
-    profile_id [name: 'idx_nutrition_plans_profile_id']
-    (user_id, start_date) [name: 'idx_nutrition_plans_user_date']
-  }
-  
-  Note: 'AI-generated personalized nutrition plans based on Profile and user preferences'
-}
-
-Table nutrition_plan_days {
-  id integer [pk, increment]
-  nutrition_plan_id integer [not null, ref: > nutrition_plans.id, note: 'Parent nutrition plan']
-  day_number integer [not null, note: 'Day number (1-7)']
-  day_name varchar(50) [not null, note: 'Day name: Monday, Tuesday, ..., Sunday']
-  notes text [note: 'Optional notes for this day (e.g., high-carb day, rest day)']
-
-  Indexes {
-    nutrition_plan_id [name: 'idx_npd_plan_id']
-    (nutrition_plan_id, day_number) [name: 'idx_npd_plan_day']
-  }
-
-  Note: 'Individual days within a nutrition plan — 7 rows per plan (Mon-Sun)'
-}
-
-Table nutrition_plan_meals {
-  id integer [pk, increment]
-  nutrition_plan_day_id integer [not null, ref: > nutrition_plan_days.id, note: 'Parent nutrition day']
-
-  // AI-generated meal — fully self-contained, no FK to food catalog
-  meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack']
-  meal_name varchar(255) [not null, note: 'AI-generated meal name']
-  calories integer [not null, note: 'Total calories for this meal']
-  protein_g float [not null, note: 'Protein in grams']
-  carbs_g float [not null, note: 'Carbohydrates in grams']
-  fats_g float [not null, note: 'Fats in grams']
-  fiber_g float [note: 'Fiber in grams']
-  instructions text [note: 'Preparation instructions']
-  prep_time_minutes integer [note: 'Preparation time in minutes']
-  cook_time_minutes integer [note: 'Cooking time in minutes']
-
-  servings float [not null, default: 1, note: 'Number of servings']
-  order_index integer [not null, default: 0, note: 'Meal order within the day']
-  notes text [note: 'AI-generated personalization notes for this meal slot']
-
-  Indexes {
-    nutrition_plan_day_id [name: 'idx_npm_day_id']
-    (nutrition_plan_day_id, meal_type) [name: 'idx_npm_day_type']
-  }
-
-  Note: 'AI-generated meals within a nutrition plan day — fully self-contained (no FK to food catalog). AI uses central_foods as context but stores final meals inline.'
-}
-
-// ========================================
-
-Table nutrition_plan_meal_ingredients {
-  id integer [pk, increment]
-  nutrition_plan_meal_id integer [not null, ref: > nutrition_plan_meals.id, note: 'Parent meal']
-  central_food_id integer [not null, ref: > central_foods.id, note: 'Food from central catalog']
-  amount_g float [not null, note: 'Amount in grams']
-  
-  Indexes {
-    nutrition_plan_meal_id [name: 'idx_npmi_meal_id']
-    central_food_id [name: 'idx_npmi_food_id']
-  }
-  
-  Note: 'Relational map between a drafted meal and the Central Food database'
-}
-
-// ========================================
-// TRACKING MODULE
-// ========================================
-
-Table workout_logs {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User tracking their workout']
-  central_exercise_id integer [not null, ref: > central_exercises.id, note: 'Exercise from central catalog']
-  workout_day_exercise_id integer [ref: > workout_day_exercises.id, note: 'Optional link to planned exercise slot if logging from a plan']
-  log_date date [not null, note: 'Date of workout']
-  sets_completed integer [not null, note: 'Actual sets completed']
-  reps_completed integer [not null, note: 'Actual reps completed']
-  weight_used float [note: 'Actual weight used in kg']
-  duration_seconds integer [note: 'Actual duration in seconds']
-  notes text [note: 'User notes about the workout']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    user_id [name: 'idx_workout_logs_user_id']
-    (user_id, log_date) [name: 'idx_workout_logs_user_date']
-    central_exercise_id [name: 'idx_workout_logs_exercise_id']
-  }
-  
-  Note: 'User workout tracking — always references central catalog; optionally linked to a plan slot'
-}
-
-Table meal_logs {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User logging their meal']
-  central_food_id integer [ref: > central_foods.id, note: 'Food from central catalog if matched; null for free-text entries']
-  log_date date [not null, note: 'Date of meal']
-  meal_type varchar(50) [not null, note: 'Breakfast, Lunch, Dinner, Snack']
-  meal_name varchar(255) [not null, note: 'Display name — from catalog or user-entered']
-  servings float [not null, default: 1, note: 'Number of servings consumed']
-  calories integer [not null, note: 'Total calories consumed']
-  protein_g integer [not null, note: 'Protein consumed in grams']
-  carbs_g integer [not null, note: 'Carbs consumed in grams']
-  fats_g integer [not null, note: 'Fats consumed in grams']
-  log_method varchar(20) [not null, note: 'TEXT, VOICE, or CAMERA']
-  image_url varchar(500) [note: 'URL of food photo if logged via camera']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    user_id [name: 'idx_meal_logs_user_id']
-    (user_id, log_date) [name: 'idx_meal_logs_user_date']
-    (user_id, log_date, meal_type) [name: 'idx_meal_logs_user_date_type']
-    central_food_id [name: 'idx_meal_logs_central_food_id']
-  }
-  
-  Note: 'User meal logging — central_food_id is set when scanner/search matches a catalog entry; null for free-text'
-}
-
-Table weight_logs {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User tracking their weight']
-  log_date date [not null, note: 'Date of weight measurement']
-  weight float [not null, note: 'Weight in kg']
-  notes text [note: 'Optional user notes']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    user_id [name: 'idx_weight_logs_user_id']
-    (user_id, log_date) [name: 'idx_weight_logs_user_date']
-  }
-  
-  Note: 'User weight tracking for progress monitoring'
-}
-
-// ========================================
-// CHATBOT MODULE
-// ========================================
-
-Table chat_messages {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User in conversation']
-  message_content text [not null, note: 'User message to AI']
-  response_content text [note: 'AI coach response']
-  role varchar(20) [not null, note: 'USER or AI_COACH']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    user_id [name: 'idx_chat_messages_user_id']
-    (user_id, created_at) [name: 'idx_chat_messages_user_time']
-  }
-  
-  Note: 'Conversational AI chatbot interaction history'
-}
-
-// ========================================
-// NOTIFICATION MODULE
-// ========================================
-
-Table notifications {
-  id integer [pk, increment]
-  user_id integer [not null, ref: > users.id, note: 'User receiving notification']
-  notification_type varchar(50) [not null, note: 'WORKOUT_REMINDER, MEAL_REMINDER, PROGRESS_UPDATE, MOTIVATIONAL']
-  title varchar(255) [not null, note: 'Notification title']
-  message text [not null, note: 'Notification message content']
-  is_read boolean [not null, default: false, note: 'Read status']
-  scheduled_time timestamp [note: 'When notification should be sent']
-  sent_at timestamp [note: 'When notification was actually sent']
-  created_at timestamp [not null, default: `now()`]
-  
-  Indexes {
-    user_id [name: 'idx_notifications_user_id']
-    (user_id, is_read) [name: 'idx_notifications_user_read']
-    scheduled_time [name: 'idx_notifications_scheduled']
-  }
-  
-  Note: 'User notifications and reminders system'
-}
-
-// ========================================
-// ENUM DEFINITIONS (for documentation)
+// ENUM DEFINITIONS
 // ========================================
 
 Enum gender_enum {
-  Male
-  Female
-}
-
-Enum activity_level_enum {
-  Sedentary
-  "Lightly Active"
-  "Moderately Active"
-  "Very Active"
-  "Extra Active"
+  male
+  female
 }
 
 Enum fitness_goal_enum {
-  "Lose Weight"
-  "Try AI Coach"
-  "Get Bulks"
-  "Improve Endurance"
+  lose_weight
+  try_ai_coach
+  get_bulks
+  improve_endurance
+}
+
+Enum activity_level_enum {
+  sedentary
+  lightly_active
+  moderately_active
+  very_active
+  extra_active
+}
+
+Enum meal_type_enum {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
+Enum difficulty_enum {
+  Beginner
+  Intermediate
+  Advanced
 }
 
 Enum exercise_type_enum {
@@ -417,32 +52,6 @@ Enum exercise_type_enum {
   HIIT
 }
 
-Enum muscle_group_enum {
-  Chest
-  Back
-  Shoulders
-  Biceps
-  Triceps
-  Core
-  Legs
-  Glutes
-  Hamstrings
-  Quadriceps
-  Calves
-  "Full Body"
-}
-
-Enum equipment_enum {
-  Bodyweight
-  Dumbbells
-  Barbell
-  "Resistance Band"
-  Kettlebell
-  Machine
-  "Pull-up Bar"
-  Cables
-}
-
 Enum location_enum {
   Gym
   Home
@@ -450,82 +59,391 @@ Enum location_enum {
   Any
 }
 
-Enum difficulty_enum {
-  Beginner
-  Intermediate
-  Advanced
+Enum source_enum {
+  System
+  USDA
+  Manual
 }
 
-Enum log_method_enum {
-  TEXT
-  VOICE
-  CAMERA
+// ========================================
+// AUTHENTICATION MODULE
+// ========================================
+
+Table users {
+  id integer [pk, increment]
+  name varchar
+  email varchar [unique]
+  password varchar
+  is_verified boolean [default: false]
+  created_at timestamptz
+  updated_at timestamptz
+
+  Note: 'Core user authentication and account management'
 }
 
-Enum message_role_enum {
-  USER
-  AI_COACH
+// ========================================
+// PROFILE MODULE
+// ========================================
+
+Table profiles {
+  id integer [pk, increment]
+  user_id integer [unique, ref: > users.id]
+  age integer
+  gender varchar [note: 'Enum: male, female']
+  height float
+  weight float
+  fitness_goal varchar [note: 'Enum: lose_weight, try_ai_coach, get_bulks, improve_endurance']
+  activity_level varchar [note: 'Enum: sedentary, lightly_active, moderately_active, very_active, extra_active']
+  dietary_preference varchar
+  medical_conditions varchar
+  allergies varchar
+  injuries varchar
+  medications varchar
+  updated_at timestamptz
+
+  Note: 'Comprehensive user health and fitness profile for AI personalization'
 }
 
-Enum notification_type_enum {
-  WORKOUT_REMINDER
-  MEAL_REMINDER
-  PROGRESS_UPDATE
-  MOTIVATIONAL
-  SYSTEM
+// ========================================
+// CATALOG MODULE - CENTRAL EXERCISE LIBRARY
+// ========================================
+
+Table central_exercises {
+  id integer [pk, increment]
+  name varchar(255)
+  exercise_type varchar [default: 'Strength', note: 'Enum: Strength, Cardio, Flexibility, Balance, HIIT']
+  primary_muscle_group varchar [default: 'Full Body']
+  secondary_muscles varchar [null]
+  equipment_required varchar [default: 'Bodyweight']
+  difficulty_level varchar [default: 'Beginner', note: 'Enum: Beginner, Intermediate, Advanced']
+  location varchar [default: 'Any', note: 'Enum: Gym, Home, Outdoor, Any']
+  instructions text [null]
+  video_url varchar [null]
+  image_url varchar [null]
+  source varchar [default: 'System']
+  created_by_user_id integer [ref: > users.id, null]
+  is_verified boolean [default: true]
+  is_public boolean [default: true]
+  is_active boolean [default: true]
+  created_at timestamptz
+  name_embedding "vector(384)" [null, note: 'pgvector embedding for semantic search']
+
+  Note: 'Central exercise catalog — shared across all users, referenced by plans and logs'
+}
+
+// ========================================
+// CATALOG MODULE - CENTRAL FOOD LIBRARY
+// ========================================
+
+Table central_foods {
+  id integer [pk, increment]
+  food_name varchar(255)
+  food_name_ar varchar(255) [null, note: 'Arabic food name']
+  food_category varchar [null]
+
+  // Macros per 100g
+  calories_per_100g float
+  protein_per_100g float
+  carbs_per_100g float
+  fats_per_100g float
+  fiber_per_100g float [null]
+
+  // Serving info
+  serving_size_g float [null]
+  serving_description varchar [null]
+
+  // Metadata
+  dietary_tags json [default: '[]', note: 'Array: [vegan, vegetarian, gluten-free, high-protein, etc.]']
+  usda_fdc_id integer [null, note: 'USDA FoodData Central FDC ID']
+  name_embedding "vector(384)" [null, note: 'pgvector embedding for semantic search']
+  created_by_user_id integer [ref: > users.id, null]
+  is_verified boolean [default: true]
+  is_public boolean [default: true]
+  source varchar [default: 'USDA', note: 'Data source: USDA or Manual']
+  is_active boolean [default: true]
+  created_at timestamptz
+
+  Note: 'Central food catalog — USDA Foundation Foods + manual entries. Used for food logging search and AI context during plan generation.'
+}
+
+// ========================================
+// PLANNING MODULE - WORKOUT
+// ========================================
+
+Table workout_plans {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  profile_id integer [ref: > profiles.id]
+  plan_name varchar(255)
+  description text [null]
+  start_date date
+  end_date date [null]
+  frequency varchar [null]
+  difficulty_level varchar [null]
+  estimated_duration_per_session integer [null, note: 'Minutes per session']
+  generated_from_preferences json [null]
+  language varchar(5) [default: 'en']
+  created_at timestamptz
+  updated_at timestamptz
+
+  Note: 'AI-generated personalized workout plans based on Profile and user preferences'
+}
+
+Table workout_days {
+  id integer [pk, increment]
+  workout_plan_id integer [ref: > workout_plans.id]
+  day_name varchar(100)
+  day_number integer
+  focus_area varchar [null]
+  estimated_duration integer [null, note: 'Estimated duration in minutes']
+  notes text [null]
+
+  Note: 'Individual workout sessions within a plan'
+}
+
+Table workout_day_exercises {
+  id integer [pk, increment]
+  workout_day_id integer [ref: > workout_days.id]
+  central_exercise_id integer [ref: > central_exercises.id]
+  sets integer [null]
+  reps integer [null]
+  weight_kg float [null]
+  duration_seconds integer [null]
+  rest_seconds integer [null]
+  order_index integer [default: 0]
+  notes text [null]
+
+  Note: 'Junction: links a workout day to exercises from the central catalog with user-specific parameters'
+}
+
+// ========================================
+// PLANNING MODULE - NUTRITION
+// ========================================
+
+Table nutrition_plans {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  profile_id integer [ref: > profiles.id]
+  plan_name varchar(255)
+  description text [null]
+  start_date date
+  end_date date [null]
+  daily_calories integer
+  daily_protein_g integer
+  daily_carbs_g integer
+  daily_fats_g integer
+  generated_from_preferences json [null]
+  language varchar(5) [default: 'en']
+  created_at timestamptz
+  updated_at timestamptz
+
+  Note: 'AI-generated personalized nutrition plans based on Profile and user preferences'
+}
+
+Table nutrition_plan_days {
+  id integer [pk, increment]
+  nutrition_plan_id integer [ref: > nutrition_plans.id]
+  day_number integer
+  day_name varchar(50)
+  notes text [null]
+
+  Note: 'Individual days within a nutrition plan'
+}
+
+Table nutrition_plan_meals {
+  id integer [pk, increment]
+  nutrition_plan_day_id integer [ref: > nutrition_plan_days.id]
+  meal_type varchar(50)
+  meal_name varchar(255)
+  calories integer
+  protein_g float
+  carbs_g float
+  fats_g float
+  fiber_g float [null]
+  instructions text [null]
+  prep_time_minutes integer [null]
+  cook_time_minutes integer [null]
+  servings float [default: 1.0]
+  order_index integer [default: 0]
+  notes text [null]
+
+  Note: 'AI-generated meals within a nutrition plan day'
+}
+
+Table nutrition_plan_meal_ingredients {
+  id integer [pk, increment]
+  nutrition_plan_meal_id integer [ref: > nutrition_plan_meals.id]
+  central_food_id integer [ref: > central_foods.id]
+  amount_g float
+
+  Note: 'Junction: links a meal to foods from the central catalog with amounts'
+}
+
+// ========================================
+// TRACKING MODULE
+// ========================================
+
+Table workout_logs {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  central_exercise_id integer [ref: > central_exercises.id, null]
+  workout_day_exercise_id integer [ref: > workout_day_exercises.id, null]
+  log_date date
+  sets_completed integer
+  reps_completed integer
+  weight_used float [null]
+  duration_seconds integer [null]
+  notes text [null]
+  created_at timestamptz
+
+  Note: 'User workout tracking — optionally references central catalog and/or a planned exercise slot'
+}
+
+Table meal_logs {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  central_food_id integer [ref: > central_foods.id, null]
+  log_date date
+  meal_type varchar [note: 'Enum: breakfast, lunch, dinner, snack']
+  meal_name varchar
+  servings float [default: 1.0]
+  serving_size_g_snapshot float [null, note: 'Snapshot of serving_size_g from central_foods at log time']
+  serving_description_snapshot varchar [null, note: 'Snapshot of serving_description from central_foods at log time']
+  calories float
+  protein_g float
+  carbs_g float
+  fats_g float
+  log_method varchar
+  image_url varchar [null]
+  created_at timestamptz
+
+  Note: 'User meal logging — central_food_id is set when matched to catalog; null for free-text entries'
+}
+
+Table weight_logs {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  log_date date
+  weight float
+  notes text [null]
+  created_at timestamptz
+
+  Note: 'User weight tracking for progress monitoring'
+}
+
+Table sleep_logs {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  log_date date
+  sleep_hours float
+  sleep_quality integer
+  notes text [null]
+  created_at timestamptz
+
+  Note: 'User sleep tracking for recovery and wellness monitoring'
+}
+
+Table hydration_logs {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  log_date date
+  water_ml float
+  notes text [null]
+  created_at timestamptz
+
+  Note: 'User hydration tracking'
+}
+
+// ========================================
+// NOTIFICATION MODULE
+// ========================================
+
+Table device_tokens {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  token varchar [unique]
+  platform varchar(20)
+  is_active boolean [default: true]
+  created_at timestamptz
+  updated_at timestamptz
+
+  Note: 'Push notification device tokens for FCM/APNs'
+}
+
+Table notification_preferences {
+  id integer [pk, increment]
+  user_id integer [unique, ref: > users.id]
+  meal_reminders_enabled boolean [default: true]
+  workout_reminders_enabled boolean [default: true]
+  hydration_reminders_enabled boolean [default: true]
+  sleep_reminders_enabled boolean [default: true]
+  hydration_interval_hours integer [default: 2]
+  meal_reminder_minutes_before integer [default: 15]
+  workout_reminder_hour integer [default: 7]
+  sleep_reminder_hour integer [default: 21]
+  coaching_reminders_enabled boolean [default: true]
+  coaching_daily_hour integer [default: 20]
+  created_at timestamptz
+  updated_at timestamptz
+
+  Note: 'Per-user notification preferences and scheduling configuration'
+}
+
+// ========================================
+// RECOMMENDATIONS MODULE
+// ========================================
+
+Table coaching_messages {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  category varchar(30)
+  urgency varchar(20)
+  title varchar(200)
+  body text
+  is_read boolean [default: false]
+  is_dismissed boolean [default: false]
+  created_at timestamptz
+
+  Note: 'AI-generated coaching messages and recommendations for users'
 }
 
 // ========================================
 // TABLE GROUPS (for visual organization)
 // ========================================
 
-TableGroup authentication {
+TableGroup auth {
   users
-  
-  Note: "User authentication and account management"
 }
 
-TableGroup profile_health {
+TableGroup profile {
   profiles
-  
-  Note: "User health and fitness profile data"
 }
 
-TableGroup catalog {
+TableGroup planning {
   central_exercises
   central_foods
-  
-  Note: "Central shared catalog — USDA food data + exercise library, used for logging and AI context"
-}
-
-TableGroup workout_planning {
   workout_plans
   workout_days
   workout_day_exercises
-  
-  Note: "AI-generated workout planning — references central exercise catalog"
-}
-
-TableGroup nutrition_planning {
   nutrition_plans
   nutrition_plan_days
   nutrition_plan_meals
   nutrition_plan_meal_ingredients
-  
-  Note: "AI-generated nutrition planning — meals stored inline, central_foods used as AI context"
 }
 
-TableGroup progress_tracking {
+TableGroup tracking {
   workout_logs
   meal_logs
   weight_logs
-  
-  Note: "User progress and activity tracking"
+  sleep_logs
+  hydration_logs
 }
 
-TableGroup engagement {
-  chat_messages
-  notifications
-  
-  Note: "User engagement and communication"
+TableGroup notifications {
+  device_tokens
+  notification_preferences
+}
+
+TableGroup recommendations {
+  coaching_messages
 }

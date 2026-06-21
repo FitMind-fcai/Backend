@@ -1,0 +1,45 @@
+sequenceDiagram
+    participant CeleryBeat as Celery Beat
+    participant Task as Celery Task
+    participant CoachingService
+    participant DB as PostgreSQL
+    participant LLM as LLM Gateway
+    participant PushService
+    participant FCM as Firebase Cloud Messaging
+    actor User
+
+    CeleryBeat->>+Task: Trigger run_daily_coaching()<br/>(at user's preferred hour)
+
+    Task->>+CoachingService: run_daily_coaching()
+
+    rect rgb(230, 240, 255)
+        Note over CoachingService,DB: Step 1: Find Eligible Users
+        CoachingService->>+DB: SELECT users with<br/>coaching_reminders_enabled = true
+        DB-->>-CoachingService: List of users
+    end
+
+    rect rgb(255, 240, 230)
+        Note over CoachingService,FCM: Step 2: Generate & Send Coaching
+        loop For each eligible user
+            CoachingService->>+DB: Gather 24h activity snapshot<br/>(meals, workouts, water, sleep)
+            DB-->>-CoachingService: Tracking logs
+
+            CoachingService->>+LLM: Send snapshot, request coaching tip<br/>with urgency level
+            LLM-->>-CoachingService: Coaching tip + urgency
+
+            CoachingService->>+DB: INSERT CoachingMessage<br/>(category="daily", urgency level)
+            DB-->>-CoachingService: Saved
+
+            CoachingService->>+PushService: send_push(device_tokens, tip)
+            PushService->>+FCM: Send push notification
+            FCM-->>-PushService: Delivery status
+            PushService-->>-CoachingService: Sent
+        end
+    end
+
+    CoachingService-->>-Task: Complete
+    Task-->>-CeleryBeat: Done
+
+    FCM-->>User: Push notification with coaching tip
+
+    Note over User: View messages via<br/>GET /coaching/messages

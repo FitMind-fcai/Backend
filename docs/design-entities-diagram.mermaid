@@ -3,7 +3,7 @@ title: FitMind Design - Entities (Models)
 ---
 classDiagram
     %% ========== AUTHENTICATION MODULE - ENTITIES ==========
-    
+
     namespace AuthModule {
         class User {
             <<Entity>>
@@ -18,7 +18,7 @@ classDiagram
     }
 
     %% ========== PROFILE MODULE - ENTITIES ==========
-    
+
     namespace ProfileModule {
         class Profile {
             <<Entity>>
@@ -63,19 +63,70 @@ classDiagram
     }
 
     %% ========== PLANNING MODULE - ENTITIES ==========
-    
+
     namespace PlanningModule {
+        class CentralExercise {
+            <<Catalog Entity>>
+            +int id
+            +string name
+            +string exercise_type
+            +string primary_muscle_group
+            +string secondary_muscles
+            +string equipment_required
+            +string difficulty_level
+            +string location
+            +text instructions
+            +string video_url
+            +string image_url
+            +string source
+            +int created_by_user_id
+            +boolean is_verified
+            +boolean is_public
+            +boolean is_active
+            +datetime created_at
+            +Vector~384~ name_embedding
+        }
+
+        class CentralFood {
+            <<Catalog Entity>>
+            +int id
+            +string food_name
+            +string food_name_ar
+            +string food_category
+            +float calories_per_100g
+            +float protein_per_100g
+            +float carbs_per_100g
+            +float fats_per_100g
+            +float fiber_per_100g
+            +float serving_size_g
+            +string serving_description
+            +JSON dietary_tags
+            +int usda_fdc_id
+            +Vector~384~ name_embedding
+            +int created_by_user_id
+            +boolean is_verified
+            +boolean is_public
+            +string source
+            +boolean is_active
+            +datetime created_at
+        }
+
         class WorkoutPlan {
             <<Entity>>
             +int id
             +int user_id
+            +int profile_id
             +string plan_name
-            +string description
+            +text description
             +date start_date
             +date end_date
             +string frequency
             +string difficulty_level
+            +int estimated_duration_per_session
+            +JSON generated_from_preferences
+            +string language
             +datetime created_at
+            +datetime updated_at
         }
 
         class WorkoutDay {
@@ -86,65 +137,94 @@ classDiagram
             +int day_number
             +string focus_area
             +int estimated_duration
+            +text notes
         }
 
-        class Exercise {
-            <<Entity>>
+        class WorkoutDayExercise {
+            <<Junction Entity>>
             +int id
             +int workout_day_id
-            +string exercise_name
-            +string exercise_type
+            +int central_exercise_id
             +int sets
             +int reps
-            +float weight
+            +float weight_kg
             +int duration_seconds
-            +string instructions
-            +string video_url
+            +int rest_seconds
+            +int order_index
+            +text notes
         }
 
         class NutritionPlan {
             <<Entity>>
             +int id
             +int user_id
+            +int profile_id
             +string plan_name
-            +int daily_calories
-            +int daily_protein
-            +int daily_carbs
-            +int daily_fats
+            +text description
             +date start_date
             +date end_date
+            +int daily_calories
+            +int daily_protein_g
+            +int daily_carbs_g
+            +int daily_fats_g
+            +JSON generated_from_preferences
+            +string language
             +datetime created_at
+            +datetime updated_at
         }
 
-        class Meal {
+        class NutritionPlanDay {
             <<Entity>>
             +int id
             +int nutrition_plan_id
+            +int day_number
+            +string day_name
+            +text notes
+        }
+
+        class NutritionPlanMeal {
+            <<Entity>>
+            +int id
+            +int nutrition_plan_day_id
             +string meal_type
             +string meal_name
             +int calories
-            +int protein
-            +int carbs
-            +int fats
-            +string ingredients
-            +string instructions
+            +float protein_g
+            +float carbs_g
+            +float fats_g
+            +float fiber_g
+            +text instructions
+            +int prep_time_minutes
+            +int cook_time_minutes
+            +float servings
+            +int order_index
+            +text notes
+        }
+
+        class NutritionPlanMealIngredient {
+            <<Junction Entity>>
+            +int id
+            +int nutrition_plan_meal_id
+            +int central_food_id
+            +float amount_g
         }
     }
 
     %% ========== TRACKING MODULE - ENTITIES ==========
-    
+
     namespace TrackingModule {
         class WorkoutLog {
             <<Entity>>
             +int id
             +int user_id
-            +int exercise_id
+            +int central_exercise_id
+            +int workout_day_exercise_id
             +date log_date
             +int sets_completed
             +int reps_completed
             +float weight_used
             +int duration_seconds
-            +string notes
+            +text notes
             +datetime created_at
         }
 
@@ -152,14 +232,18 @@ classDiagram
             <<Entity>>
             +int id
             +int user_id
+            +int central_food_id
             +date log_date
-            +string meal_type
+            +MealType meal_type
             +string meal_name
-            +int calories
-            +int protein
-            +int carbs
-            +int fats
-            +LogMethod log_method
+            +float servings
+            +float serving_size_g_snapshot
+            +string serving_description_snapshot
+            +float calories
+            +float protein_g
+            +float carbs_g
+            +float fats_g
+            +string log_method
             +string image_url
             +datetime created_at
         }
@@ -170,61 +254,87 @@ classDiagram
             +int user_id
             +date log_date
             +float weight
-            +string notes
+            +text notes
             +datetime created_at
         }
 
-        class LogMethod {
-            <<Enumeration>>
-            TEXT
-            VOICE
-            CAMERA
-        }
-    }
-
-    %% ========== CHATBOT MODULE - ENTITIES ==========
-    
-    namespace ChatbotModule {
-        class ChatMessage {
+        class SleepLog {
             <<Entity>>
             +int id
             +int user_id
-            +string message_content
-            +string response_content
-            +MessageRole role
+            +date log_date
+            +float sleep_hours
+            +int sleep_quality
+            +text notes
             +datetime created_at
         }
 
-        class MessageRole {
+        class HydrationLog {
+            <<Entity>>
+            +int id
+            +int user_id
+            +date log_date
+            +float water_ml
+            +text notes
+            +datetime created_at
+        }
+
+        class MealType {
             <<Enumeration>>
-            USER
-            AI_COACH
+            BREAKFAST
+            LUNCH
+            DINNER
+            SNACK
         }
     }
 
     %% ========== NOTIFICATION MODULE - ENTITIES ==========
-    
+
     namespace NotificationModule {
-        class Notification {
+        class DeviceToken {
             <<Entity>>
             +int id
             +int user_id
-            +NotificationType notification_type
-            +string title
-            +string message
-            +boolean is_read
-            +datetime scheduled_time
-            +datetime sent_at
+            +string token
+            +string platform
+            +boolean is_active
             +datetime created_at
+            +datetime updated_at
         }
 
-        class NotificationType {
-            <<Enumeration>>
-            WORKOUT_REMINDER
-            MEAL_REMINDER
-            PROGRESS_UPDATE
-            MOTIVATIONAL
-            SYSTEM
+        class NotificationPreference {
+            <<Entity>>
+            +int id
+            +int user_id
+            +boolean meal_reminders_enabled
+            +boolean workout_reminders_enabled
+            +boolean hydration_reminders_enabled
+            +boolean sleep_reminders_enabled
+            +int hydration_interval_hours
+            +int meal_reminder_minutes_before
+            +int workout_reminder_hour
+            +int sleep_reminder_hour
+            +boolean coaching_reminders_enabled
+            +int coaching_daily_hour
+            +datetime created_at
+            +datetime updated_at
+        }
+    }
+
+    %% ========== RECOMMENDATION MODULE - ENTITIES ==========
+
+    namespace RecommendationModule {
+        class CoachingMessage {
+            <<Entity>>
+            +int id
+            +int user_id
+            +string category
+            +string urgency
+            +string title
+            +text body
+            +boolean is_read
+            +boolean is_dismissed
+            +datetime created_at
         }
     }
 
@@ -232,21 +342,36 @@ classDiagram
 
     %% Core User Relationships
     User "1" --> "0..1" Profile : has
-    User "1" --> "*" WorkoutPlan : requests
-    User "1" --> "*" NutritionPlan : requests
-    User "1" --> "*" WorkoutLog : creates
-    User "1" --> "*" MealLog : creates
-    User "1" --> "*" WeightLog : creates
-    User "1" --> "*" ChatMessage : exchanges
-    User "1" --> "*" Notification : receives
+    User "1" --> "*" WorkoutPlan : creates
+    User "1" --> "*" NutritionPlan : creates
+    User "1" --> "*" WorkoutLog : logs
+    User "1" --> "*" MealLog : logs
+    User "1" --> "*" WeightLog : logs
+    User "1" --> "*" SleepLog : logs
+    User "1" --> "*" HydrationLog : logs
+    User "1" --> "*" DeviceToken : registers
+    User "1" --> "0..1" NotificationPreference : configures
+    User "1" --> "*" CoachingMessage : receives
 
-    %% Planning Module Relationships
+    %% Planning Module - Workout Relationships
     WorkoutPlan "1" --> "*" WorkoutDay : contains
-    WorkoutDay "1" --> "*" Exercise : includes
-    NutritionPlan "1" --> "*" Meal : contains
+    WorkoutDay "1" --> "*" WorkoutDayExercise : includes
+    WorkoutDayExercise "*" --> "1" CentralExercise : references
+
+    %% Planning Module - Nutrition Relationships
+    NutritionPlan "1" --> "*" NutritionPlanDay : contains
+    NutritionPlanDay "1" --> "*" NutritionPlanMeal : includes
+    NutritionPlanMeal "1" --> "*" NutritionPlanMealIngredient : has
+    NutritionPlanMealIngredient "*" --> "1" CentralFood : references
 
     %% Tracking Module Relationships
-    WorkoutLog "*" --> "1" Exercise : references
+    WorkoutLog "*" --> "0..1" CentralExercise : references
+    WorkoutLog "*" --> "0..1" WorkoutDayExercise : references
+    MealLog "*" --> "0..1" CentralFood : references
+
+    %% Catalog Ownership (optional)
+    CentralExercise "*" --> "0..1" User : created_by
+    CentralFood "*" --> "0..1" User : created_by
 
     %% Profile Enumerations
     Profile --> Gender : uses
@@ -254,10 +379,4 @@ classDiagram
     Profile --> FitnessGoal : uses
 
     %% Tracking Enumerations
-    MealLog --> LogMethod : uses
-
-    %% Chatbot Enumerations
-    ChatMessage --> MessageRole : has
-
-    %% Notification Enumerations
-    Notification --> NotificationType : has
+    MealLog --> MealType : uses

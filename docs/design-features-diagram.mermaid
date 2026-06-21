@@ -3,7 +3,7 @@ title: FitMind Design - Features (Services & Business Logic)
 ---
 classDiagram
     %% ========== AUTHENTICATION MODULE - SERVICES ==========
-    
+
     namespace AuthModule {
         class AuthService {
             <<Service>>
@@ -49,7 +49,7 @@ classDiagram
         class SecurityUtils {
             <<Utility>>
             +hash_password(password) str
-            +verify_password(plain_password, hashed_password) bool
+            +verify_password(plain, hashed) bool
             +create_access_token(user_id, email) str
             +verify_access_token(token) dict
             +generate_otp() str
@@ -60,7 +60,7 @@ classDiagram
     }
 
     %% ========== PROFILE MODULE - SERVICES ==========
-    
+
     namespace ProfileModule {
         class ProfileService {
             <<Service>>
@@ -74,20 +74,17 @@ classDiagram
     }
 
     %% ========== PLANNING MODULE - SERVICES ==========
-    
+
     namespace PlanningModule {
         class PlanGenerationService {
             <<Service>>
             -Session db
             -WorkoutPlanService workout_service
             -NutritionPlanService nutrition_service
-            -WorkoutPlanRepository workout_plan_repo
-            -WorkoutDayRepository workout_day_repo
-            -ExerciseRepository exercise_repo
-            -NutritionPlanRepository nutrition_plan_repo
-            -MealRepository meal_repo
-            +generate_workout_plan(profile, preferences, duration_weeks) WorkoutPlan
-            +generate_nutrition_plan(profile, preferences, duration_weeks) NutritionPlan
+            -ThreadPoolExecutor executor
+            +generate_workout_plan(profile, preferences) WorkoutPlan
+            +generate_nutrition_plan(profile, preferences) NutritionPlan
+            +generate_combined_plans(profile, preferences) CombinedPlanResponse
             +get_user_active_plans(user_id) CombinedPlanResponse
         }
 
@@ -95,8 +92,6 @@ classDiagram
             <<Service>>
             -Session db
             -WorkoutPlanRepository workout_plan_repo
-            -WorkoutDayRepository workout_day_repo
-            -ExerciseRepository exercise_repo
             +create_workout_plan(user_id, plan_data) WorkoutPlan
             +get_active_plan(user_id) WorkoutPlan
             +get_plan_with_details(plan_id) WorkoutPlan
@@ -108,7 +103,6 @@ classDiagram
             <<Service>>
             -Session db
             -NutritionPlanRepository nutrition_plan_repo
-            -MealRepository meal_repo
             +create_nutrition_plan(user_id, plan_data) NutritionPlan
             +get_active_plan(user_id) NutritionPlan
             +get_plan_with_details(plan_id) NutritionPlan
@@ -118,98 +112,125 @@ classDiagram
     }
 
     %% ========== TRACKING MODULE - SERVICES ==========
-    
+
     namespace TrackingModule {
         class TrackingService {
             <<Service>>
             -WorkoutLogRepository workout_log_repo
             -MealLogRepository meal_log_repo
             -WeightLogRepository weight_log_repo
-            -MealScannerService meal_scanner
-            -VoiceTranscriberService voice_transcriber
-            +log_workout(user_id, workout_data) WorkoutLog
-            +log_meal_text(user_id, meal_data) MealLog
-            +log_meal_voice(user_id, audio_file) MealLog
-            +log_meal_camera(user_id, image_file) MealLog
-            +log_weight(user_id, weight_data) WeightLog
-            +get_progress_summary(user_id) dict
-            +get_workout_history(user_id, days) list[WorkoutLog]
-            +get_nutrition_history(user_id, days) list[MealLog]
-            +get_weight_history(user_id, days) list[WeightLog]
+            -SleepLogRepository sleep_log_repo
+            -HydrationLogRepository hydration_log_repo
+            +search_foods(query) list[CentralFood]
+            +search_exercises(query) list[CentralExercise]
+            +save_logs(user_id, log_data) Log
+            +scan_meal(user_id, image) MealLog
+            +voice_meal(user_id, audio) MealLog
+            +voice_workout(user_id, audio) WorkoutLog
+            +voice_weight(user_id, audio) WeightLog
+            +get_workout_logs(user_id) list[WorkoutLog]
+            +get_meal_logs(user_id) list[MealLog]
+            +get_weight_logs(user_id) list[WeightLog]
+            +get_sleep_logs(user_id) list[SleepLog]
+            +get_hydration_logs(user_id) list[HydrationLog]
+            +create_manual_food(user_id, data) CentralFood
+            +create_manual_exercise(user_id, data) CentralExercise
         }
 
-        class ProgressAnalyticsService {
+        class MealScannerService {
             <<Service>>
-            -WorkoutLogRepository workout_log_repo
-            -MealLogRepository meal_log_repo
-            -WeightLogRepository weight_log_repo
-            +calculate_workout_adherence(user_id, period) float
-            +calculate_nutrition_adherence(user_id, period) float
-            +analyze_weight_trend(user_id, period) dict
-            +generate_progress_report(user_id) dict
-            +get_streak_count(user_id, log_type) int
-            +predict_goal_achievement(user_id) dict
+            -LLMClient llm_client
+            +analyze_food_image(image) dict
         }
-    }
 
-    %% ========== CHATBOT MODULE - SERVICES ==========
-    
-    namespace ChatbotModule {
-        class ChatbotService {
+        class VoiceTranscriberService {
             <<Service>>
-            -ChatMessageRepository message_repo
-            -AICoachService ai_coach
-            -ProfileService profile_service
-            +send_message(user_id, message) ChatMessage
-            +get_conversation_history(user_id, limit) list[ChatMessage]
-            +clear_conversation(user_id) bool
-            +get_contextual_response(user_id, message) str
+            -LLMClient llm_client
+            +transcribe_audio(audio_file) str
         }
     }
 
     %% ========== NOTIFICATION MODULE - SERVICES ==========
-    
+
     namespace NotificationModule {
         class NotificationService {
             <<Service>>
-            -NotificationRepository notification_repo
-            -PushNotificationProvider push_provider
-            +schedule_workout_reminder(user_id, workout_time) Notification
-            +schedule_meal_reminder(user_id, meal_time) Notification
-            +send_progress_update(user_id, progress_data) Notification
-            +send_motivational_message(user_id) Notification
-            +get_user_notifications(user_id) list[Notification]
-            +mark_notification_read(notification_id) Notification
-            +process_scheduled_notifications() void
+            -DeviceTokenRepository device_token_repo
+            -NotificationPreferenceRepository pref_repo
+            +register_token(user_id, token, platform) DeviceToken
+            +deregister_token(user_id, token) void
+            +get_preferences(user_id) NotificationPreference
+            +update_preferences(user_id, prefs) NotificationPreference
         }
 
-        class PushNotificationProvider {
+        class PushService {
             <<Service>>
             -FCMClient fcm_client
-            +send_push_notification(user_device_token, notification_data) bool
-            +send_batch_notifications(notifications) list[bool]
-            +register_device_token(user_id, device_token) void
-            +unregister_device_token(user_id, device_token) void
+            +send_push(device_token, title, body) bool
+            +send_push_multi(tokens, title, body) list[bool]
+        }
+
+        class ReminderService {
+            <<Service>>
+            -PushService push_service
+            -DeviceTokenRepository device_token_repo
+            -NotificationPreferenceRepository pref_repo
+            +check_hydration_reminders() void
+            +check_meal_reminders() void
+            +check_workout_reminders() void
+            +check_sleep_reminders() void
+            +trigger_hydration_instant(user_id) void
+            +trigger_meal_instant(user_id) void
+            +trigger_workout_instant(user_id) void
+            +trigger_sleep_instant(user_id) void
+        }
+    }
+
+    %% ========== RECOMMENDATION MODULE - SERVICES ==========
+
+    namespace RecommendationModule {
+        class CoachingService {
+            <<Service>>
+            -LLMClient llm_client
+            -CoachingMessageRepository coaching_repo
+            +run_daily_coaching() void
+            +run_weekly_coaching() void
+            +trigger_daily_for_user(user_id) CoachingMessage
+            +trigger_weekly_for_user(user_id) CoachingMessage
+        }
+
+        class RecommendationService {
+            <<Service>>
+            -CoachingMessageRepository coaching_repo
+            +get_daily_suggestion(user_id) dict
+            +get_progress_report(user_id) dict
         }
     }
 
     %% ========== AI SERVICES MODULE ==========
-    
+
     namespace AIServicesModule {
         class AICoachService {
             <<Service>>
-            -str api_key
-            -str model
-            -Groq client
+            -LLMClient llm_client
             -VectorDBService vector_db
-            +generate_workout_plan(profile, preferences, duration_weeks, existing_plan) WorkoutPlanDTO
-            +generate_nutrition_plan(profile, preferences, duration_weeks, existing_plan) NutritionPlanDTO
+            +generate_workout_plan(profile, preferences) WorkoutPlanDTO
+            +generate_nutrition_plan(profile, preferences) NutritionPlanDTO
             +ask_coach(user_query, profile) str
-            -_build_workout_prompt(profile, preferences, duration_weeks, rag_context, existing_plan) str
-            -_build_nutrition_prompt(profile, preferences, duration_weeks, rag_context, existing_plan) str
+            -_build_workout_prompt(profile, preferences, rag_context) str
+            -_build_nutrition_prompt(profile, preferences, rag_context) str
             -_build_ask_coach_prompt(user_query, profile, rag_context) str
             -_call_llm(prompt) str
             -_extract_json_from_response(response) dict
+        }
+
+        class LLMClient {
+            <<Service>>
+            -str api_key
+            -str model
+            -str base_url
+            +call(prompt) str
+            +call_with_json(prompt) dict
         }
 
         class VectorDBService {
@@ -222,36 +243,33 @@ classDiagram
             +similarity_search(query, k) list[Document]
             +create_vector_db(force_recreate) None
             +load_documents() list[Document]
-            -_load_pdf_document() list[Document]
-            -_load_scraped_documents() list[Document]
-            -_split_documents(documents) list[Document]
-        }
-
-        class MealScannerService {
-            <<Service - Future>>
-            +analyze_food_image(image) dict
-        }
-
-        class VoiceTranscriberService {
-            <<Service - Future>>
-            +transcribe_audio(audio_file) str
         }
     }
 
     %% ========== SHARED SERVICES ==========
-    
+
     namespace SharedModule {
         class EmailService {
             <<Service>>
             -SMTPConfig smtp_config
-            +send_email(to_email, subject, body, from_email) bool
-            +send_html_email(to_email, subject, html_content, from_email) bool
+            +send_email(to_email, subject, body) bool
+            +send_html_email(to_email, subject, html) bool
         }
 
         class RedisClient {
             <<Service>>
             -Redis redis_instance
             +get_client() Redis
+        }
+
+        class CeleryApp {
+            <<Scheduled Tasks>>
+            +check_hydration_reminders ~every 60min~
+            +check_meal_reminders ~every 30min~
+            +check_workout_reminders ~every 60min~
+            +check_sleep_reminders ~every 60min~
+            +run_daily_coaching ~daily~
+            +run_weekly_coaching ~weekly~
         }
     }
 
@@ -273,9 +291,26 @@ classDiagram
     PlanGenerationService --> AICoachService : uses
     PlanGenerationService --> ProfileService : uses
     AICoachService --> VectorDBService : uses
+    AICoachService --> LLMClient : uses
 
-    %% Tracking Module Dependencies (Future)
-    
-    %% Chatbot Module Dependencies (Future)
-    
-    %% Notification Module Dependencies (Future)
+    %% Tracking Module Dependencies
+    TrackingService --> MealScannerService : uses
+    TrackingService --> VoiceTranscriberService : uses
+    MealScannerService --> LLMClient : uses
+    VoiceTranscriberService --> LLMClient : uses
+
+    %% Notification Module Dependencies
+    NotificationService --> PushService : uses
+    ReminderService --> PushService : uses
+    ReminderService --> NotificationService : uses
+
+    %% Recommendation Module Dependencies
+    CoachingService --> LLMClient : uses
+    CoachingService --> RecommendationService : uses
+
+    %% Celery Scheduled Task Dependencies
+    CeleryApp --> ReminderService : triggers
+    CeleryApp --> CoachingService : triggers
+
+    %% LLM Client connects to OpenRouter
+    LLMClient ..> LLMClient : connects_to_OpenRouter

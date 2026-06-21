@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant CeleryBeat as Celery Beat
+    participant Task as Celery Task
+    participant ReminderService
+    participant DB as PostgreSQL
+    participant PushService
+    participant FCM as Firebase Cloud Messaging
+    actor User
+
+    CeleryBeat->>+Task: Trigger check_meal_reminders<br/>(every 15 min)
+    Task->>Task: Create fresh DB session
+
+    Task->>+ReminderService: check_meal_reminders(session)
+
+    rect rgb(230, 240, 255)
+        Note over ReminderService,DB: Step 1: Find Eligible Users
+        ReminderService->>+DB: SELECT users with<br/>meal_reminders_enabled = true<br/>from NotificationPreference
+        DB-->>-ReminderService: List of users
+    end
+
+    rect rgb(255, 240, 230)
+        Note over ReminderService,FCM: Step 2: Check & Notify
+        loop For each eligible user
+            ReminderService->>+DB: Get active NutritionPlan<br/>check for upcoming meals
+            DB-->>-ReminderService: Upcoming meal (if any)
+
+            alt Meal within configured lead time
+                ReminderService->>+DB: Get user's DeviceTokens
+                DB-->>-ReminderService: Device tokens
+
+                ReminderService->>+PushService: send_push(tokens, title, body)
+                PushService->>+FCM: Send push notification
+                FCM-->>-PushService: Delivery status
+                PushService-->>-ReminderService: Sent
+            end
+        end
+    end
+
+    ReminderService-->>-Task: Complete
+    Task-->>-CeleryBeat: Done
+
+    FCM-->>User: Push notification on device
