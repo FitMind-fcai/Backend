@@ -47,6 +47,34 @@ try:
 except Exception as e:
     print(f'[init] pgvector not available (non-fatal): {e}')
 "
+
+# Auto-detect pre-Alembic databases: if tables exist but alembic_version
+# doesn't, stamp the DB so Alembic knows the schema is already current.
+NEEDS_STAMP=$(python -c "
+from dotenv import load_dotenv; load_dotenv()
+from sqlalchemy import text
+from app.db.database import engine
+try:
+    with engine.connect() as c:
+        has_users = bool(c.execute(text(
+            \"SELECT 1 FROM information_schema.tables WHERE table_name='users'\"
+        )).fetchone())
+        has_alembic = bool(c.execute(text(
+            \"SELECT 1 FROM information_schema.tables WHERE table_name='alembic_version'\"
+        )).fetchone())
+        if has_users and not has_alembic:
+            print('yes')
+        else:
+            print('no')
+except Exception:
+    print('no')
+" 2>/dev/null || echo "no")
+
+if [ "$NEEDS_STAMP" = "yes" ]; then
+    echo "[init] Existing database detected (pre-Alembic) — stamping as current..."
+    alembic stamp head
+fi
+
 alembic upgrade head
 echo "[init] Migrations complete."
 
