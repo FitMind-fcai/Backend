@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey, Float, Text, Index # type: ignore
+from sqlalchemy.orm import relationship # type: ignore
 from sqlalchemy.sql import func # type: ignore
 
 from app.db.database import Base
@@ -23,3 +24,5 @@ class WorkoutLog(Base):
     notes = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    central_exercise = relationship("CentralExercise", lazy="joined")

@@ -50,6 +50,13 @@ SEVERITY 2 — SIGNIFICANT (flag it; plan fails only if 2 or more severity-2 iss
     body part for this user
   • Required warm-up/cool-down entirely missing when medically necessary
   • A food-drug caution that is important but not immediately dangerous
+  • Daily fat below 20% of calories OR calories deviate > 20% from planning engine targets
+
+  NEVER severity 2 for:
+  • Minor fat-to-protein ratio preferences (e.g. 80% vs 93% lean beef) — these are severity 1
+  • Sodium concerns when the user has NO cardiovascular conditions — severity 1 at most
+  • Suggesting a leaner cut or alternative protein is a minor optimisation, not significant
+  • Legumes or plant proteins being "insufficient" — they are valid protein sources
 
 SEVERITY 1 — MINOR (note it; never fails the plan):
   • Intensity within safe range but could be slightly better (e.g. RPE 6-7 vs 5-6)
@@ -153,6 +160,7 @@ class PlanJudge:
         plan: NutritionPlanDTO,
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
+        planning_output=None,
     ) -> Tuple[bool, str]:
         system = (
             "You are a senior clinical dietitian and food safety expert.\n"
@@ -165,6 +173,17 @@ class PlanJudge:
             "No markdown, no extra text."
         )
 
+        targets_block = ""
+        if planning_output:
+            nt = planning_output.nutrition
+            targets_block = (
+                f"\nPLANNING ENGINE TARGETS (authoritative — deviations are issues):\n"
+                f"  Target calories: {nt.calories} kcal/day\n"
+                f"  Protein: {nt.protein_g}g/day\n"
+                f"  Fat: {nt.fat_g}g/day (must be >= 20% of calories)\n"
+                f"  Carbs: {nt.carbs_g}g/day\n"
+            )
+
         prompt = (
             "Review this nutrition plan for the user below.\n\n"
             f"ALLERGIES (zero tolerance): {user_profile.allergies or 'None'}\n"
@@ -172,7 +191,8 @@ class PlanJudge:
             f"MEDICATIONS: {user_profile.medications or 'None'}\n"
             f"FITNESS GOAL: {user_profile.fitness_goal}\n"
             f"CUISINE PREFERENCE: {preferences.cuisine_preference}\n"
-            f"DIETARY RESTRICTIONS: {getattr(preferences, 'dietary_restrictions', None) or 'None'}\n\n"
+            f"DIETARY RESTRICTIONS: {getattr(preferences, 'dietary_restrictions', None) or 'None'}\n"
+            f"{targets_block}\n"
             "GENERATED PLAN:\n"
             f"{_serialize_nutrition_plan(plan)}\n\n"
             "Evaluate these areas in order:\n"
@@ -182,11 +202,14 @@ class PlanJudge:
             "listed conditions. Severity 3 if dangerous, 2 if significant caution.\n"
             "3. DRUG-FOOD INTERACTIONS — ingredients with known interactions with listed "
             "medications. Severity 3 if dangerous (e.g. grapefruit + CCB), 2 if notable caution.\n"
-            "4. CUISINE AUTHENTICITY — does the plan reflect the requested cuisine? "
+            "4. MACRO COMPLIANCE — compare daily totals against planning engine targets. "
+            "Severity 2 if daily fat < 20% of calories or calories deviate > 20% from target. "
+            "Severity 1 if protein deviates > 25% from target.\n"
+            "5. CUISINE AUTHENTICITY — does the plan reflect the requested cuisine? "
             "Severity 1 if minor miss, 2 if completely wrong.\n"
-            "5. GOAL ALIGNMENT — protein and structure match the fitness goal? "
+            "6. GOAL ALIGNMENT — protein and structure match the fitness goal? "
             "Severity 1-2 depending on how far off.\n"
-            "6. VARIETY — sufficient diversity over 7 days? Severity 1 if minor.\n\n"
+            "7. VARIETY — sufficient diversity over 7 days? Severity 1 if minor.\n\n"
             "For every issue: state the day and meal, what exactly is wrong, and the exact fix.\n"
             "If the plan is clean, return an empty issues array."
         )
@@ -198,6 +221,7 @@ class PlanJudge:
         plan: WorkoutPlanDTO,
         user_profile: UserProfileDTO,
         preferences: WorkoutPreferencesDTO,
+        planning_output=None,
     ) -> Tuple[bool, str]:
         system = (
             "You are a senior sports medicine physician and strength & conditioning specialist.\n"
@@ -211,6 +235,17 @@ class PlanJudge:
             "No markdown, no extra text."
         )
 
+        targets_block = ""
+        if planning_output:
+            tt = planning_output.training
+            targets_block = (
+                f"\nPLANNING ENGINE TARGETS (authoritative):\n"
+                f"  Training days/week: {tt.training_days}\n"
+                f"  Split: {tt.split.replace('_', ' ').title()}\n"
+                f"  Session duration: {tt.session_duration_minutes} min\n"
+                f"  Weekly volume: ~{tt.weekly_volume_sets_per_muscle} sets/muscle\n"
+            )
+
         prompt = (
             "Review this workout plan for the user below.\n\n"
             f"MEDICAL CONDITIONS: {user_profile.medical_conditions or 'None'}\n"
@@ -218,7 +253,8 @@ class PlanJudge:
             f"FITNESS GOAL: {user_profile.fitness_goal}\n"
             f"WORKOUT FOCUS: {preferences.workout_focus}\n"
             f"DIFFICULTY: {preferences.workout_difficulty}\n"
-            f"LOCATION: {preferences.workout_location}\n\n"
+            f"LOCATION: {preferences.workout_location}\n"
+            f"{targets_block}\n"
             "GENERATED PLAN:\n"
             f"{_serialize_workout_plan(plan)}\n\n"
             "Evaluate these areas in order:\n"

@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -29,6 +30,12 @@ from app.planning_module.services.converters import (
 from app.ai_services.ai_coach import get_ai_coach_service
 from app.ai_services.ai_coach.context_builder import get_context_builder
 from app.planning_module.core.planning_engine import PlanningEngine
+
+logger = logging.getLogger(__name__)
+
+_CALORIE_TOLERANCE_PCT = 0.20
+_FAT_MIN_PCT = 0.20
+_PROTEIN_TOLERANCE_PCT = 0.25
 
 
 class PlanGenerationService:
@@ -386,6 +393,37 @@ class PlanGenerationService:
         # Authoritative macro numbers are always recomputed from DB ingredient records.
         self._hydrate_nutrition_macros_from_ingredients(plan_create)
 
+        # Deterministic macro validation gate — reject and retry once if macros
+        # deviate too far from the planning engine targets.
+        violations = self._check_macro_compliance(plan_create, planning_output)
+        if violations:
+            logger.warning(
+                "Nutrition plan failed macro validation (%s). Retrying once.",
+                "; ".join(violations),
+            )
+            nutrition_plan_dto = ai_coach.generate_nutrition_plan(
+                user_profile=profile_dto,
+                preferences=preferences_dto,
+                duration_weeks=duration_weeks,
+                existing_plan=existing_plan,
+                allowed_foods_str=allowed_foods_str,
+                planning_output=planning_output,
+                medical_rules=medical_rules,
+                language=lang,
+                model_override=model_override,
+                skip_judge=skip_judge,
+            )
+            plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
+            plan_create.language = lang
+            self._hydrate_nutrition_macros_from_ingredients(plan_create)
+
+            retry_violations = self._check_macro_compliance(plan_create, planning_output)
+            if retry_violations:
+                logger.warning(
+                    "Nutrition plan still fails after retry (%s). Returning best effort.",
+                    "; ".join(retry_violations),
+                )
+
         preferences_dict = preferences.model_dump()
 
         return {
@@ -451,6 +489,43 @@ class PlanGenerationService:
             nutrition_plan.daily_protein_g = round(sum(x[1] for x in day_totals) / days_count, 2)
             nutrition_plan.daily_carbs_g = round(sum(x[2] for x in day_totals) / days_count, 2)
             nutrition_plan.daily_fats_g = round(sum(x[3] for x in day_totals) / days_count, 2)
+
+    def _check_macro_compliance(self, plan_create, planning_output) -> list[str]:
+        """Compare recomputed macros against planning engine targets. Returns list of violation strings."""
+        violations = []
+        target = planning_output.nutrition
+
+        actual_cals = plan_create.daily_calories or 0
+        actual_fat = plan_create.daily_fats_g or 0
+        actual_protein = plan_create.daily_protein_g or 0
+
+        # Calorie check: within ±20% of target
+        if target.calories > 0:
+            cal_ratio = actual_cals / target.calories
+            if abs(1.0 - cal_ratio) > _CALORIE_TOLERANCE_PCT:
+                violations.append(
+                    f"calories {actual_cals:.0f} vs target {target.calories} "
+                    f"({cal_ratio:.0%})"
+                )
+
+        # Fat floor: at least 20% of actual calories from fat
+        if actual_cals > 0:
+            fat_pct = (actual_fat * 9) / actual_cals
+            if fat_pct < _FAT_MIN_PCT:
+                violations.append(
+                    f"fat {actual_fat:.0f}g = {fat_pct:.0%} of calories (min {_FAT_MIN_PCT:.0%})"
+                )
+
+        # Protein check: within ±25% of target
+        if target.protein_g > 0:
+            prot_ratio = actual_protein / target.protein_g
+            if abs(1.0 - prot_ratio) > _PROTEIN_TOLERANCE_PCT:
+                violations.append(
+                    f"protein {actual_protein:.0f}g vs target {target.protein_g}g "
+                    f"({prot_ratio:.0%})"
+                )
+
+        return violations
 
     def _create_workout_plan_with_details(
         self,

@@ -124,6 +124,13 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             "ice cream", "milk shake", "milkshake",
             "margarine",
             "gravy",
+            # Exotic / game meats — not suitable for standard meal plans
+            "bear", "bison", "buffalo", "caribou", "deer", "elk", "emu",
+            "moose", "ostrich", "rabbit", "venison", "wild boar", "game meat",
+            "alligator", "frog", "snail", "whale", "seal",
+            # Processed snacks / cookies not suitable as meal plan ingredients
+            "cookie", "cookies", "archway", "bear naked",
+            "brownie", "cake mix", "frosting",
         ]
         for bad in BAD_NAME_KEYWORDS:
             query = query.filter(~CentralFood.food_name.ilike(f"%{bad}%"))
@@ -136,8 +143,11 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             .filter(CentralFood.protein_per_100g >= 1.5)     # at least 1.5 g protein / 100 g
         )
             
-        # Deterministic retrieval: avoid random() so core ingredient families are consistently present.
-        foods_pool = query.order_by(CentralFood.food_name.asc()).limit(max(limit * 12, 240)).all()
+        # Stratified fetch: pull top items per food category by protein density,
+        # so we get diverse foods (chicken, fish, rice, lentils...) without
+        # loading thousands of rows or alphabetical bias.
+        raw_pool = self._stratified_fetch(query, pool_size=max(limit * 5, 250))
+        foods_pool = self._deduplicate_food_families(raw_pool, max_per_family=4)
 
         # Phase 3: Score each food for goal alignment before bucket selection
         goal_norm = (goal or "maintain").lower().replace(" ", "_")
@@ -378,6 +388,90 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         if bucket == "fat":
             return sorted(items, key=lambda f: (-(f.fats_per_100g or 0), f.food_name.lower()))
         return sorted(items, key=lambda f: f.food_name.lower())
+
+    def _stratified_fetch(self, base_query, pool_size: int = 250) -> List[CentralFood]:
+        """Fetch foods in strata by dominant macronutrient so every food type
+        is represented regardless of alphabetical position.
+
+        Strata (queried independently with per-stratum limits):
+          - High protein (protein >= 15g/100g) → meats, fish, eggs, legumes
+          - High carb (carbs >= 20g AND protein < 15g) → grains, pasta, bread
+          - High fat (fat >= 12g AND protein < 15g) → nuts, seeds, oils, avocado
+          - Produce (calories < 80 AND protein < 15g) → vegetables, fruits
+          - Other (everything else)
+
+        Each stratum is sorted by protein density (desc) so the best items
+        within each category come first.
+        """
+        per_stratum = pool_size // 5
+
+        strata_filters = [
+            # High protein
+            (CentralFood.protein_per_100g >= 15,),
+            # High carb
+            (CentralFood.carbs_per_100g >= 20, CentralFood.protein_per_100g < 15),
+            # High fat
+            (CentralFood.fats_per_100g >= 12, CentralFood.protein_per_100g < 15),
+            # Produce (low-cal whole foods)
+            (CentralFood.calories_per_100g < 80, CentralFood.protein_per_100g < 15),
+        ]
+
+        seen_ids: set = set()
+        result: List[CentralFood] = []
+
+        for filters in strata_filters:
+            stratum_query = base_query.filter(*filters)
+            rows = (
+                stratum_query
+                .order_by(CentralFood.protein_per_100g.desc())
+                .limit(per_stratum)
+                .all()
+            )
+            for r in rows:
+                if r.id not in seen_ids:
+                    result.append(r)
+                    seen_ids.add(r.id)
+
+        # "Other" stratum — everything not yet selected
+        remaining = (
+            base_query
+            .order_by(CentralFood.protein_per_100g.desc())
+            .limit(per_stratum * 2)
+            .all()
+        )
+        for r in remaining:
+            if r.id not in seen_ids:
+                result.append(r)
+                seen_ids.add(r.id)
+            if len(result) >= pool_size:
+                break
+
+        return result
+
+    def _deduplicate_food_families(self, foods: List[CentralFood], max_per_family: int = 4) -> List[CentralFood]:
+        """Limit items per food family to prevent one ingredient dominating the pool.
+        Family is derived from the first meaningful word of the food name
+        (e.g., 'Beef (braised...)' and 'Beef (grilled...)' share family 'beef')."""
+        import re
+        family_counts: dict[str, int] = {}
+        result: List[CentralFood] = []
+
+        for food in foods:
+            name = (food.food_name or "").strip()
+            # Extract the first word, stripping parentheses and commas
+            match = re.match(r"([A-Za-z]+)", name)
+            family = match.group(1).lower() if match else "unknown"
+
+            # Merge obvious synonyms
+            if family in ("beans", "bean"):
+                family = "bean"
+
+            count = family_counts.get(family, 0)
+            if count < max_per_family:
+                result.append(food)
+                family_counts[family] = count + 1
+
+        return result
 
     def search_by_vector(
         self,

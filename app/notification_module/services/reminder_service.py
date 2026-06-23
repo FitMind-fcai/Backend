@@ -62,7 +62,7 @@ class ReminderService:
         body = "This is a test hydration reminder — drink some water!"
         push_count = 0
         if tokens:
-            push_count = send_push_multi(tokens, title, body) or 0
+            push_count = send_push_multi(tokens, title, body, db=self.db) or 0
         return {"type": "hydration", "title": title, "body": body,
                 "push_sent_to": len(tokens), "push_delivered": push_count}
 
@@ -72,7 +72,7 @@ class ReminderService:
         body = "Don't forget to log last night's sleep — it counts toward your FitMind Score!"
         push_count = 0
         if tokens:
-            push_count = send_push_multi(tokens, title, body) or 0
+            push_count = send_push_multi(tokens, title, body, db=self.db) or 0
         return {"type": "sleep", "title": title, "body": body,
                 "push_sent_to": len(tokens), "push_delivered": push_count}
 
@@ -82,7 +82,7 @@ class ReminderService:
         body = "This is a test workout reminder — time to get moving!"
         push_count = 0
         if tokens:
-            push_count = send_push_multi(tokens, title, body) or 0
+            push_count = send_push_multi(tokens, title, body, db=self.db) or 0
         return {"type": "workout", "title": title, "body": body,
                 "push_sent_to": len(tokens), "push_delivered": push_count}
 
@@ -92,7 +92,7 @@ class ReminderService:
         body = "This is a test meal reminder — time to eat and log your meal!"
         push_count = 0
         if tokens:
-            push_count = send_push_multi(tokens, title, body) or 0
+            push_count = send_push_multi(tokens, title, body, db=self.db) or 0
         return {"type": "meal", "title": title, "body": body,
                 "push_sent_to": len(tokens), "push_delivered": push_count}
 
@@ -115,6 +115,7 @@ class ReminderService:
                     tokens,
                     "💧 Hydration Reminder",
                     "No water logged today — drink a glass now and stay on track!",
+                    db=self.db,
                 )
                 continue
 
@@ -128,6 +129,7 @@ class ReminderService:
                     tokens,
                     "💧 Time to Hydrate!",
                     f"It's been {int(hours_since)}h since your last water log. Stay hydrated!",
+                    db=self.db,
                 )
 
     # ── Sleep ──────────────────────────────────────────────────────────────────
@@ -147,6 +149,7 @@ class ReminderService:
                     tokens,
                     "😴 Log Your Sleep",
                     "Don't forget to log last night's sleep — it counts toward your FitMind Score!",
+                    db=self.db,
                 )
 
     # ── Meals ──────────────────────────────────────────────────────────────────
@@ -192,6 +195,7 @@ class ReminderService:
                         f"🍽️ {meal_type.title()} Coming Up!",
                         f"{meal.meal_name} is on your plan — time to prepare!",
                         {"meal_type": meal_type, "meal_name": meal.meal_name},
+                        db=self.db,
                     )
 
     # ── Workouts ───────────────────────────────────────────────────────────────
@@ -226,4 +230,5 @@ class ReminderService:
                 "💪 Workout Time!",
                 f"Today is {today_day.day_name} — get moving and crush your session!",
                 {"day_name": today_day.day_name, "focus": today_day.focus_area or ""},
+                db=self.db,
             )

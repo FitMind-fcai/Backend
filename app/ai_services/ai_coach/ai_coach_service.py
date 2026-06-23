@@ -100,7 +100,7 @@ class AICoachService:
         if skip_judge:
             logger.info("Nutrition — judge skipped (skip_judge=True)")
         else:
-            passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences)
+            passed, feedback = self.judge.judge_nutrition_plan(plan, user_profile, preferences, planning_output)
             if passed:
                 logger.info("Nutrition — judge passed on first try")
             elif not feedback:
@@ -170,7 +170,7 @@ class AICoachService:
         if skip_judge:
             logger.info("Workout — judge skipped (skip_judge=True)")
         else:
-            passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences)
+            passed, feedback = self.judge.judge_workout_plan(plan, user_profile, preferences, planning_output)
             if passed:
                 logger.info("Workout — judge passed on first try")
             elif not feedback:

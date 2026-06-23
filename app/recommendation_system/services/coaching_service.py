@@ -58,7 +58,7 @@ class CoachingService:
         push_count = 0
         tokens = self._get_active_tokens(user_id)
         if tokens:
-            push_count = send_push_multi(tokens, title, body[:200], push_data)
+            push_count = send_push_multi(tokens, title, body[:200], push_data, db=self.db)
 
         return {
             "message_id": msg.id,

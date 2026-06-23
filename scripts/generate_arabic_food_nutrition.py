@@ -67,15 +67,21 @@ def ensure_raw_csv(local_csv: str | None) -> Path:
         return RAW_CSV
 
     import kagglehub
-    from kagglehub import KaggleDatasetAdapter
+    import pandas as pd
 
     log.info("Downloading dataset from Kaggle …")
-    df = kagglehub.load_dataset(
-        KaggleDatasetAdapter.PANDAS,
+    dataset_path = kagglehub.dataset_download(
         "mohanedmaged/egyptian-food-and-drinks-arabic-and-english",
-        "",
     )
-    log.info("Downloaded %d rows, columns: %s", len(df), list(df.columns))
+    csv_files = list(Path(dataset_path).rglob("*.csv"))
+    if not csv_files:
+        log.error("No CSV files found in downloaded dataset at %s", dataset_path)
+        sys.exit(1)
+    src_csv = csv_files[0]
+    log.info("Found dataset CSV: %s", src_csv)
+
+    df = pd.read_csv(src_csv)
+    log.info("Loaded %d rows, columns: %s", len(df), list(df.columns))
 
     RAW_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(RAW_CSV, index=False, encoding="utf-8")
@@ -147,6 +153,7 @@ def groq_request(api_key: str, messages: list, temperature: float = 0.1) -> str:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "FitMind/1.0",
         },
         method="POST",
     )
@@ -302,16 +309,16 @@ def process(foods: list[dict], api_key: str):
         except HTTPError as e:
             if e.code == 429:
                 log.warning(
-                    "Daily rate limit hit after %d foods this run (%d/%d total). "
-                    "Run again tomorrow to continue.",
+                    "Rate limit hit after %d foods this run (%d/%d total). "
+                    "Stopping — run again later to continue.",
                     processed_this_run, done + processed_this_run, total,
                 )
                 return
-            log.error("Batch %d failed: %s — skipping", batch_num, e)
-            estimates = []
+            log.error("Batch %d failed: %s — stopping to avoid writing zeros", batch_num, e)
+            return
         except Exception as e:
-            log.error("Batch %d failed: %s — skipping", batch_num, e)
-            estimates = []
+            log.error("Batch %d failed: %s — stopping to avoid writing zeros", batch_num, e)
+            return
 
         est_map = {}
         for est in estimates:
@@ -323,7 +330,8 @@ def process(foods: list[dict], api_key: str):
         for i, food in enumerate(batch):
             est = est_map.get(i, {})
             if not est:
-                log.warning("  No estimate for: %s — writing zeros", food["name_en"])
+                log.warning("  No estimate for: %s — skipping", food["name_en"])
+                continue
 
             tags = derive_dietary_tags(food["ingredients_en"], food["category"])
             rows.append({

@@ -157,22 +157,34 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         goal = (goal or "maintain").lower().replace(" ", "_")
         injury_text = (injuries or "").lower()
 
+        _COMPOUND_KEYWORDS = [
+            "squat", "deadlift", "bench press", "overhead press",
+            "barbell row", "pull-up", "chin-up", "lunge", "hip thrust",
+            "military press", "dumbbell press", "incline press",
+            "leg press", "romanian deadlift", "front squat",
+            "pendlay row", "t-bar row", "dip",
+        ]
+
+        def _is_compound(name: str, etype: str) -> bool:
+            return "compound" in etype or any(k in name for k in _COMPOUND_KEYWORDS)
+
         def _score(e: CentralExercise) -> float:
             s = 0.0
             name  = (e.name or "").lower()
             etype = (e.exercise_type or "").lower()
+            compound = _is_compound(name, etype)
 
             # ── Goal Match (30 pts) ──────────────────────────────────────────
             if goal == "build_muscle":
-                if "compound" in etype:
+                if compound:
                     s += 30
                 elif any(k in name for k in [
-                    "squat", "deadlift", "press", "row", "pull-up",
-                    "chin", "bench", "overhead", "lunge",
+                    "curl", "extension", "fly", "raise", "pushdown",
+                    "kickback", "cable", "machine",
                 ]):
-                    s += 25
-                elif "isolation" in etype:
-                    s += 10
+                    s += 12
+                elif "stretching" in etype:
+                    s += 3
                 else:
                     s += 8
             elif goal == "lose_weight":
@@ -181,23 +193,23 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
                     "box jump", "sprint", "hiit",
                 ]):
                     s += 30
-                elif "compound" in etype:
+                elif compound:
                     s += 22
                 else:
                     s += 10
             elif goal == "improve_fitness":
-                if "cardio" in etype or "compound" in etype:
+                if "cardio" in etype or compound:
                     s += 25
                 else:
                     s += 12
             else:  # maintain / general
-                if "compound" in etype:
+                if compound:
                     s += 20
                 else:
                     s += 10
 
             # ── Volume Compatibility (15 pts) ────────────────────────────────
-            if "compound" in etype:
+            if compound:
                 s += 15
             elif "isolation" in etype:
                 s += 5
