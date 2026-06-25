@@ -1734,3 +1734,688 @@ Tagine Okra grilled,طاجن بامية مشوي,Vegetarian,"Okra, Salt, Black p
 Taameya Garlic spicy,طعمية ثوم سبايسي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",220.0,5.0,30.0,10.0,2.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
 Sandwich Chicken homemade,ساندويتش فراخ بيتي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,25.0,0.0,3.0,0.0,150.0,1 sandwich,[],kaggle-egyptian-foods
 Okra Peas with ghee baladi,بامية بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.0,15.0,1.5,5.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Peas with ghee baladi,بامية بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.5,9.0,0.2,3.2,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Okra baladi,كفتة بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",31.0,2.0,6.0,0.1,3.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Sausage in the oven,طاجن سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,20.0,0.0,26.0,0.0,100.0,2 slices,[],kaggle-egyptian-foods
+Koshari Onion with ghee baladi,كشري بصل بالسمنة البلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,9.5,0.5,2.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Potato Alexandrian style,طعمية بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.5,120.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Tomato with ghee baladi,مسقعة طماطم بالسمنة البلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",18.0,1.0,4.0,0.2,1.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Chicken with sauce,محشي فراخ بالصلصة,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,10.0,0.0,150.0,1 piece,[],kaggle-egyptian-foods
+Okra Beef in the oven,بامية لحمة في الفرن,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",250.0,25.0,0.0,18.0,0.0,120.0,1 serving,[],kaggle-egyptian-foods
+Pasta Okra with onion,مكرونة بامية بالبصل,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",35.0,2.0,7.0,0.2,3.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Garlic homemade,فول ثوم بيتي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",45.0,3.0,9.5,0.5,2.5,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Fava Beans homemade,شوربة فول بيتي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,7.5,20.0,0.5,5.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Garlic fried,فتة ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",55.0,1.5,12.0,0.5,2.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Shrimp baladi,محشي جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,0.0,5.0,0.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Fish Tomato Alexandrian style,سمك طماطم إسكندراني,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",20.0,1.5,4.5,0.2,1.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Potato with onion,فول بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Garlic with ghee baladi,أرز ثوم بالسمنة البلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",216.0,2.5,28.0,10.5,1.2,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Fava Beans grilled,ملوخية فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.5,20.0,6.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Peas with ghee baladi,كباب بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,2.0,4.5,100.0,1 skewer,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Sausage fried,فراخ سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Salad Spinach with onion,سلطة سبانخ بالبصل,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.0,3.0,0.5,2.0,80.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Lentils fried,بامية عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,10.0,30.0,10.0,4.0,180.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Fish grilled,كباب سمك مشوي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,3.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Salad Garlic with ghee baladi,سلطة ثوم بالسمنة البلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.5,8.0,1.0,2.5,60.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Spinach spicy,سمك سبانخ سبايسي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",70.0,5.0,5.0,2.5,2.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Spinach baladi,صينية سبانخ بلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.0,5.0,1.0,2.5,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Okra in the oven,طاجن بامية في الفرن,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,10.0,1.5,3.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Sausage baladi,صينية سجق بلدي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",350.0,15.0,10.0,30.0,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Soup Liver grilled,شوربة كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,10.0,0.0,120.0,1 bowl,[],kaggle-egyptian-foods
+Fish Fava Beans with ghee baladi,سمك فول بالسمنة البلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",180.0,10.0,20.0,6.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Okra spicy,ورق عنب بامية سبايسي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.5,10.0,2.0,3.0,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Potato fried,لحمة بطاطس مقلي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",220.0,10.3,24.5,10.2,2.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Fava Beans baladi,سلطة فول بلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.9,26.4,6.2,5.1,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Beef Alexandrian style,بامية لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",280.0,22.1,10.3,18.5,2.1,250.0,1 serving,[],kaggle-egyptian-foods
+Kebab Spinach with sauce,كباب سبانخ بالصلصة,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",120.0,5.4,15.6,5.6,3.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Liver in the oven,كشري كبدة في الفرن,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,25.9,8.5,14.2,1.1,200.0,1 serving,[],kaggle-egyptian-foods
+Sandwich Rice spicy,ساندويتش أرز سبايسي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,3.5,35.2,6.8,1.2,150.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Shrimp fried,أرز جمبري مقلي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",200.0,16.2,10.9,10.9,1.5,120.0,1 serving,[],kaggle-egyptian-foods
+Stuffed Peas with ghee baladi,محشي بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",140.0,5.7,24.1,4.2,4.3,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Shrimp with sauce,لحمة جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",260.0,20.5,8.1,16.3,1.3,200.0,1 serving,[],kaggle-egyptian-foods
+Fish Garlic in the oven,سمك ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",160.0,30.4,0.4,6.4,0.2,120.0,1 fillet,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Spinach in the oven,فراخ سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",160.0,25.6,4.2,6.1,1.1,150.0,1 breast,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Lentils fried,لحمة عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,18.2,25.9,9.5,4.9,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Sausage homemade,فول سجق بيتي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",300.0,15.6,20.5,20.2,3.5,250.0,2 sausages,[],kaggle-egyptian-foods
+Fava Beans Peas grilled,فول بسلة مشوي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",130.0,5.2,23.1,3.4,4.5,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Tomato baladi,كباب طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,6.2,0.2,1.2,50.0,1 tomato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Rice in the oven,ورق عنب أرز في الفرن,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",154.0,2.5,30.0,2.5,1.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Fish with ghee baladi,سمك سمك بالسمنة البلدي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Moussaka Onion homemade,مسقعة بصل بيتي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.0,10.0,0.0,2.0,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Peas in the oven,فول بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.0,15.0,0.5,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Zucchini spicy,مسقعة كوسة سبايسي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.0,0.5,1.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Shrimp in the oven,كفتة جمبري في الفرن,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",119.0,19.0,0.0,2.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Soup Potato Alexandrian style,شوربة بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.0,15.0,0.5,2.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Liver with onion,أرز كبدة بالبصل,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Vine Leaves Rice with onion,ورق عنب أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",154.0,2.5,30.0,2.5,1.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Potato homemade,فول بطاطس بيتي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.0,15.0,0.5,2.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Okra homemade,أرز بامية بيتي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",31.0,2.0,6.0,0.5,2.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Fish in the oven,سلطة سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Taameya Zucchini with sauce,طعمية كوسة بالصلصة,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.0,0.5,1.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Garlic with onion,لحمة ثوم بالبصل,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,10.0,0.0,120.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Beef fried,سلطة لحمة مقلي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Fattah Zucchini with sauce,فتة كوسة بالصلصة,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.0,0.5,1.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Onion fried,مكرونة بصل مقلي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",170.0,3.5,25.0,7.0,2.0,120.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Potato Alexandrian style,مسقعة بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,20.0,2.5,2.5,250.0,1 slice,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Rice with sauce,ساندويتش أرز بالصلصة,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,3.0,1.0,150.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Lentils Alexandrian style,ساندويتش عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,4.0,200.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Chicken homemade,بامية فراخ بيتي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,5.0,7.0,2.0,180.0,1 serving,[],kaggle-egyptian-foods
+Kebab Beef with onion,كباب لحمة بالبصل,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,20.0,0.0,12.0,0.0,100.0,2 skewers,[],kaggle-egyptian-foods
+Pasta Chicken Alexandrian style,مكرونة فراخ إسكندراني,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,15.0,15.0,6.0,1.5,200.0,1 plate,[],kaggle-egyptian-foods
+Okra Onion with ghee baladi,بامية بصل بالسمنة البلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",60.0,1.0,12.0,1.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Fava Beans with onion,لحمة فول بالبصل,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",120.0,8.0,20.0,1.5,5.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Liver in the oven,محشي كبدة في الفرن,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,0.0,10.0,0.0,120.0,2 pieces,[],kaggle-egyptian-foods
+Taameya Potato grilled,طعمية بطاطس مشوي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",100.0,2.0,20.0,1.0,2.5,150.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Okra fried,طاجن بامية مقلي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,8.0,0.5,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Peas with sauce,سلطة بسلة بالصلصة,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",80.0,5.0,15.0,0.5,4.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Sausage fried,كفتة سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,5.0,18.0,0.0,80.0,2 pieces,[],kaggle-egyptian-foods
+Stuffed Fava Beans with ghee baladi,محشي فول بالسمنة البلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.3,20.5,6.2,5.1,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Fish homemade,ورق عنب سمك بيتي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.2,4.5,4.8,1.2,150,2 pieces,[],kaggle-egyptian-foods
+Sandwich Rice with ghee baladi,ساندويتش أرز بالسمنة البلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",220.0,4.2,45.6,4.1,0.8,250,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Potato Alexandrian style,أرز بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.5,25.1,1.9,2.3,200,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Shrimp spicy,بامية جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",160.0,16.2,8.1,6.5,2.5,180,1 bowl,[],kaggle-egyptian-foods
+Tagine Lentils homemade,طاجن عدس بيتي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.2,20.2,0.9,7.9,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Fish with sauce,ملوخية سمك بالصلصة,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",150.0,25.1,4.2,5.1,1.1,180,1 serving,[],kaggle-egyptian-foods
+Rice Liver baladi,أرز كبدة بلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.9,4.9,10.2,0.5,150,1 serving,[],kaggle-egyptian-foods
+Tray Bake Chicken fried,صينية فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",180.0,26.7,5.6,7.3,0.8,200,2 pieces,[],kaggle-egyptian-foods
+Chicken Spinach grilled,فراخ سبانخ مشوي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",70.0,25.5,2.1,1.2,1.5,100,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Peas homemade,كشري بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.5,20.5,0.5,5.2,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Liver with onion,كفتة كبدة بالبصل,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",210.0,27.2,4.1,11.5,0.6,150,2 pieces,[],kaggle-egyptian-foods
+Tray Bake Shrimp Alexandrian style,صينية جمبري إسكندراني,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,18.2,0.5,2.5,0.2,150,2 pieces,[],kaggle-egyptian-foods
+Soup Fish fried,شوربة سمك مقلي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",160.0,22.1,4.8,6.2,0.9,200,1 bowl,[],kaggle-egyptian-foods
+Rice Okra baladi,أرز بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.5,12.1,0.2,3.2,150,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Zucchini homemade,بامية كوسة بيتي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.3,1.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Potato grilled,فول بطاطس مشوي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,23.0,0.5,2.5,150.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Shrimp spicy,صينية جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,20.0,0.0,2.0,0.0,100.0,3 pieces,[],kaggle-egyptian-foods
+Tagine Chicken with onion,طاجن فراخ بالبصل,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,25.0,5.0,3.5,1.0,120.0,1 serving,[],kaggle-egyptian-foods
+Tray Bake Zucchini in the oven,صينية كوسة في الفرن,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.0,5.5,0.2,1.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Liver grilled,سلطة كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",160.0,25.0,0.0,3.0,0.0,120.0,2 pieces,[],kaggle-egyptian-foods
+Moussaka Sausage in the oven,مسقعة سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,1.0,200.0,1 piece,[],kaggle-egyptian-foods
+Salad Shrimp with ghee baladi,سلطة جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,20.0,0.0,2.5,0.0,100.0,3 pieces,[],kaggle-egyptian-foods
+Stuffed Liver with ghee baladi,محشي كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,5.0,10.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Stuffed Okra with sauce,محشي بامية بالصلصة,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,10.0,0.5,2.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Spinach grilled,مكرونة سبانخ مشوي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.0,3.0,0.5,2.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Okra spicy,سمك بامية سبايسي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",70.0,3.5,12.0,0.5,2.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Okra grilled,طعمية بامية مشوي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.5,12.0,0.5,2.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Sausage homemade,طعمية سجق بيتي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",300.0,15.0,10.0,25.0,1.0,200.0,1 piece,[],kaggle-egyptian-foods
+Vine Leaves Fish with sauce,ورق عنب سمك بالصلصة,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,5.0,3.0,1.0,150.0,1 serving,[],kaggle-egyptian-foods
+Chicken Zucchini baladi,فراخ كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",120.0,10.0,10.0,6.0,2.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Peas with onion,طعمية بسلة بالبصل,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.0,20.0,2.0,5.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Spinach baladi,سمك سبانخ بلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,5.0,8.0,2.0,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Potato spicy,مسقعة بطاطس سبايسي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",160.0,3.0,25.0,8.0,3.0,300.0,1 slice,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Rice baladi,فتة أرز بلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.0,25.0,4.0,1.0,200.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Zucchini Alexandrian style,محشي كوسة إسكندراني,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",100.0,2.0,15.0,4.0,2.0,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Garlic with onion,طاجن ثوم بالبصل,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,20.0,2.0,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Sausage with ghee baladi,سلطة سجق بالسمنة البلدي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",200.0,10.0,10.0,15.0,1.0,150.0,1 sausage,[],kaggle-egyptian-foods
+Soup Garlic grilled,شوربة ثوم مشوي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",90.0,2.0,15.0,2.0,2.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Chicken with ghee baladi,لحمة فراخ بالسمنة البلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,5.0,12.0,1.0,250.0,1 serving,[],kaggle-egyptian-foods
+Molokhia Fish with onion,ملوخية سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",150.0,20.0,5.0,8.0,2.0,200.0,1 serving,[],kaggle-egyptian-foods
+Moussaka Fava Beans grilled,مسقعة فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.0,20.0,6.0,5.0,250.0,1 slice,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Onion spicy,مسقعة بصل سبايسي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.0,20.0,6.0,3.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Shrimp spicy,محشي جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,6.0,1.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Molokhia Spinach with onion,ملوخية سبانخ بالبصل,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",70.0,3.0,10.0,1.0,4.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Spinach with sauce,صينية سبانخ بالصلصة,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.2,4.3,1.2,2.5,200.0,1 tray,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Garlic with sauce,شوربة ثوم بالصلصة,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.8,9.2,2.1,2.1,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Liver with sauce,ساندويتش كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",220.0,26.5,4.5,12.8,0.5,120.0,1 sandwich,[],kaggle-egyptian-foods
+Tray Bake Onion fried,صينية بصل مقلي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,10.3,1.8,2.3,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Zucchini baladi,محشي كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.5,0.5,2.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Liver Alexandrian style,محشي كبدة إسكندراني,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,28.2,5.2,14.5,0.8,150.0,1 serving,[],kaggle-egyptian-foods
+Chicken Rice with sauce,فراخ أرز بالصلصة,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",110.0,4.2,20.5,2.5,0.8,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Liver baladi,طعمية كبدة بلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",230.0,25.8,6.2,13.2,0.6,120.0,2 pieces,[],kaggle-egyptian-foods
+Molokhia Potato with sauce,ملوخية بطاطس بالصلصة,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.0,15.8,1.2,2.8,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Peas baladi,لحمة بسلة بلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",80.0,5.5,14.2,1.5,4.1,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Zucchini with onion,فتة كوسة بالبصل,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",30.0,1.8,6.2,0.8,2.2,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Spinach fried,كشري سبانخ مقلي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",40.0,3.5,6.5,1.5,2.8,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Shrimp grilled,مكرونة جمبري مشوي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,18.2,4.2,3.8,0.5,150.0,1 serving,[],kaggle-egyptian-foods
+Tray Bake Potato spicy,صينية بطاطس سبايسي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",80.0,2.2,17.2,1.0,2.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Potato spicy,أرز بطاطس سبايسي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",100.0,2.5,20.0,2.0,2.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Rice with onion,فراخ أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.3,24.4,4.2,1.2,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Tomato spicy,سلطة طماطم سبايسي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,5.8,0.2,1.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Tomato grilled,أرز طماطم مشوي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",55.0,1.5,12.2,0.5,2.1,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Shrimp with sauce,سمك جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.2,4.2,6.5,0.5,120.0,1 serving,[],kaggle-egyptian-foods
+Salad Shrimp fried,سلطة جمبري مقلي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",190.0,19.1,6.2,10.3,0.5,100.0,2 pieces,[],kaggle-egyptian-foods
+Sandwich Tomato baladi,ساندويتش طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",35.0,1.1,7.2,0.2,1.8,100.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Liver fried,كباب كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,25.5,6.5,14.1,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Molokhia Shrimp with onion,ملوخية جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,16.2,4.5,4.2,0.5,200.0,1 bowl,[],kaggle-egyptian-foods
+Fish Rice with onion,سمك أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",160.0,15.1,20.2,4.5,1.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Onion baladi,فول بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",70.0,5.2,12.1,0.8,2.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Liver spicy,كباب كبدة سبايسي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",260.0,27.2,6.8,16.3,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Fish Fish grilled,سمك سمك مشوي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.5,0.0,3.5,0.0,120.0,1 serving,[],kaggle-egyptian-foods
+Fattah Fish fried,فتة سمك مقلي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",200.0,18.3,6.5,11.2,0.5,100.0,2 pieces,[],kaggle-egyptian-foods
+Tray Bake Liver grilled,صينية كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",280.0,30.5,7.2,18.5,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Potato with onion,كشري بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,24.8,0.5,2.2,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Okra with onion,ورق عنب بامية بالبصل,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.5,8.0,0.5,3.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Fava Beans with onion,صينية فول بالبصل,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,7.5,20.0,0.5,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Fava Beans baladi,ورق عنب فول بلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",115.0,8.0,22.0,0.5,5.5,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Beef baladi,ساندويتش لحمة بلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,10.0,10.0,2.0,100.0,1 sandwich,[],kaggle-egyptian-foods
+Soup Liver with sauce,شوربة كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,5.0,5.0,2.0,200.0,1 bowl,[],kaggle-egyptian-foods
+Kofta Onion Alexandrian style,كفتة بصل إسكندراني,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.5,9.0,0.5,2.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Fava Beans baladi,ملوخية فول بلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",120.0,8.0,25.0,0.5,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Onion Alexandrian style,أرز بصل إسكندراني,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,2.0,1.5,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Garlic with sauce,كباب ثوم بالصلصة,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",170.0,10.0,5.0,10.0,2.0,100.0,2 skewers,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Shrimp homemade,ساندويتش جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,2.0,2.0,100.0,1 sandwich,[],kaggle-egyptian-foods
+Fattah Onion with ghee baladi,فتة بصل بالسمنة البلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",160.0,3.0,25.0,6.0,2.5,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Fava Beans grilled,مكرونة فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",140.0,8.0,25.0,2.0,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Sausage fried,سمك سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,10.0,15.0,2.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Tagine Okra with ghee baladi,طاجن بامية بالسمنة البلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.5,10.0,0.5,3.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Sausage with onion,طاجن سجق بالبصل,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,15.0,15.0,18.0,2.5,150.0,1 cup,[],kaggle-egyptian-foods
+Tagine Spinach fried,طاجن سبانخ مقلي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.2,4.3,1.2,2.5,200,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Chicken in the oven,طعمية فراخ في الفرن,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.6,0.0,8.1,0.0,120,2 pieces,[],kaggle-egyptian-foods
+Tagine Peas baladi,طاجن بسلة بلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.4,14.5,0.4,5.1,150,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Okra with onion,فول بامية بالبصل,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",31.0,1.9,6.2,0.2,3.2,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Fish with onion,طعمية سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,100,1 piece,[],kaggle-egyptian-foods
+Sandwich Spinach Alexandrian style,ساندويتش سبانخ إسكندراني,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.2,4.3,1.2,2.5,200,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Garlic in the oven,مكرونة ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",122.0,2.5,25.0,2.5,2.0,150,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Tomato Alexandrian style,مسقعة طماطم إسكندراني,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",18.0,0.9,4.2,0.2,1.2,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Spinach in the oven,شوربة سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.5,1.0,0.5,2.5,250,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Potato fried,محشي بطاطس مقلي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.0,150,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Okra in the oven,ساندويتش بامية في الفرن,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",31.0,1.9,6.2,0.2,3.2,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Garlic fried,مكرونة ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",140.0,2.5,25.0,6.0,2.0,150,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Shrimp with ghee baladi,مكرونة جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",95.0,16.0,0.0,1.5,0.0,100,1 piece,[],kaggle-egyptian-foods
+Molokhia Rice with ghee baladi,ملوخية أرز بالسمنة البلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,2.5,0.5,150,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Zucchini with sauce,ورق عنب كوسة بالصلصة,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,5.0,0.5,1.5,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Liver with ghee baladi,ساندويتش كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.3,6.3,12.1,0.8,120,1 sandwich,[],kaggle-egyptian-foods
+Fava Beans Shrimp spicy,فول جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",172.0,20.2,6.1,7.3,2.1,150,1 bowl,[],kaggle-egyptian-foods
+Beef Beef with sauce,لحمة لحمة بالصلصة,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",287.0,30.4,4.2,20.5,0.6,180,1 serving,[],kaggle-egyptian-foods
+Pasta Potato with ghee baladi,مكرونة بطاطس بالسمنة البلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",154.0,2.5,24.8,6.4,2.3,200,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Rice with onion,كباب أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",192.0,4.2,30.6,6.1,1.2,250,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Spinach grilled,بامية سبانخ مشوي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",48.0,3.5,7.3,0.5,2.5,100,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Lentils fried,كشري عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,18.2,30.5,9.5,7.9,150,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Fava Beans in the oven,ورق عنب فول في الفرن,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",172.0,10.3,25.1,5.6,5.3,120,4-6 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Peas spicy,طعمية بسلة سبايسي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.7,20.5,1.3,5.1,100,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Beef baladi,شوربة لحمة بلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",140.0,25.1,4.8,6.3,0.8,250,1 bowl,[],kaggle-egyptian-foods
+Tagine Liver Alexandrian style,طاجن كبدة إسكندراني,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",245.0,27.5,6.5,14.2,0.9,150,1 serving,[],kaggle-egyptian-foods
+Kebab Beef Alexandrian style,كباب لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",295.0,31.5,4.5,22.1,0.7,180,1 serving,[],kaggle-egyptian-foods
+Chicken Shrimp in the oven,فراخ جمبري في الفرن,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,4.2,7.8,0.8,120,1 serving,[],kaggle-egyptian-foods
+Chicken Potato baladi,فراخ بطاطس بلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",160.0,3.5,26.3,6.8,2.6,200,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Liver with sauce,طاجن كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",255.0,28.2,6.8,15.5,0.9,180,1 serving,[],kaggle-egyptian-foods
+Koshari Sausage in the oven,كشري سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",233.0,14.1,6.3,17.4,0.8,120.0,1 sausage,[],kaggle-egyptian-foods
+Sandwich Potato grilled,ساندويتش بطاطس مشوي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,24.8,0.5,2.5,150.0,1 medium potato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Shrimp with sauce,صينية جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",127.0,19.2,4.2,2.5,0.5,100.0,5 shrimp,[],kaggle-egyptian-foods
+Moussaka Sausage fried,مسقعة سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",304.0,15.6,6.5,25.5,0.8,120.0,1 sausage,[],kaggle-egyptian-foods
+Kofta Liver fried,كفتة كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",201.0,24.9,0.0,12.1,0.0,80.0,2 kofta,[],kaggle-egyptian-foods
+Stuffed Liver grilled,محشي كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",173.0,24.9,0.0,8.1,0.0,80.0,2 kofta,[],kaggle-egyptian-foods
+Molokhia Tomato fried,ملوخية طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",55.0,1.2,12.2,0.2,2.2,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Zucchini homemade,كفتة كوسة بيتي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,5.7,0.2,1.2,100.0,2 zucchinis,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Fava Beans grilled,سلطة فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",171.0,12.8,32.1,0.7,8.3,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Beef grilled,سلطة لحمة مشوي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",215.0,26.1,0.0,13.4,0.0,100.0,2 slices,[],kaggle-egyptian-foods
+Kofta Garlic baladi,كفتة ثوم بلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",143.0,6.4,29.9,2.8,3.8,100.0,2 kofta,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Fish Alexandrian style,سلطة سمك إسكندراني,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.2,0.0,7.4,0.0,100.0,1 fillet,[],kaggle-egyptian-foods
+Fava Beans Shrimp with sauce,فول جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",127.0,19.2,4.2,2.5,0.5,100.0,5 shrimp,[],kaggle-egyptian-foods
+Fattah Lentils spicy,فتة عدس سبايسي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.9,7.9,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Zucchini with ghee baladi,شوربة كوسة بالسمنة البلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",36.0,1.2,7.6,0.4,1.2,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Fish grilled,أرز سمك مشوي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,7.5,0.0,150.0,1 piece,[],kaggle-egyptian-foods
+Kofta Liver grilled,كفتة كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,5.0,12.0,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Lentils homemade,كشري عدس بيتي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,1.5,4.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Lentils with onion,ساندويتش عدس بالبصل,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",120.0,9.5,22.0,2.0,4.5,180.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Chicken baladi,طاجن فراخ بلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,5.0,6.0,1.0,160.0,1 piece,[],kaggle-egyptian-foods
+Pasta Shrimp with onion,مكرونة جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,3.5,1.0,140.0,1 piece,[],kaggle-egyptian-foods
+Moussaka Lentils in the oven,مسقعة عدس في الفرن,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",125.0,9.5,22.5,2.5,5.0,220.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Onion baladi,شوربة بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.5,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Potato spicy,محشي بطاطس سبايسي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,3.5,150.0,1 medium,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Tomato baladi,طعمية طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.0,6.0,0.2,1.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Peas Alexandrian style,أرز بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.0,25.0,1.0,4.5,180.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Tomato homemade,ساندويتش طماطم بيتي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.0,6.0,0.2,1.5,120.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Lentils fried,مكرونة عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",150.0,10.0,25.0,5.0,5.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Shrimp in the oven,صينية جمبري في الفرن,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,3.5,1.0,140.0,1 piece,[],kaggle-egyptian-foods
+Salad Spinach grilled,سلطة سبانخ مشوي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",25.0,3.0,5.0,0.5,2.0,80.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Shrimp grilled,فتة جمبري مشوي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",121.0,18.0,4.0,2.5,0.5,200.0,1 plate,[],kaggle-egyptian-foods
+Pasta Rice with onion,مكرونة أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,28.0,2.0,1.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Zucchini in the oven,كفتة كوسة في الفرن,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.0,8.0,0.5,2.0,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Shrimp baladi,فتة جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",121.0,18.0,4.0,2.5,0.5,200.0,1 plate,[],kaggle-egyptian-foods
+Kebab Garlic with ghee baladi,كباب ثوم بالسمنة البلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",170.0,15.0,10.0,10.0,2.0,120.0,2 skewers,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Fava Beans homemade,ورق عنب فول بيتي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",115.0,8.0,20.0,1.5,5.0,180.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Shrimp homemade,لحمة جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",121.0,18.0,4.0,2.5,0.5,200.0,1 plate,[],kaggle-egyptian-foods
+Rice Potato baladi,أرز بطاطس بلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Zucchini with onion,طعمية كوسة بالبصل,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.0,8.0,0.5,2.0,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Garlic in the oven,كشري ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",170.0,5.0,25.0,8.0,3.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Sausage with onion,مسقعة سجق بالبصل,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,10.0,18.0,2.0,150.0,1 slice,[],kaggle-egyptian-foods
+Molokhia Fish grilled,ملوخية سمك مشوي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,3.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Vine Leaves Potato Alexandrian style,ورق عنب بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Zucchini grilled,كباب كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.0,8.0,0.5,2.0,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Lentils Alexandrian style,سمك عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,1.0,5.0,180.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Tomato spicy,محشي طماطم سبايسي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.2,0.2,2.2,200.0,2 tomatoes,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Fava Beans baladi,كباب فول بلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.5,26.8,1.2,8.0,150.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Potato with onion,كباب بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,24.0,0.5,2.5,120.0,1 medium potato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Tomato baladi,أرز طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.0,28.0,2.0,1.5,180.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Garlic with sauce,كفتة ثوم بالصلصة,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",120.0,6.0,6.0,7.0,0.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Fish with onion,شوربة سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,150.0,1 bowl,[],kaggle-egyptian-foods
+Vine Leaves Zucchini homemade,ورق عنب كوسة بيتي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.5,0.2,1.5,100.0,4-6 leaves,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Shrimp baladi,طاجن جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,0.0,2.0,0.0,120.0,1 cup cooked,[],kaggle-egyptian-foods
+Fish Peas grilled,سمك بسلة مشوي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,0.5,5.0,80.0,1/2 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Chicken grilled,كشري فراخ مشوي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,6.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Pasta Chicken in the oven,مكرونة فراخ في الفرن,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,10.0,8.0,0.5,150.0,1 piece,[],kaggle-egyptian-foods
+Okra Zucchini spicy,بامية كوسة سبايسي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",35.0,1.5,7.0,0.2,2.0,120.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Sausage with sauce,سلطة سجق بالصلصة,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",300.0,15.0,5.0,25.0,0.0,100.0,2 slices,[],kaggle-egyptian-foods
+Okra Fish in the oven,بامية سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Beef Peas spicy,لحمة بسلة سبايسي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,0.5,5.0,80.0,1/2 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Zucchini baladi,سمك كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.5,8.0,0.5,1.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Fava Beans with sauce,مسقعة فول بالصلصة,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",155.0,10.3,25.0,4.5,6.5,300.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Sausage fried,فول سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,2.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Kofta Spinach in the oven,كفتة سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.5,4.0,1.0,2.0,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Lentils Alexandrian style,طعمية عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Liver grilled,مكرونة كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,6.0,0.0,120.0,2 slices,[],kaggle-egyptian-foods
+Chicken Onion with onion,فراخ بصل بالبصل,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Fish fried,سمك سمك مقلي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,0.0,10.0,0.0,120.0,2 pieces,[],kaggle-egyptian-foods
+Salad Liver with onion,سلطة كبدة بالبصل,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,6.0,0.0,120.0,2 slices,[],kaggle-egyptian-foods
+Koshari Garlic baladi,كشري ثوم بلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,10.0,0.5,2.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Rice in the oven,لحمة أرز في الفرن,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,1.0,0.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Rice with sauce,فول أرز بالصلصة,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",150.0,5.0,30.0,2.0,1.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Zucchini fried,طعمية كوسة مقلي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.0,10.0,2.0,1.5,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Lentils baladi,شوربة عدس بلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Onion baladi,صينية بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Beef fried,فراخ لحمة مقلي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",233.0,15.6,6.3,14.5,1.2,150.0,1 plate,[],kaggle-egyptian-foods
+Molokhia Beef Alexandrian style,ملوخية لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",201.0,18.2,6.5,11.4,1.5,200.0,1 bowl,[],kaggle-egyptian-foods
+Vine Leaves Tomato Alexandrian style,ورق عنب طماطم إسكندراني,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.5,2.1,100.0,4-6 leaves,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Zucchini grilled,فراخ كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",36.0,2.7,6.2,0.6,1.2,120.0,1 zucchini,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Potato with sauce,طعمية بطاطس بالصلصة,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",154.0,2.5,24.8,4.8,2.3,150.0,2 patties,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Rice with sauce,سمك أرز بالصلصة,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",192.0,4.3,28.5,6.2,0.8,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Spinach grilled,أرز سبانخ مشوي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",23.0,2.9,3.6,0.4,1.7,80.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Rice in the oven,فول أرز في الفرن,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",165.0,3.5,30.8,3.5,1.1,180.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Potato with onion,طاجن بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.1,24.2,0.5,2.5,160.0,1 medium potato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Peas in the oven,لحمة بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.4,13.4,0.4,4.1,120.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Zucchini with ghee baladi,سلطة كوسة بالسمنة البلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",36.0,1.2,6.2,1.8,1.2,100.0,1 zucchini,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Peas homemade,طاجن بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.4,13.4,0.4,4.1,120.0,1 cup cooked,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Chicken with ghee baladi,ملوخية فراخ بالسمنة البلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",143.0,12.1,6.3,7.3,1.2,180.0,1 bowl,[],kaggle-egyptian-foods
+Molokhia Beef with onion,ملوخية لحمة بالبصل,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",201.0,18.2,6.5,11.4,1.5,200.0,1 bowl,[],kaggle-egyptian-foods
+Molokhia Garlic homemade,ملوخية ثوم بيتي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",51.0,1.5,11.2,0.2,2.9,80.0,3-4 cloves,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Okra with ghee baladi,محشي بامية بالسمنة البلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.5,6.0,8.0,2.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Spinach fried,سمك سبانخ مقلي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,4.0,8.0,2.0,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Beef homemade,فتة لحمة بيتي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,10.0,12.0,2.0,250.0,1 plate,[],kaggle-egyptian-foods
+Fattah Garlic in the oven,فتة ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",100.0,2.0,20.0,2.0,4.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Peas with ghee baladi,كفتة بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",120.0,5.0,20.0,2.0,4.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Chicken grilled,بامية فراخ مشوي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,20.0,4.0,8.0,2.0,200.0,1 serving,[],kaggle-egyptian-foods
+Tray Bake Liver homemade,صينية كبدة بيتي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,12.0,0.0,150.0,2 pieces,[],kaggle-egyptian-foods
+Kebab Peas in the oven,كباب بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.0,20.0,2.0,4.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Rice Alexandrian style,فراخ أرز إسكندراني,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,10.0,30.0,6.0,2.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Fish Alexandrian style,ساندويتش سمك إسكندراني,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,4.0,8.0,2.0,150.0,1 sandwich,[],kaggle-egyptian-foods
+Koshari Chicken spicy,كشري فراخ سبايسي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,10.0,8.0,2.0,250.0,1 plate,[],kaggle-egyptian-foods
+Kofta Onion baladi,كفتة بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",80.0,2.0,15.0,2.0,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Okra with sauce,مسقعة بامية بالصلصة,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.5,6.0,8.0,2.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Lentils Alexandrian style,كباب عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",160.0,10.0,20.0,6.0,4.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Beef homemade,صينية لحمة بيتي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,0.0,12.0,0.0,250.0,1 plate,[],kaggle-egyptian-foods
+Fish Shrimp with onion,سمك جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",121.0,18.2,4.2,2.5,0.8,200.0,1 plate,[],kaggle-egyptian-foods
+Salad Onion with onion,سلطة بصل بالبصل,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.2,2.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Okra fried,فول بامية مقلي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",111.0,2.5,12.5,7.5,3.5,120.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Okra in the oven,كباب بامية في الفرن,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",51.0,2.0,9.0,0.5,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Tomato homemade,بامية طماطم بيتي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",22.0,1.0,5.0,0.2,1.5,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Onion Alexandrian style,فراخ بصل إسكندراني,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,5.0,7.0,1.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Okra homemade,محشي بامية بيتي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.5,10.0,1.5,3.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Rice spicy,شوربة أرز سبايسي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,2.5,0.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Tomato fried,كفتة طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",95.0,2.5,10.0,5.0,1.5,120.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Fava Beans with sauce,أرز فول بالصلصة,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.0,20.0,5.0,5.0,250.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Chicken spicy,ورق عنب فراخ سبايسي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,20.0,5.0,8.0,1.0,200.0,1 plate,[],kaggle-egyptian-foods
+Molokhia Liver homemade,ملوخية كبدة بيتي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",180.0,25.0,0.0,10.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Chicken Peas in the oven,فراخ بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.0,20.0,2.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Shrimp baladi,سلطة جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",100.0,15.0,0.0,2.0,0.0,100.0,1 serving,[],kaggle-egyptian-foods
+Vine Leaves Spinach homemade,ورق عنب سبانخ بيتي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",25.0,3.0,5.0,0.5,2.0,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Sausage fried,بامية سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",233.0,11.4,6.3,17.4,2.5,120.0,2 sausages,[],kaggle-egyptian-foods
+Fish Liver with ghee baladi,سمك كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",201.0,26.7,0.0,12.1,0.0,100.0,1 liver piece,[],kaggle-egyptian-foods
+Stuffed Liver fried,محشي كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",223.0,25.9,2.5,14.5,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Moussaka Fish with sauce,مسقعة سمك بالصلصة,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",156.0,20.2,4.2,6.3,1.2,200.0,1 bowl,[],kaggle-egyptian-foods
+Taameya Chicken with sauce,طعمية فراخ بالصلصة,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",186.0,18.1,6.5,9.4,1.8,150.0,1 bowl,[],kaggle-egyptian-foods
+Chicken Beef spicy,فراخ لحمة سبايسي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",242.0,22.1,2.1,17.1,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Shrimp baladi,كشري جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",127.0,16.2,4.8,2.9,1.0,150.0,1 bowl,[],kaggle-egyptian-foods
+Beef Lentils with ghee baladi,لحمة عدس بالسمنة البلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",165.0,9.2,23.4,4.8,3.8,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Rice baladi,طعمية أرز بلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.2,28.5,1.4,0.6,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Garlic grilled,سمك ثوم مشوي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",143.0,20.5,0.0,6.1,0.0,120.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Peas Alexandrian style,فراخ بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.5,1.2,4.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Liver with sauce,كفتة كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",221.0,24.9,2.9,14.1,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Soup Rice baladi,شوربة أرز بلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",108.0,2.1,23.1,1.1,0.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Chicken Alexandrian style,صينية فراخ إسكندراني,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",173.0,18.3,6.2,8.2,1.2,150.0,1 piece,[],kaggle-egyptian-foods
+Sandwich Fish with onion,ساندويتش سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",159.0,19.2,4.5,6.8,1.0,120.0,1 sandwich,[],kaggle-egyptian-foods
+Fava Beans Chicken homemade,فول فراخ بيتي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,18.2,6.3,6.5,2.5,250.0,1 bowl,[],kaggle-egyptian-foods
+Koshari Beef grilled,كشري لحمة مشوي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.5,6.8,11.2,1.8,200.0,1 plate,[],kaggle-egyptian-foods
+Stuffed Lentils fried,محشي عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",192.0,15.6,20.8,7.2,4.5,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Shrimp baladi,مكرونة جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",140.0,16.8,4.5,4.8,1.2,300.0,1 plate,[],kaggle-egyptian-foods
+Okra Fish fried,بامية سمك مقلي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.5,4.2,8.5,1.5,250.0,1 plate,[],kaggle-egyptian-foods
+Chicken Beef with onion,فراخ لحمة بالبصل,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,22.1,6.5,10.5,1.8,250.0,1 bowl,[],kaggle-egyptian-foods
+Pasta Zucchini with ghee baladi,مكرونة كوسة بالسمنة البلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.5,10.3,2.2,2.1,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Shrimp with ghee baladi,ملوخية جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",160.0,14.2,8.5,6.8,2.2,250.0,1 bowl,[],kaggle-egyptian-foods
+Koshari Fava Beans fried,كشري فول مقلي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",210.0,15.1,24.5,8.8,5.1,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Peas homemade,أرز بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",110.0,5.5,20.8,1.8,3.5,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Spinach in the oven,سلطة سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.2,3.5,0.2,2.2,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Chicken baladi,سمك فراخ بلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",170.0,19.5,5.8,7.2,1.8,250.0,1 bowl,[],kaggle-egyptian-foods
+Stuffed Garlic baladi,محشي ثوم بلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",120.0,3.8,25.5,2.5,4.8,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Shrimp Alexandrian style,ساندويتش جمبري إسكندراني,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",140.0,16.2,4.2,5.5,1.2,200.0,1 sandwich,[],kaggle-egyptian-foods
+Molokhia Fava Beans Alexandrian style,ملوخية فول إسكندراني,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",160.0,14.5,20.2,6.2,4.2,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Fish with ghee baladi,طعمية سمك بالسمنة البلدي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,8.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Tagine Peas fried,طاجن بسلة مقلي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.0,20.0,2.0,5.0,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Chicken homemade,كشري فراخ بيتي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,20.0,10.0,2.0,200.0,1 plate,[],kaggle-egyptian-foods
+Fish Potato with sauce,سمك بطاطس بالصلصة,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,0.5,2.5,150.0,1 medium potato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Tomato with onion,بامية طماطم بالبصل,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",30.0,1.5,7.0,0.2,2.0,80.0,1/2 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Rice fried,كباب أرز مقلي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,2.5,35.0,4.0,0.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Rice in the oven,صينية أرز في الفرن,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.0,30.0,1.5,0.5,120.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Chicken with onion,طعمية فراخ بالبصل,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,20.0,5.0,6.0,1.0,100.0,1 piece,[],kaggle-egyptian-foods
+Fish Beef with ghee baladi,سمك لحمة بالسمنة البلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,12.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Kebab Okra baladi,كباب بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,10.0,0.5,3.0,80.0,1/2 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Fish homemade,ساندويتش سمك بيتي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,5.0,4.0,0.0,100.0,1 sandwich,[],kaggle-egyptian-foods
+Chicken Peas baladi,فراخ بسلة بلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",0,5.0,20.0,1.0,5.0,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Lentils with sauce,بامية عدس بالصلصة,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Tomato baladi,طاجن طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",20.0,1.0,5.0,0.2,2.0,80.0,1/2 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Potato fried,فول بطاطس مقلي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.5,25.0,1.0,3.5,120.0,1 medium potato,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Onion in the oven,ساندويتش بصل في الفرن,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.2,2.5,150,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Tomato fried,لحمة طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",120.0,10.3,6.2,6.5,2.1,200,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Rice Alexandrian style,ملوخية أرز إسكندراني,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,2.5,1.5,250,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Zucchini in the oven,سمك كوسة في الفرن,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.5,0.5,1.5,100,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Sausage spicy,محشي سجق سبايسي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,5.0,18.0,0.5,100,1 sausage,[],kaggle-egyptian-foods
+Chicken Beef Alexandrian style,فراخ لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",160.0,20.0,5.0,8.0,1.0,200,1 serving,[],kaggle-egyptian-foods
+Chicken Potato in the oven,فراخ بطاطس في الفرن,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.0,15.0,0.5,2.0,150,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Zucchini grilled,فتة كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",30.0,1.5,6.0,0.5,1.5,100,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Fish baladi,فتة سمك بلدي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",120.0,20.0,0.0,2.0,0.0,150,1 serving,[],kaggle-egyptian-foods
+Fish Onion baladi,سمك بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.2,2.5,150,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Tomato with ghee baladi,فول طماطم بالسمنة البلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",110.0,5.0,20.0,2.0,5.0,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Peas grilled,بامية بسلة مشوي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",60.0,3.0,10.0,0.5,3.0,100,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Chicken in the oven,سلطة فراخ في الفرن,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,25.0,5.0,4.0,1.0,200,1 serving,[],kaggle-egyptian-foods
+Fish Peas homemade,سمك بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,15.0,5.0,2.0,2.0,150,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Shrimp baladi,ساندويتش جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",90.0,15.0,0.0,1.5,0.0,100,1 sandwich,[],kaggle-egyptian-foods
+Vine Leaves Peas in the oven,ورق عنب بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",83.0,5.4,12.2,2.3,4.1,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Garlic grilled,مكرونة ثوم مشوي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",160.0,4.0,25.0,6.0,2.0,120.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Tomato with onion,لحمة طماطم بالبصل,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,6.0,12.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Liver with sauce,طعمية كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,30.0,8.0,14.0,2.0,180.0,1 serving,[],kaggle-egyptian-foods
+Soup Okra baladi,شوربة بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",50.0,2.0,10.0,0.5,3.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Potato with ghee baladi,ساندويتش بطاطس بالسمنة البلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,20.0,2.0,2.0,100.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Fish Alexandrian style,فتة سمك إسكندراني,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Chicken Tomato in the oven,فراخ طماطم في الفرن,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,10.0,6.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Sausage grilled,طعمية سجق مشوي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",260.0,15.0,10.0,18.0,2.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Tagine Fava Beans grilled,طاجن فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",120.0,8.0,20.0,2.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Spinach with ghee baladi,كباب سبانخ بالسمنة البلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.0,3.0,0.5,2.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Okra fried,فتة بامية مقلي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.0,10.0,1.0,3.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Peas with sauce,شوربة بسلة بالصلصة,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",80.0,5.0,12.0,2.0,4.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Zucchini spicy,سلطة كوسة سبايسي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,2.0,5.0,0.5,2.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Liver fried,شوربة كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",280.0,30.0,8.0,18.0,2.0,150.0,1 serving,[],kaggle-egyptian-foods
+Kebab Fava Beans in the oven,كباب فول في الفرن,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.5,26.5,4.5,8.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Beef grilled,كباب لحمة مشوي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",245.0,26.5,0.0,17.5,0.0,120.0,2 skewers,[],kaggle-egyptian-foods
+Koshari Tomato homemade,كشري طماطم بيتي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",95.0,2.5,20.5,2.0,2.5,300.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Tomato with onion,شوربة طماطم بالبصل,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.5,9.0,0.5,2.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Beef Alexandrian style,مسقعة لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",320.0,25.0,10.0,25.0,2.0,250.0,1 slice,[],kaggle-egyptian-foods
+Tagine Garlic with sauce,طاجن ثوم بالصلصة,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",120.0,3.0,25.0,4.0,4.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Spinach with onion,كشري سبانخ بالبصل,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",25.0,3.0,4.0,0.5,2.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Onion baladi,طعمية بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Zucchini baladi,سلطة كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.0,0.5,1.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Rice baladi,سمك أرز بلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,1.5,0.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Zucchini spicy,لحمة كوسة سبايسي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",60.0,3.5,10.0,1.5,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Liver with onion,مكرونة كبدة بالبصل,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,5.0,15.0,0.0,200.0,1 serving,[],kaggle-egyptian-foods
+Rice Spinach Alexandrian style,أرز سبانخ إسكندراني,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",120.0,5.0,25.0,2.5,2.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Lentils in the oven,كباب عدس في الفرن,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,7.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Okra in the oven,كشري بامية في الفرن,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",30.0,2.0,6.0,0.5,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Peas Alexandrian style,كفتة بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",105.0,5.4,18.2,2.3,5.1,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Okra Alexandrian style,كشري بامية إسكندراني,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",51.0,2.0,9.0,0.2,3.2,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Sausage with ghee baladi,سمك سجق بالسمنة البلدي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",220.0,15.0,0.0,18.0,0.0,100.0,2 slices,[],kaggle-egyptian-foods
+Tray Bake Rice spicy,صينية أرز سبايسي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,28.0,2.0,0.6,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Lentils grilled,فتة عدس مشوي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.9,7.9,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Liver with sauce,ورق عنب كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,8.0,0.0,120.0,2 pieces,[],kaggle-egyptian-foods
+Rice Garlic fried,أرز ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",190.0,2.5,40.0,4.0,0.8,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Shrimp with onion,أرز جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,0.0,2.0,0.0,150.0,1 cup,[],kaggle-egyptian-foods
+Chicken Fish in the oven,فراخ سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,4.0,0.0,150.0,1 piece,[],kaggle-egyptian-foods
+Stuffed Spinach baladi,محشي سبانخ بلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.0,3.0,0.2,2.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Potato in the oven,كشري بطاطس في الفرن,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.0,0.5,2.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Rice with ghee baladi,أرز أرز بالسمنة البلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,28.0,2.0,0.6,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Lentils fried,كفتة عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.9,7.9,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Fava Beans spicy,أرز فول سبايسي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,7.0,20.0,0.5,5.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Tomato spicy,ساندويتش طماطم سبايسي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",22.0,1.0,5.0,0.2,1.5,100.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Liver fried,ملوخية كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.6,4.4,13.4,0.5,120,1 serving,[],kaggle-egyptian-foods
+Taameya Okra Alexandrian style,طعمية بامية إسكندراني,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",129.0,2.5,8.5,9.3,3.2,150,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Zucchini baladi,فول كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.5,0.3,1.2,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Zucchini fried,شوربة كوسة مقلي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",36.0,1.1,7.6,0.2,1.1,120,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Shrimp with ghee baladi,كباب جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",168.0,16.2,0.5,11.4,0.1,100,4 pieces,[],kaggle-egyptian-foods
+Taameya Shrimp in the oven,طعمية جمبري في الفرن,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",114.0,19.2,0.2,2.4,0.1,120,4 pieces,[],kaggle-egyptian-foods
+Vine Leaves Spinach baladi,ورق عنب سبانخ بلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",23.0,2.9,3.6,0.4,2.2,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Garlic fried,فراخ ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",242.0,26.3,6.3,12.6,0.6,120,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Rice Alexandrian style,ساندويتش أرز إسكندراني,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.7,28.5,1.3,0.6,150,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Onion with ghee baladi,كفتة بصل بالسمنة البلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,0.8,11.3,0.1,2.6,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Chicken baladi,ورق عنب فراخ بلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.6,0.4,9.3,0.2,120,4 pieces,[],kaggle-egyptian-foods
+Kebab Sausage baladi,كباب سجق بلدي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,14.1,0.0,23.4,0.0,100,2 pieces,[],kaggle-egyptian-foods
+Fattah Fava Beans homemade,فتة فول بيتي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",133.0,9.1,22.1,1.3,5.1,150,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Fish homemade,أرز سمك بيتي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",182.0,20.8,0.0,9.5,0.0,120,1 serving,[],kaggle-egyptian-foods
+Okra Tomato fried,بامية طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",51.0,1.2,11.7,0.2,3.2,100,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Spinach with onion,بامية سبانخ بالبصل,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,2.9,6.7,0.2,2.5,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Beef with ghee baladi,طعمية لحمة بالسمنة البلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",245.0,20.5,10.3,15.6,1.2,120,2 pieces,[],kaggle-egyptian-foods
+Rice Okra with onion,أرز بامية بالبصل,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",40.0,2.0,8.0,0.5,3.0,250,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Rice fried,طعمية أرز مقلي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,3.5,0.5,150,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Onion grilled,شوربة بصل مشوي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.0,100,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Lentils in the oven,كشري عدس في الفرن,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.9,7.5,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Liver Alexandrian style,لحمة كبدة إسكندراني,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,10.0,0.0,120,2 slices,[],kaggle-egyptian-foods
+Pasta Shrimp homemade,مكرونة جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",95.0,15.0,5.0,2.0,0.0,150,1 plate,[],kaggle-egyptian-foods
+Stuffed Sausage with ghee baladi,محشي سجق بالسمنة البلدي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,0.0,100,1 piece,[],kaggle-egyptian-foods
+Koshari Fish in the oven,كشري سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,150,1 piece,[],kaggle-egyptian-foods
+Tray Bake Fava Beans with sauce,صينية فول بالصلصة,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,8.0,20.0,0.5,5.0,200,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Beef spicy,كباب لحمة سبايسي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",210.0,25.0,0.0,15.0,0.0,120,2 pieces,[],kaggle-egyptian-foods
+Okra Zucchini grilled,بامية كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.0,0.5,1.5,150,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Chicken with ghee baladi,مكرونة فراخ بالسمنة البلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,20.0,5.0,8.0,0.0,150,1 plate,[],kaggle-egyptian-foods
+Fish Onion Alexandrian style,سمك بصل إسكندراني,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",70.0,3.0,15.0,0.5,2.5,100,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Potato fried,أرز بطاطس مقلي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",173.0,2.5,24.5,7.5,2.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Onion spicy,فراخ بصل سبايسي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,4.5,8.0,1.5,150.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Zucchini grilled,شوربة كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.5,5.5,0.5,1.5,300.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Liver baladi,لحمة كبدة بلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.5,0.0,6.5,0.0,120.0,2 slices,[],kaggle-egyptian-foods
+Koshari Zucchini spicy,كشري كوسة سبايسي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,2.0,9.0,0.5,2.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Fava Beans with sauce,لحمة فول بالصلصة,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.0,20.0,2.5,5.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Lentils baladi,فول عدس بلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Sausage in the oven,سلطة سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,0.0,100.0,1 piece,[],kaggle-egyptian-foods
+Taameya Spinach baladi,طعمية سبانخ بلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.5,5.0,1.0,2.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Beef spicy,صينية لحمة سبايسي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,0.0,10.0,0.0,150.0,1 piece,[],kaggle-egyptian-foods
+Fish Sausage Alexandrian style,سمك سجق إسكندراني,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",300.0,15.0,5.0,25.0,0.0,100.0,1 piece,[],kaggle-egyptian-foods
+Fava Beans Liver Alexandrian style,فول كبدة إسكندراني,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",180.0,20.0,5.0,8.0,0.0,120.0,2 slices,[],kaggle-egyptian-foods
+Chicken Fish spicy,فراخ سمك سبايسي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,150.0,1 piece,[],kaggle-egyptian-foods
+Soup Fish in the oven,شوربة سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",80.0,15.0,0.0,2.0,0.0,200.0,1 bowl,[],kaggle-egyptian-foods
+Okra Lentils homemade,بامية عدس بيتي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Tomato in the oven,سلطة طماطم في الفرن,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.2,0.2,2.2,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Fish fried,أرز سمك مقلي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",230.0,20.0,10.0,12.0,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Vine Leaves Sausage in the oven,ورق عنب سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,1.0,150.0,1 serving,[],kaggle-egyptian-foods
+Fava Beans Fava Beans Alexandrian style,فول فول إسكندراني,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",115.0,8.0,20.0,0.5,5.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Peas fried,مكرونة بسلة مقلي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",110.0,5.0,20.0,2.0,4.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Onion homemade,فتة بصل بيتي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,10.0,0.5,2.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Onion in the oven,فراخ بصل في الفرن,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.0,10.0,6.0,2.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Rice baladi,سلطة أرز بلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,25.0,2.5,0.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Garlic homemade,لحمة ثوم بيتي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",160.0,10.0,5.0,10.0,1.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Beef fried,كباب لحمة مقلي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",250.0,20.0,0.0,18.0,0.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Fava Beans Sausage spicy,فول سجق سبايسي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,15.0,5.0,20.0,1.0,120.0,1 serving,[],kaggle-egyptian-foods
+Fish Rice grilled,سمك أرز مشوي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,10.0,20.0,6.0,1.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Chicken with ghee baladi,فول فراخ بالسمنة البلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",200.0,15.0,20.0,8.0,5.0,250.0,1 bowl,[],kaggle-egyptian-foods
+Pasta Lentils with ghee baladi,مكرونة عدس بالسمنة البلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,15.0,30.0,8.0,5.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Spinach spicy,أرز سبانخ سبايسي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",70.0,3.5,10.0,1.0,4.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Beef in the oven,لحمة لحمة في الفرن,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.3,0.0,13.4,0.0,200.0,1 serving,[],kaggle-egyptian-foods
+Koshari Chicken fried,كشري فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",242.0,29.8,6.3,12.2,1.2,250.0,1 plate,[],kaggle-egyptian-foods
+Fish Garlic homemade,سمك ثوم بيتي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",105.0,20.4,6.7,1.3,2.1,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Onion spicy,ملوخية بصل سبايسي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.4,10.3,0.2,2.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Shrimp with sauce,شوربة جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",127.0,20.5,4.2,2.5,0.5,200.0,1 bowl,[],kaggle-egyptian-foods
+Moussaka Chicken fried,مسقعة فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",242.0,29.8,6.3,12.2,1.2,250.0,1 plate,[],kaggle-egyptian-foods
+Fava Beans Liver with ghee baladi,فول كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.3,0.0,13.4,0.0,200.0,1 serving,[],kaggle-egyptian-foods
+Fava Beans Fish homemade,فول سمك بيتي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",105.0,20.4,6.7,1.3,2.1,150.0,1 serving,[],kaggle-egyptian-foods
+Beef Garlic fried,لحمة ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.3,0.0,13.4,0.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Rice fried,ساندويتش أرز مقلي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.6,28.5,2.2,0.6,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Chicken baladi,أرز فراخ بلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",242.0,29.8,6.3,12.2,1.2,250.0,1 plate,[],kaggle-egyptian-foods
+Vine Leaves Lentils with sauce,ورق عنب عدس بالصلصة,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.5,0.9,7.9,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Tomato in the oven,ملوخية طماطم في الفرن,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,6.0,0.2,2.2,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Okra fried,كباب بامية مقلي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",31.0,1.9,7.4,0.2,3.2,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Lentils Alexandrian style,صينية عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.5,0.9,7.9,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Rice grilled,كباب أرز مشوي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",188.0,2.6,30.0,6.4,0.6,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Fish baladi,صينية سمك بلدي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,4.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Moussaka Potato with ghee baladi,مسقعة بطاطس بالسمنة البلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.0,25.0,2.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Rice spicy,بامية أرز سبايسي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",192.0,2.6,32.0,6.8,0.8,220.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Chicken Alexandrian style,فول فراخ إسكندراني,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,15.0,10.0,6.0,2.0,180.0,1 serving,[],kaggle-egyptian-foods
+Soup Peas homemade,شوربة بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.0,15.0,1.0,4.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Tomato fried,سمك طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",120.0,10.0,5.0,4.0,1.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Beef homemade,فراخ لحمة بيتي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",200.0,20.0,0.0,12.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Beef Okra baladi,لحمة بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",0,3.0,20.0,2.0,3.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Zucchini baladi,كباب كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.0,5.0,0.5,1.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Garlic with ghee baladi,ورق عنب ثوم بالسمنة البلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.0,20.0,4.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Lentils with ghee baladi,شوربة عدس بالسمنة البلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.9,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Zucchini with ghee baladi,أرز كوسة بالسمنة البلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.5,8.0,0.5,1.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Lentils homemade,فول عدس بيتي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.9,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Spinach homemade,طعمية سبانخ بيتي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",20.0,3.0,2.0,0.5,2.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Chicken grilled,فراخ فراخ مشوي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,26.5,0.0,3.5,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Chicken Lentils grilled,فراخ عدس مشوي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Tomato with onion,كفتة طماطم بالبصل,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",60.0,1.5,12.0,0.5,2.5,100.0,1 kofta,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Peas homemade,فتة بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,2.0,5.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Peas Alexandrian style,ملوخية بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,2.0,5.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Rice spicy,أرز أرز سبايسي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,28.0,1.5,0.5,100.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Lentils with ghee baladi,صينية عدس بالسمنة البلدي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",115.0,9.0,20.0,0.5,8.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Garlic with sauce,ساندويتش ثوم بالصلصة,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.5,20.0,4.0,2.0,80.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Peas homemade,كباب بسلة بيتي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,2.0,5.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Chicken with ghee baladi,بامية فراخ بالسمنة البلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",170.0,20.0,5.0,8.0,2.0,120.0,1 piece,[],kaggle-egyptian-foods
+Taameya Chicken fried,طعمية فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",220.0,20.0,10.0,12.0,2.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Okra Liver fried,بامية كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,25.0,5.0,15.0,2.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Pasta Beef fried,مكرونة لحمة مقلي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",280.0,20.0,20.0,16.0,2.0,150.0,1 plate,[],kaggle-egyptian-foods
+Fish Rice in the oven,سمك أرز في الفرن,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",150.0,10.0,25.0,4.0,1.0,150.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Liver with sauce,فراخ كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,5.0,12.0,2.0,120.0,1 piece,[],kaggle-egyptian-foods
+Tray Bake Tomato fried,صينية طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.2,0.2,2.2,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Sausage in the oven,ساندويتش سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,4.0,25.0,0.5,100.0,1 sausage,[],kaggle-egyptian-foods
+Vine Leaves Liver with ghee baladi,ورق عنب كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,6.0,0.0,120.0,3 pieces,[],kaggle-egyptian-foods
+Okra Peas baladi,بامية بسلة بلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",31.0,2.5,6.0,0.2,2.9,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Beef Garlic with ghee baladi,لحمة ثوم بالسمنة البلدي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",230.0,25.0,6.0,12.0,0.5,150.0,3 oz,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Fish spicy,مسقعة سمك سبايسي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,3.0,0.0,120.0,3 oz,[],kaggle-egyptian-foods
+Okra Garlic spicy,بامية ثوم سبايسي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",49.0,1.5,11.7,0.1,3.2,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Fava Beans spicy,طاجن فول سبايسي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,7.0,19.0,0.5,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Peas Alexandrian style,سلطة بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.0,14.5,0.5,4.5,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Liver with ghee baladi,مسقعة كبدة بالسمنة البلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",210.0,25.0,0.0,12.0,0.0,120.0,3 pieces,[],kaggle-egyptian-foods
+Pasta Fava Beans fried,مكرونة فول مقلي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",150.0,9.0,25.0,2.0,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Peas spicy,طاجن بسلة سبايسي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",120.0,6.0,20.0,1.0,5.0,150.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Fish with onion,محشي سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,3.0,0.0,120.0,3 oz,[],kaggle-egyptian-foods
+Kebab Shrimp Alexandrian style,كباب جمبري إسكندراني,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",110.0,19.0,0.0,1.0,0.0,100.0,4 pieces,[],kaggle-egyptian-foods
+Koshari Liver fried,كشري كبدة مقلي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",230.0,25.0,6.0,12.0,0.5,150.0,3 oz,[],kaggle-egyptian-foods
+Molokhia Potato in the oven,ملوخية بطاطس في الفرن,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",105.0,2.5,23.0,0.5,3.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Onion fried,كباب بصل مقلي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",120.0,1.5,20.0,6.0,2.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Fava Beans grilled,محشي فول مشوي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",115.0,8.0,20.0,1.5,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Beef baladi,طاجن لحمة بلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,25.0,10.0,12.0,1.0,250.0,1 bowl,[],kaggle-egyptian-foods
+Stuffed Potato baladi,محشي بطاطس بلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,0.5,3.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Rice fried,كشري أرز مقلي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",130.0,2.5,30.0,2.0,1.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Shrimp with ghee baladi,أرز جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",180.0,15.0,10.0,10.0,0.5,200.0,1 serving,[],kaggle-egyptian-foods
+Stuffed Okra baladi,محشي بامية بلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",60.0,2.0,12.0,0.5,3.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Tomato with sauce,أرز طماطم بالصلصة,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.0,10.0,0.0,2.0,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Rice homemade,ساندويتش أرز بيتي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",140.0,3.0,30.0,2.5,1.5,150.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Fava Beans in the oven,محشي فول في الفرن,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",120.0,8.0,20.0,1.5,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Chicken homemade,شوربة فراخ بيتي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,5.0,6.0,0.5,250.0,1 bowl,[],kaggle-egyptian-foods
+Vine Leaves Onion grilled,ورق عنب بصل مشوي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.0,10.0,0.0,2.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Okra spicy,طاجن بامية سبايسي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",70.0,2.0,15.0,0.5,3.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Sausage Alexandrian style,ملوخية سجق إسكندراني,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,10.0,18.0,1.0,200.0,1 serving,[],kaggle-egyptian-foods
+Koshari Fish with sauce,كشري سمك بالصلصة,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",143.0,20.3,0.0,6.3,0.0,200.0,1 plate,[],kaggle-egyptian-foods
+Taameya Beef in the oven,طعمية لحمة في الفرن,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",219.0,26.1,0.0,13.4,0.0,250.0,1 serving,[],kaggle-egyptian-foods
+Pasta Fava Beans spicy,مكرونة فول سبايسي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.3,26.8,4.2,6.8,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Liver with sauce,كشري كبدة بالصلصة,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",201.0,24.9,4.2,11.4,0.0,200.0,1 plate,[],kaggle-egyptian-foods
+Fava Beans Shrimp fried,فول جمبري مقلي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",172.0,18.2,6.1,7.6,2.1,150.0,1 serving,[],kaggle-egyptian-foods
+Chicken Liver homemade,فراخ كبدة بيتي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",203.0,25.5,3.8,12.1,0.0,200.0,1 serving,[],kaggle-egyptian-foods
+Rice Onion with ghee baladi,أرز بصل بالسمنة البلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",192.0,2.6,28.5,9.4,1.4,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Fava Beans homemade,بامية فول بيتي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",157.0,9.5,24.5,3.8,6.3,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Shrimp with onion,فراخ جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",179.0,17.4,5.5,8.5,1.8,150.0,1 serving,[],kaggle-egyptian-foods
+Fava Beans Potato in the oven,فول بطاطس في الفرن,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",123.0,3.5,25.2,1.4,4.2,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Beef with sauce,فول لحمة بالصلصة,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",206.0,19.2,14.1,10.3,3.5,200.0,1 plate,[],kaggle-egyptian-foods
+Vine Leaves Spinach with sauce,ورق عنب سبانخ بالصلصة,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",69.0,3.5,12.2,1.4,2.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Lentils fried,ورق عنب عدس مقلي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,18.2,25.1,9.2,7.9,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Potato homemade,فتة بطاطس بيتي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",142.0,3.1,26.4,2.5,4.1,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Rice with onion,فول أرز بالبصل,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",173.0,4.2,32.2,3.9,2.2,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Fish baladi,كباب سمك بلدي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,8.0,0.0,120.0,1 kebab,[],kaggle-egyptian-foods
+Vine Leaves Shrimp with sauce,ورق عنب جمبري بالصلصة,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,4.0,1.0,100.0,2 vine leaves,[],kaggle-egyptian-foods
+Chicken Shrimp with ghee baladi,فراخ جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",180.0,18.0,5.0,10.0,1.0,150.0,1 plate,[],kaggle-egyptian-foods
+Salad Onion in the oven,سلطة بصل في الفرن,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.0,10.0,0.0,2.0,80.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Fava Beans with ghee baladi,ساندويتش فول بالسمنة البلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",220.0,10.0,30.0,8.0,5.0,150.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Tomato fried,ورق عنب طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.0,5.0,0.0,1.0,50.0,2 vine leaves,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Onion homemade,سمك بصل بيتي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.0,15.0,2.0,2.0,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Fish with onion,فراخ سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,6.0,0.0,120.0,1 plate,[],kaggle-egyptian-foods
+Fava Beans Shrimp baladi,فول جمبري بلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,4.0,1.0,100.0,1 plate,[],kaggle-egyptian-foods
+Moussaka Liver baladi,مسقعة كبدة بلدي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,25.0,5.0,10.0,1.0,150.0,1 plate,[],kaggle-egyptian-foods
+Fish Peas spicy,سمك بسلة سبايسي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.0,15.0,2.0,2.0,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Garlic fried,مسقعة ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",150.0,3.0,20.0,6.0,2.0,80.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Fava Beans with ghee baladi,طعمية فول بالسمنة البلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",220.0,10.0,30.0,8.0,5.0,150.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Potato with sauce,ساندويتش بطاطس بالصلصة,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,0.0,2.0,120.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Sausage with sauce,ورق عنب سجق بالصلصة,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",250.0,15.0,10.0,15.0,1.0,150.0,1 plate,[],kaggle-egyptian-foods
+Kebab Okra with onion,كباب بامية بالبصل,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",92.0,2.5,12.0,4.0,3.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Sausage spicy,مكرونة سجق سبايسي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,25.0,20.0,2.0,150.0,1 plate,[],kaggle-egyptian-foods
+Rice Tomato fried,أرز طماطم مقلي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",190.0,2.0,25.0,10.0,2.0,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Stuffed Rice with sauce,محشي أرز بالصلصة,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,3.0,30.0,8.0,2.5,300.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Sausage Alexandrian style,فراخ سجق إسكندراني,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,15.0,5.0,22.0,1.0,120.0,2 pieces,[],kaggle-egyptian-foods
+Stuffed Peas grilled,محشي بسلة مشوي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",100.0,5.0,15.0,2.0,5.0,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Potato with onion,كفتة بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",140.0,2.5,25.0,6.0,3.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Chicken with onion,شوربة فراخ بالبصل,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",160.0,15.0,5.0,8.0,1.0,250.0,1 bowl,[],kaggle-egyptian-foods
+Pasta Fish spicy,مكرونة سمك سبايسي,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",200.0,20.0,10.0,12.0,1.5,200.0,1 serving,[],kaggle-egyptian-foods
+Beef Beef Alexandrian style,لحمة لحمة إسكندراني,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",240.0,25.0,0.0,18.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Rice Lentils spicy,أرز عدس سبايسي,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",230.0,18.0,30.0,10.0,8.0,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Tomato with ghee baladi,فتة طماطم بالسمنة البلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",120.0,2.0,20.0,6.0,2.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Peas Alexandrian style,طاجن بسلة إسكندراني,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",110.0,5.0,20.0,2.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Chicken spicy,بامية فراخ سبايسي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.0,10.0,6.0,3.0,200.0,1 serving,[],kaggle-egyptian-foods
+Tagine Tomato with onion,طاجن طماطم بالبصل,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",90.0,2.0,15.0,4.0,2.5,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Rice grilled,فتة أرز مشوي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",187.0,2.5,35.0,6.5,1.5,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Lentils in the oven,شوربة عدس في الفرن,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",116.0,9.0,20.0,0.5,8.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Peas in the oven,فتة بسلة في الفرن,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",84.0,5.5,16.0,0.2,5.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Onion grilled,ملوخية بصل مشوي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.0,10.0,0.1,2.5,100.0,1 side dish,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Sandwich Zucchini fried,ساندويتش كوسة مقلي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",36.0,1.5,6.0,0.5,1.5,120.0,1 sandwich,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Sausage with onion,فتة سجق بالبصل,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Chicken in the oven,كشري فراخ في الفرن,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,25.0,0.0,6.0,0.0,120.0,1 breast,[],kaggle-egyptian-foods
+Kebab Garlic homemade,كباب ثوم بيتي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",149.0,3.0,30.0,2.0,2.0,100.0,2 skewers,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Shrimp spicy,مكرونة جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,2.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Molokhia Liver spicy,ملوخية كبدة سبايسي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.0,0.0,6.0,0.0,120.0,1 serving,[],kaggle-egyptian-foods
+Tray Bake Shrimp fried,صينية جمبري مقلي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,15.0,5.0,2.0,0.0,150.0,1 serving,[],kaggle-egyptian-foods
+Kofta Potato homemade,كفتة بطاطس بيتي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,0.5,2.0,150.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Fish Alexandrian style,طاجن سمك إسكندراني,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",140.0,20.0,0.0,3.0,0.0,120.0,1 fillet,[],kaggle-egyptian-foods
+Kofta Sausage homemade,كفتة سجق بيتي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.0,10.0,25.0,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Potato with ghee baladi,كشري بطاطس بالسمنة البلدي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,0.5,2.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Tomato in the oven,طاجن طماطم في الفرن,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.2,9.2,0.2,2.2,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Garlic in the oven,ورق عنب ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",71.0,2.5,12.1,2.5,3.5,150.0,4 rolls,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Onion fried,كفتة بصل مقلي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",220.0,10.3,14.5,12.1,2.5,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fava Beans Shrimp homemade,فول جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.6,10.3,4.2,4.5,250.0,1 bowl,[],kaggle-egyptian-foods
+Soup Sausage in the oven,شوربة سجق في الفرن,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,14.5,10.9,18.2,1.5,300.0,1 bowl,[],kaggle-egyptian-foods
+Stuffed Fava Beans spicy,محشي فول سبايسي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",110.0,7.5,19.1,1.2,5.5,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Shrimp with onion,كباب جمبري بالبصل,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,16.2,4.5,2.5,0.5,150.0,4 skewers,[],kaggle-egyptian-foods
+Rice Sausage spicy,أرز سجق سبايسي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",320.0,15.6,25.9,20.5,1.5,200.0,1 plate,[],kaggle-egyptian-foods
+Pasta Zucchini Alexandrian style,مكرونة كوسة إسكندراني,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.8,8.5,0.5,2.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Rice with ghee baladi,كباب أرز بالسمنة البلدي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",180.0,3.5,30.6,6.2,1.2,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Liver Alexandrian style,كفتة كبدة إسكندراني,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",240.0,20.5,5.5,14.2,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Chicken Fava Beans in the oven,فراخ فول في الفرن,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",140.0,10.3,20.5,2.5,5.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Shrimp Alexandrian style,فتة جمبري إسكندراني,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",160.0,18.2,10.9,4.5,1.0,200.0,1 bowl,[],kaggle-egyptian-foods
+Salad Sausage fried,سلطة سجق مقلي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",300.0,15.6,10.9,22.1,1.5,250.0,1 plate,[],kaggle-egyptian-foods
+Soup Shrimp homemade,شوربة جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",100.0,15.6,4.5,1.2,0.5,200.0,1 bowl,[],kaggle-egyptian-foods
+Koshari Beef spicy,كشري لحمة سبايسي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",220.0,15.0,10.0,14.0,2.0,200.0,1 plate,[],kaggle-egyptian-foods
+Molokhia Potato with onion,ملوخية بطاطس بالبصل,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.0,25.0,1.0,3.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Tomato baladi,ورق عنب طماطم بلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",60.0,1.0,15.0,0.0,2.0,100.0,4-6 leaves,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Fava Beans fried,ملوخية فول مقلي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",170.0,10.0,20.0,8.0,5.0,120.0,1 cup,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Sausage with sauce,كفتة سجق بالصلصة,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,15.0,10.0,20.0,1.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Chicken Tomato Alexandrian style,فراخ طماطم إسكندراني,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,10.0,6.0,2.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Shrimp with ghee baladi,فتة جمبري بالسمنة البلدي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,10.0,5.0,4.0,1.0,150.0,1 serving,[],kaggle-egyptian-foods
+Beef Okra grilled,لحمة بامية مشوي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",140.0,15.0,10.0,6.0,3.0,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Lentils with onion,كباب عدس بالبصل,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",160.0,10.0,25.0,2.0,5.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Zucchini baladi,شوربة كوسة بلدي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",40.0,2.0,10.0,0.0,2.0,200.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Liver spicy,فتة كبدة سبايسي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",200.0,20.0,5.0,12.0,1.0,150.0,1 serving,[],kaggle-egyptian-foods
+Okra Beef with ghee baladi,بامية لحمة بالسمنة البلدي,Meat,"Beef, Salt, Black pepper, Oil, Onion, Tomato",240.0,20.0,10.0,16.0,3.0,200.0,1 plate,[],kaggle-egyptian-foods
+Kofta Chicken with sauce,كفتة فراخ بالصلصة,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",180.0,15.0,10.0,10.0,1.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Pasta Potato in the oven,مكرونة بطاطس في الفرن,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",160.0,4.0,30.0,4.0,3.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Pasta Onion baladi,مكرونة بصل بلدي,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",140.0,3.0,25.0,4.0,2.0,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Spinach in the oven,ورق عنب سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.2,6.3,0.5,2.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Chicken Fava Beans with ghee baladi,فراخ فول بالسمنة البلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",165.0,10.5,26.5,4.5,8.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Lentils Alexandrian style,أرز عدس إسكندراني,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",120.0,9.0,22.0,2.0,4.0,250.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Spinach in the oven,ملوخية سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",30.0,3.5,5.5,0.5,2.0,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Fava Beans with onion,طاجن فول بالبصل,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",160.0,10.0,25.0,4.0,8.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Peas with ghee baladi,مسقعة بسلة بالسمنة البلدي,Vegetarian,"Peas, Salt, Black pepper, Oil, Onion, Tomato",115.0,5.5,20.0,2.5,4.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Salad Zucchini fried,سلطة كوسة مقلي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,8.0,1.5,1.5,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Garlic in the oven,شوربة ثوم في الفرن,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",55.0,1.0,12.0,0.5,2.0,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Okra Potato homemade,بامية بطاطس بيتي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,24.0,1.0,2.5,200.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Lentils with sauce,شوربة عدس بالصلصة,Vegetarian,"Lentils, Salt, Black pepper, Oil, Onion, Tomato",130.0,9.5,23.0,2.5,5.0,250.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Koshari Zucchini grilled,كشري كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",40.0,1.0,8.5,0.5,1.5,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Sausage homemade,أرز سجق بيتي,Meat,"Sausage, Salt, Black pepper, Oil, Onion, Tomato",280.0,15.0,20.0,18.0,1.0,150.0,1 serving,[],kaggle-egyptian-foods
+Fish Chicken in the oven,سمك فراخ في الفرن,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.0,0.0,10.0,0.0,120.0,1 piece,[],kaggle-egyptian-foods
+Sandwich Zucchini in the oven,ساندويتش كوسة في الفرن,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",45.0,1.5,8.0,1.5,1.5,100.0,1 piece,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Garlic fried,كفتة ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",220.0,10.0,10.0,15.0,1.0,100.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tagine Liver spicy,طاجن كبدة سبايسي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",233.0,26.3,4.6,13.4,0.5,150.0,1 serving,[],kaggle-egyptian-foods
+Taameya Spinach with sauce,طعمية سبانخ بالصلصة,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",95.0,3.5,12.2,4.2,2.5,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fish Rice fried,سمك أرز مقلي,Vegetarian,"Rice, Salt, Black pepper, Oil, Onion, Tomato",192.0,2.5,30.8,6.2,0.8,200.0,1 plate,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Chicken baladi,طعمية فراخ بلدي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.6,4.2,7.4,0.5,120.0,2 pieces,[],kaggle-egyptian-foods
+Koshari Chicken Alexandrian style,كشري فراخ إسكندراني,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",201.0,25.8,10.3,8.5,1.2,180.0,1 serving,[],kaggle-egyptian-foods
+Tagine Spinach in the oven,طاجن سبانخ في الفرن,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",35.0,3.2,5.5,0.5,2.2,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Garlic fried,ملوخية ثوم مقلي,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",148.0,2.5,20.5,6.8,2.8,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Moussaka Liver grilled,مسقعة كبدة مشوي,Meat,"Liver, Salt, Black pepper, Oil, Onion, Tomato",245.0,27.5,4.8,14.5,0.5,150.0,1 serving,[],kaggle-egyptian-foods
+Fish Fish with onion,سمك سمك بالبصل,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,7.5,0.0,120.0,1 fillet,[],kaggle-egyptian-foods
+Fava Beans Zucchini grilled,فول كوسة مشوي,Vegetarian,"Zucchini, Salt, Black pepper, Oil, Onion, Tomato",25.0,1.2,5.7,0.2,1.5,80.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Taameya Shrimp homemade,طعمية جمبري بيتي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",120.0,16.2,0.5,3.5,0.0,100.0,2 pieces,[],kaggle-egyptian-foods
+Chicken Shrimp spicy,فراخ جمبري سبايسي,Seafood,"Shrimp, Salt, Black pepper, Oil, Onion, Tomato",140.0,18.5,0.5,5.5,0.0,120.0,1 serving,[],kaggle-egyptian-foods
+Chicken Tomato with ghee baladi,فراخ طماطم بالسمنة البلدي,Vegetarian,"Tomato, Salt, Black pepper, Oil, Onion, Tomato",95.0,10.5,5.5,4.0,1.0,100.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Chicken fried,كفتة فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",210.0,23.5,5.5,11.5,0.5,150.0,2 pieces,[],kaggle-egyptian-foods
+Tray Bake Potato Alexandrian style,صينية بطاطس إسكندراني,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,25.8,0.5,2.5,150.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Vine Leaves Fish in the oven,ورق عنب سمك في الفرن,Seafood,"Fish, Salt, Black pepper, Oil, Onion, Tomato",143.0,20.3,0.0,6.3,0.0,200.0,1 serving,[],kaggle-egyptian-foods
+Rice Fava Beans baladi,أرز فول بلدي,Vegetarian,"Fava beans, Salt, Black pepper, Oil, Onion, Tomato",157.0,9.3,26.8,4.2,6.8,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Rice Garlic with onion,أرز ثوم بالبصل,Vegetarian,"Garlic, Salt, Black pepper, Oil, Onion, Tomato",122.0,2.5,23.5,2.5,3.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Okra with ghee baladi,ملوخية بامية بالسمنة البلدي,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",111.0,2.0,20.5,2.0,4.5,120.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Soup Potato fried,شوربة بطاطس مقلي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",110.0,2.5,24.0,0.5,2.5,150.0,1 bowl,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kebab Onion in the oven,كباب بصل في الفرن,Vegetarian,"Onion, Salt, Black pepper, Oil, Onion, Tomato",44.0,1.2,10.3,0.2,2.3,80.0,2 pieces,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Kofta Spinach with ghee baladi,كفتة سبانخ بالسمنة البلدي,Vegetarian,"Spinach, Salt, Black pepper, Oil, Onion, Tomato",95.0,3.5,10.5,4.5,2.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Molokhia Potato grilled,ملوخية بطاطس مشوي,Vegetarian,"Potato, Salt, Black pepper, Oil, Onion, Tomato",105.0,2.5,23.5,0.5,2.5,120.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Tray Bake Okra with sauce,صينية بامية بالصلصة,Vegetarian,"Okra, Salt, Black pepper, Oil, Onion, Tomato",115.0,2.0,20.5,2.5,4.5,100.0,1 serving,"[""vegan"", ""vegetarian""]",kaggle-egyptian-foods
+Fattah Chicken fried,فتة فراخ مقلي,Poultry,"Chicken, Salt, Black pepper, Oil, Onion, Tomato",165.0,20.5,0.0,8.5,0.0,200.0,1 serving,[],kaggle-egyptian-foods

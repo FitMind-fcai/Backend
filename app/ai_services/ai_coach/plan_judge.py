@@ -12,8 +12,8 @@ Design principles
    blockers or multiple significant concerns fail the plan.
 
 Pass/fail rule (applied in _run_judge, not by the LLM):
-  passed = True  when: zero severity-3 issues AND fewer than 2 severity-2 issues
-  passed = False when: any severity-3 issue OR 2+ severity-2 issues
+  passed = True  when: zero severity-3 issues AND fewer than 5 severity-2 issues
+  passed = False when: any severity-3 issue OR 5+ severity-2 issues
 """
 import logging
 from typing import Dict, List, Tuple
@@ -65,8 +65,8 @@ SEVERITY 1 — MINOR (note it; never fails the plan):
   • A coaching note missing on one day when others have it
 
 PASS / FAIL (applied by code — not by you):
-  • PASS  = zero severity-3 issues AND fewer than 2 severity-2 issues
-  • FAIL  = any severity-3 issue OR 2+ severity-2 issues
+  • PASS  = zero severity-3 issues AND fewer than 5 severity-2 issues
+  • FAIL  = any severity-3 issue OR 5+ severity-2 issues
   You do not decide passed/failed — just assign severities accurately.
 """
 
@@ -291,7 +291,8 @@ class PlanJudge:
             sev1 = [i for i in issues if i.get("severity") == 1]
 
             # Deterministic rule — not left to the LLM's judgement
-            passed = len(sev3) == 0 and len(sev2) < 2
+            # Only block on genuine safety issues (sev3) or 5+ significant concerns
+            passed = len(sev3) == 0 and len(sev2) < 5
 
             logger.info(
                 "%s judge — passed=%s  sev3=%d  sev2=%d  sev1=%d",

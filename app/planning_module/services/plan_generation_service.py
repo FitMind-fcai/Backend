@@ -362,10 +362,11 @@ class PlanGenerationService:
                 diet_type=profile.dietary_preference if hasattr(profile, "dietary_preference") else "balanced",
                 allergies=getattr(profile, "allergies", ""),
                 exclude_ingredients=getattr(preferences, "exclude_ingredients", []),
-                limit=50,
+                limit=100,
                 goal=planning_output.goal,
                 target_calories=planning_output.nutrition.calories,
                 target_protein_g=planning_output.nutrition.protein_g,
+                cuisine=getattr(preferences, "cuisine_preference", ""),
             )
             rules_future = pool.submit(
                 context_builder.build_nutrition_rules, profile_dto

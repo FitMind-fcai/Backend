@@ -84,6 +84,7 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         goal: str = "maintain",
         target_calories: Optional[int] = None,
         target_protein_g: Optional[int] = None,
+        cuisine: str = "",
     ) -> str:
         """
         Fetch a diverse list of foods matching a diet type while strictly EXCLUDING allergens,
@@ -124,13 +125,33 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
             "ice cream", "milk shake", "milkshake",
             "margarine",
             "gravy",
-            # Exotic / game meats — not suitable for standard meal plans
+            # Exotic / game meats
             "bear", "bison", "buffalo", "caribou", "deer", "elk", "emu",
             "moose", "ostrich", "rabbit", "venison", "wild boar", "game meat",
-            "alligator", "frog", "snail", "whale", "seal",
-            # Processed snacks / cookies not suitable as meal plan ingredients
+            "alligator", "frog", "snail", "whale", "seal", "walrus",
+            # Processed snacks / cookies
             "cookie", "cookies", "archway", "bear naked",
             "brownie", "cake mix", "frosting",
+            # Dried/powdered/concentrated forms — not real cooking ingredients
+            "dried egg", "egg white powder", "egg powder",
+            "soy protein isolate", "soy protein concentrate",
+            "protein powder", "whey protein", "protein supplement",
+            "gelatin", "gelatins",
+            "meat extender",
+            "cottonseed flour", "cottonseed meal",
+            "peanut flour",
+            "vital wheat gluten",
+            # Fast food / restaurant items
+            "pizza", "domino", "pizza hut", "little caesars", "digiorno",
+            "applebee", "school lunch", "fast food",
+            "mozzarella stick",
+            # Snack brands not suitable as meal ingredients
+            "cheez-it", "sunshine", "power bar", "clif bar",
+            "austin", "goya crackers",
+            "formulated bar", "formulated nut",
+            # Alaska Native / specialty items
+            "alaska native",
+            "yachtwurst",
         ]
         for bad in BAD_NAME_KEYWORDS:
             query = query.filter(~CentralFood.food_name.ilike(f"%{bad}%"))
@@ -149,13 +170,14 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         raw_pool = self._stratified_fetch(query, pool_size=max(limit * 5, 250))
         foods_pool = self._deduplicate_food_families(raw_pool, max_per_family=4)
 
-        # Phase 3: Score each food for goal alignment before bucket selection
+        # Phase 3: Score each food for goal + cuisine alignment before bucket selection
         goal_norm = (goal or "maintain").lower().replace(" ", "_")
         scored_pool = self._score_foods_for_goal(
             foods_pool,
             goal=goal_norm,
             target_calories=target_calories,
             target_protein_g=target_protein_g,
+            cuisine=cuisine,
         )
         foods = self._select_balanced_foods_for_prompt(scored_pool, limit)
 
@@ -174,26 +196,64 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
 
         return prompt_str
 
+    # Keyed by CuisineType enum .value strings (exact match)
+    _CUISINE_KEYWORDS: dict[str, list[str]] = {
+        "Mediterranean": [
+            "olive", "feta", "hummus", "chickpea", "lentil", "tahini",
+            "couscous", "pita", "yogurt", "lamb", "fish", "salmon", "tuna",
+            "sardine", "tomato", "cucumber", "eggplant", "zucchini", "pepper",
+            "oregano", "basil", "garlic", "lemon", "grape", "fig", "date",
+            "almond", "walnut", "pistachio", "pomegranate", "spinach",
+            "artichoke", "fava", "white bean", "cannellini",
+        ],
+        "Middle Eastern": [
+            "hummus", "tahini", "falafel", "pita", "lamb", "chickpea",
+            "lentil", "bulgur", "freekeh", "za'atar", "sumac", "cumin",
+            "yogurt", "eggplant", "date", "fig", "pomegranate", "olive",
+            "sesame", "flatbread", "rice", "shawarma", "kofta",
+        ],
+        "Asian": [
+            "rice", "soy", "tofu", "noodle", "sesame", "ginger",
+            "bok choy", "edamame", "miso", "seaweed", "shrimp",
+            "coconut", "curry", "turmeric", "lemongrass", "fish sauce",
+        ],
+        "Latin American": [
+            "tortilla", "bean", "avocado", "corn", "salsa", "jalapeño",
+            "cilantro", "lime", "chicken", "rice", "pepper", "tomato",
+            "queso", "chipotle", "plantain",
+        ],
+        "Western": [
+            "chicken", "beef", "pork", "potato", "bread", "cheese",
+            "egg", "butter", "cream", "pasta", "oat", "corn",
+            "turkey", "ham", "steak", "broccoli", "carrot",
+        ],
+    }
+
     def _score_foods_for_goal(
         self,
         foods: List[CentralFood],
         goal: str = "maintain",
         target_calories: Optional[int] = None,
         target_protein_g: Optional[int] = None,
+        cuisine: str = "",
     ) -> List[CentralFood]:
         """
-        Score and sort foods by goal alignment so that the best candidates
-        appear first when _select_balanced_foods_for_prompt fills quotas.
+        Score and sort foods by goal + cuisine alignment so that the best
+        candidates appear first when _select_balanced_foods_for_prompt fills quotas.
 
-        Scoring factors (matching the architecture upgrade plan):
+        Scoring factors:
           Calorie Match  — High  (30 pts)
           Protein Match  — High  (30 pts)
           Goal Match     — High  (30 pts)
           Food Quality   — Medium (10 pts)
-          Variety Signal — handled downstream by bucket selection
+          Cuisine Match  — High  (25 pts)
         """
         if not foods:
             return foods
+
+        cuisine_val = (cuisine.value if hasattr(cuisine, "value") else str(cuisine or "")).strip()
+        cuisine_kws = self._CUISINE_KEYWORDS.get(cuisine_val, [])
+        cuisine_uses_arabic = cuisine_val == "Middle Eastern"
 
         def _score(f: CentralFood) -> float:
             s = 0.0
@@ -262,6 +322,13 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
                 s += 5
             if any(k in name for k in quality_penalty):
                 s -= 5
+
+            # ── Cuisine Match (25 pts) ───────────────────────────────────────
+            if cuisine_kws:
+                if any(k in name for k in cuisine_kws):
+                    s += 25
+                if cuisine_uses_arabic and getattr(f, "food_name_ar", None):
+                    s += 20
 
             return s
 
@@ -393,37 +460,53 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         """Fetch foods in strata by dominant macronutrient so every food type
         is represented regardless of alphabetical position.
 
-        Strata (queried independently with per-stratum limits):
-          - High protein (protein >= 15g/100g) → meats, fish, eggs, legumes
-          - High carb (carbs >= 20g AND protein < 15g) → grains, pasta, bread
-          - High fat (fat >= 12g AND protein < 15g) → nuts, seeds, oils, avocado
-          - Produce (calories < 80 AND protein < 15g) → vegetables, fruits
-          - Other (everything else)
-
-        Each stratum is sorted by protein density (desc) so the best items
-        within each category come first.
+        Each stratum uses calorie density ranges that select real cooking
+        ingredients rather than dried powders or supplements:
+          - Protein stratum orders by protein but caps calories at 350/100g
+            to skip dried powders (88g protein = dried isolate, not real food)
+          - Carb stratum selects moderate-calorie grains/bread (100-400 kcal)
+          - Fat stratum selects nuts/seeds/oils in normal calorie range
+          - Produce selects low-cal vegetables/fruits
         """
         per_stratum = pool_size // 5
 
-        strata_filters = [
-            # High protein
-            (CentralFood.protein_per_100g >= 15,),
-            # High carb
-            (CentralFood.carbs_per_100g >= 20, CentralFood.protein_per_100g < 15),
-            # High fat
-            (CentralFood.fats_per_100g >= 12, CentralFood.protein_per_100g < 15),
-            # Produce (low-cal whole foods)
-            (CentralFood.calories_per_100g < 80, CentralFood.protein_per_100g < 15),
+        strata_configs = [
+            # (filters, order_by) — each stratum has its own sort
+            # High protein: real meats, fish, eggs, legumes (not powders)
+            (
+                (CentralFood.protein_per_100g >= 15,
+                 CentralFood.calories_per_100g <= 350),
+                CentralFood.protein_per_100g.desc(),
+            ),
+            # High carb: grains, pasta, bread, rice
+            (
+                (CentralFood.carbs_per_100g >= 20,
+                 CentralFood.protein_per_100g < 15,
+                 CentralFood.calories_per_100g.between(80, 400)),
+                CentralFood.fiber_per_100g.desc(),
+            ),
+            # High fat: nuts, seeds, avocado, oils
+            (
+                (CentralFood.fats_per_100g >= 12,
+                 CentralFood.protein_per_100g < 15),
+                CentralFood.fats_per_100g.desc(),
+            ),
+            # Produce: vegetables, fruits (low calorie)
+            (
+                (CentralFood.calories_per_100g < 80,
+                 CentralFood.protein_per_100g < 15),
+                CentralFood.fiber_per_100g.desc(),
+            ),
         ]
 
         seen_ids: set = set()
         result: List[CentralFood] = []
 
-        for filters in strata_filters:
+        for filters, order in strata_configs:
             stratum_query = base_query.filter(*filters)
             rows = (
                 stratum_query
-                .order_by(CentralFood.protein_per_100g.desc())
+                .order_by(order)
                 .limit(per_stratum)
                 .all()
             )
@@ -432,9 +515,10 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
                     result.append(r)
                     seen_ids.add(r.id)
 
-        # "Other" stratum — everything not yet selected
+        # "Other" stratum — fill remaining with whatever scores well
         remaining = (
             base_query
+            .filter(CentralFood.calories_per_100g.between(50, 400))
             .order_by(CentralFood.protein_per_100g.desc())
             .limit(per_stratum * 2)
             .all()
