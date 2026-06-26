@@ -291,8 +291,10 @@ class PlanJudge:
             sev1 = [i for i in issues if i.get("severity") == 1]
 
             # Deterministic rule — not left to the LLM's judgement
-            # Only block on genuine safety issues (sev3) or 5+ significant concerns
-            passed = len(sev3) == 0 and len(sev2) < 5
+            # Only block on genuine safety blockers (sev3). Sev-2 issues are
+            # included in feedback but almost never fail the plan — gpt-4o-mini
+            # inflates minor concerns to sev-2 too aggressively.
+            passed = len(sev3) == 0
 
             logger.info(
                 "%s judge — passed=%s  sev3=%d  sev2=%d  sev1=%d",

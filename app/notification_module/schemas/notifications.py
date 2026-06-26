@@ -21,27 +21,19 @@ class DeviceTokenResponse(BaseModel):
 
 class NotificationPreferenceUpdate(BaseModel):
     meal_reminders_enabled: Optional[bool] = None
-    workout_reminders_enabled: Optional[bool] = None
     hydration_reminders_enabled: Optional[bool] = None
     sleep_reminders_enabled: Optional[bool] = None
     coaching_reminders_enabled: Optional[bool] = None
     hydration_interval_hours: Optional[int] = Field(default=None, ge=1, le=24)
     meal_reminder_minutes_before: Optional[int] = Field(default=None, ge=0, le=60)
-    workout_reminder_hour: Optional[int] = Field(default=None, ge=0, le=23)
-    sleep_reminder_hour: Optional[int] = Field(default=None, ge=0, le=23)
-    coaching_daily_hour: Optional[int] = Field(default=None, ge=0, le=23)
 
 
 class NotificationPreferenceResponse(BaseModel):
     meal_reminders_enabled: bool
-    workout_reminders_enabled: bool
     hydration_reminders_enabled: bool
     sleep_reminders_enabled: bool
     coaching_reminders_enabled: bool
     hydration_interval_hours: int
     meal_reminder_minutes_before: int
-    workout_reminder_hour: int
-    sleep_reminder_hour: int
-    coaching_daily_hour: int
 
     model_config = {"from_attributes": True}

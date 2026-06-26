@@ -84,11 +84,9 @@ def get_preferences(
     description=(
         "Partially update notification preferences. Only provided fields are changed.\n\n"
         "**Settable fields:**\n"
-        "- `meal_reminders_enabled` / `workout_reminders_enabled` / `hydration_reminders_enabled` / `sleep_reminders_enabled` — toggle each reminder type\n"
+        "- `meal_reminders_enabled` / `hydration_reminders_enabled` / `sleep_reminders_enabled` / `coaching_reminders_enabled` — toggle each reminder type\n"
         "- `hydration_interval_hours` (1–24) — send a reminder if no water logged in this many hours\n"
-        "- `meal_reminder_minutes_before` (0–60) — how many minutes before the canonical meal time to fire the reminder\n"
-        "- `workout_reminder_hour` (0–23 UTC) — hour of day to send the workout reminder\n"
-        "- `sleep_reminder_hour` (0–23 UTC) — hour of day to send the sleep log reminder\n\n"
+        "- `meal_reminder_minutes_before` (0–60) — how many minutes before the canonical meal time to fire the reminder\n\n"
         "Canonical meal times: Breakfast 07:30, Lunch 13:00, Dinner 19:00, Snack 15:00 (all UTC)."
     ),
 )
@@ -109,11 +107,11 @@ def update_preferences(
     description=(
         "Immediately sends a reminder notification for the current user, "
         "bypassing the Celery Beat schedule. Useful for testing.\n\n"
-        "**Types:** `hydration`, `meal`, `workout`, `sleep`"
+        "**Types:** `hydration`, `meal`, `sleep`"
     ),
 )
 def trigger_reminder(
-    reminder_type: Literal["hydration", "meal", "workout", "sleep"],
+    reminder_type: Literal["hydration", "meal", "sleep"],
     current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
@@ -121,7 +119,6 @@ def trigger_reminder(
     triggers = {
         "hydration": svc.trigger_hydration_for_user,
         "meal": svc.trigger_meal_for_user,
-        "workout": svc.trigger_workout_for_user,
         "sleep": svc.trigger_sleep_for_user,
     }
     return triggers[reminder_type](current_user.id)

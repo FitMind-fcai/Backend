@@ -30,17 +30,6 @@ def send_meal_reminders():
         db.close()
 
 
-@celery_app.task(name="app.notification_module.tasks.send_workout_reminders")
-def send_workout_reminders():
-    db = SessionLocal()
-    try:
-        ReminderService(db).send_workout_reminders()
-    except Exception as exc:
-        logger.error(f"send_workout_reminders failed: {exc}", exc_info=True)
-    finally:
-        db.close()
-
-
 @celery_app.task(name="app.notification_module.tasks.send_sleep_reminders")
 def send_sleep_reminders():
     db = SessionLocal()

@@ -9,11 +9,9 @@ from app.notification_module.repositories.device_token_repository import DeviceT
 from app.notification_module.repositories.notification_preference_repository import NotificationPreferenceRepository
 from app.notification_module.services.push_service import send_push_multi
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
-from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
 from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
 from app.tracking_module.repositories.meal_log_repository import MealLogRepository
 from app.tracking_module.repositories.sleep_log_repository import SleepLogRepository
-from app.tracking_module.repositories.workout_log_repository import WorkoutLogRepository
 
 logger = logging.getLogger(__name__)
 
@@ -76,16 +74,6 @@ class ReminderService:
         return {"type": "sleep", "title": title, "body": body,
                 "push_sent_to": len(tokens), "push_delivered": push_count}
 
-    def trigger_workout_for_user(self, user_id: int) -> dict:
-        tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
-        title = "💪 Workout Time!"
-        body = "This is a test workout reminder — time to get moving!"
-        push_count = 0
-        if tokens:
-            push_count = send_push_multi(tokens, title, body, db=self.db) or 0
-        return {"type": "workout", "title": title, "body": body,
-                "push_sent_to": len(tokens), "push_delivered": push_count}
-
     def trigger_meal_for_user(self, user_id: int) -> dict:
         tokens = [t.token for t in self.token_repo.get_active_tokens_for_user(user_id)]
         title = "🍽️ Meal Reminder"
@@ -140,9 +128,6 @@ class ReminderService:
         yesterday  = now.date() - timedelta(days=1)
 
         for user_id, tokens, pref in self._eligible(self.pref_repo.get_with_sleep_enabled()):
-            if now.hour != pref.sleep_reminder_hour:
-                continue
-
             logs = sleep_repo.list_logs(user_id, skip=0, limit=1, log_date=yesterday)
             if not logs:
                 send_push_multi(
@@ -198,37 +183,3 @@ class ReminderService:
                         db=self.db,
                     )
 
-    # ── Workouts ───────────────────────────────────────────────────────────────
-
-    def send_workout_reminders(self):
-        now   = datetime.now(timezone.utc)
-        today = now.date()
-
-        workout_repo      = WorkoutLogRepository(self.db)
-        workout_plan_repo = WorkoutPlanRepository(self.db)
-
-        for user_id, tokens, pref in self._eligible(self.pref_repo.get_with_workout_enabled()):
-            if now.hour != pref.workout_reminder_hour:
-                continue
-
-            plan = workout_plan_repo.get_active_plan(user_id)
-            if not plan or not plan.workout_days:
-                continue
-
-            days_elapsed = (today - plan.start_date).days
-            day_number   = days_elapsed % len(plan.workout_days) + 1
-            today_day    = next((d for d in plan.workout_days if d.day_number == day_number), None)
-            if not today_day:
-                continue
-
-            logs = workout_repo.list_logs(user_id, skip=0, limit=1, log_date=today)
-            if logs:
-                continue  # already logged today
-
-            send_push_multi(
-                tokens,
-                "💪 Workout Time!",
-                f"Today is {today_day.day_name} — get moving and crush your session!",
-                {"day_name": today_day.day_name, "focus": today_day.focus_area or ""},
-                db=self.db,
-            )

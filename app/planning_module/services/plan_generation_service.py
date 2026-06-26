@@ -394,35 +394,21 @@ class PlanGenerationService:
         # Authoritative macro numbers are always recomputed from DB ingredient records.
         self._hydrate_nutrition_macros_from_ingredients(plan_create)
 
-        # Deterministic macro validation gate — reject and retry once if macros
-        # deviate too far from the planning engine targets.
+        # Deterministic macro validation gate — if calories deviate too far,
+        # scale all ingredient amounts proportionally instead of regenerating.
         violations = self._check_macro_compliance(plan_create, planning_output)
         if violations:
             logger.warning(
-                "Nutrition plan failed macro validation (%s). Retrying once.",
+                "Nutrition plan failed macro validation (%s). Scaling portions.",
                 "; ".join(violations),
             )
-            nutrition_plan_dto = ai_coach.generate_nutrition_plan(
-                user_profile=profile_dto,
-                preferences=preferences_dto,
-                duration_weeks=duration_weeks,
-                existing_plan=existing_plan,
-                allowed_foods_str=allowed_foods_str,
-                planning_output=planning_output,
-                medical_rules=medical_rules,
-                language=lang,
-                model_override=model_override,
-                skip_judge=skip_judge,
-            )
-            plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
-            plan_create.language = lang
+            self._scale_portions_to_target(plan_create, planning_output)
             self._hydrate_nutrition_macros_from_ingredients(plan_create)
-
-            retry_violations = self._check_macro_compliance(plan_create, planning_output)
-            if retry_violations:
+            post_scale = self._check_macro_compliance(plan_create, planning_output)
+            if post_scale:
                 logger.warning(
-                    "Nutrition plan still fails after retry (%s). Returning best effort.",
-                    "; ".join(retry_violations),
+                    "Nutrition plan still off after scaling (%s). Returning best effort.",
+                    "; ".join(post_scale),
                 )
 
         preferences_dict = preferences.model_dump()
@@ -490,6 +476,28 @@ class PlanGenerationService:
             nutrition_plan.daily_protein_g = round(sum(x[1] for x in day_totals) / days_count, 2)
             nutrition_plan.daily_carbs_g = round(sum(x[2] for x in day_totals) / days_count, 2)
             nutrition_plan.daily_fats_g = round(sum(x[3] for x in day_totals) / days_count, 2)
+
+    def _scale_portions_to_target(self, plan_create, planning_output) -> None:
+        """Scale all ingredient amount_g proportionally so daily calories
+        match the planning engine target. No LLM call needed — pure math."""
+        target_cals = planning_output.nutrition.calories
+        actual_cals = plan_create.daily_calories or 0
+        if actual_cals <= 0 or target_cals <= 0:
+            return
+
+        scale_factor = target_cals / actual_cals
+        # Cap scaling to avoid absurd portions (e.g., 5x would mean 750g chicken)
+        scale_factor = min(scale_factor, 3.0)
+        scale_factor = max(scale_factor, 0.5)
+
+        logger.info(
+            "Scaling all portions by %.2fx (actual=%d kcal, target=%d kcal)",
+            scale_factor, actual_cals, target_cals,
+        )
+        for day in plan_create.days:
+            for meal in day.meals:
+                for ing in (meal.ingredients or []):
+                    ing.amount_g = round(ing.amount_g * scale_factor, 1)
 
     def _check_macro_compliance(self, plan_create, planning_output) -> list[str]:
         """Compare recomputed macros against planning engine targets. Returns list of violation strings."""

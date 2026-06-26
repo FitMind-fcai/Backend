@@ -123,6 +123,7 @@ class NutritionTargets:
         protein_pct = round(self.protein_g * 4 / max(self.calories, 1) * 100)
         fat_pct     = round(self.fat_g     * 9 / max(self.calories, 1) * 100)
         carb_pct    = round(self.carbs_g   * 4 / max(self.calories, 1) * 100)
+        per_meal    = round(self.calories / max(self.meals_per_day, 1))
         return (
             "PRE-COMPUTED NUTRITION TARGETS (computed by Planning Engine — do NOT recalculate):\n"
             f"  TDEE               : {self.tdee:.0f} kcal/day (maintenance baseline)\n"
@@ -130,9 +131,15 @@ class NutritionTargets:
             f"  Protein target     : {self.protein_g} g/day  ({protein_pct}% of calories)\n"
             f"  Fat target         : {self.fat_g} g/day  ({fat_pct}% of calories)\n"
             f"  Carbohydrate target: {self.carbs_g} g/day ({carb_pct}% of calories)\n"
-            f"  Meals per day      : {self.meals_per_day}\n\n"
-            "YOUR JOB: Choose ingredient amounts (amount_g) so that the daily total for each\n"
-            "meal group lands within ±10% of these targets.\n"
+            f"  Meals per day      : {self.meals_per_day}\n"
+            f"  Target per meal    : ~{per_meal} kcal/meal (divide daily target evenly)\n\n"
+            "PORTION SIZING INSTRUCTIONS:\n"
+            "For each ingredient, use its 'Per 100g' calorie value from the food list to\n"
+            "calculate amount_g. Example: if a food has 200 kcal/100g and you need ~400 kcal\n"
+            "from it, set amount_g to 200.0 (200g × 200kcal/100g = 400 kcal).\n"
+            f"Each meal's total should be approximately {per_meal} kcal. Verify by summing:\n"
+            "  ingredient_kcal = amount_g × calories_per_100g / 100\n"
+            "If a day's total is far below the target, increase amount_g values.\n\n"
             "Do NOT write calorie or macro numbers into JSON — the backend recomputes from DB records."
         )
 

@@ -22,32 +22,27 @@ celery_app.conf.update(
     enable_utc=True,
     # ── Periodic schedule ────────────────────────────────────────────────────
     beat_schedule={
-        # Every 30 minutes during the day — service filters to waking hours
+        # Every 2 hours during waking hours (05:00-19:00 UTC = 08:00-22:00 Egypt UTC+3)
         "hydration-reminders": {
             "task": "app.notification_module.tasks.send_hydration_reminders",
-            "schedule": crontab(minute="*/30"),
+            "schedule": crontab(minute="0", hour="5-19/2"),
         },
-        # Every 15 minutes — service fires only within the reminder window per meal
+        # Every hour — service fires only within the reminder window per meal
         "meal-reminders": {
             "task": "app.notification_module.tasks.send_meal_reminders",
-            "schedule": crontab(minute="*/15"),
-        },
-        # Every hour — service filters by each user's preferred UTC hour
-        "workout-reminders": {
-            "task": "app.notification_module.tasks.send_workout_reminders",
             "schedule": crontab(minute="0"),
         },
-        # Every hour — service filters by each user's preferred UTC hour
+        # Every hour — service checks if user has logged sleep for yesterday
         "sleep-reminders": {
             "task": "app.notification_module.tasks.send_sleep_reminders",
             "schedule": crontab(minute="0"),
         },
-        # Every hour — service filters by each user's preferred UTC hour
+        # Once daily at midnight Egypt time (21:00 UTC = 00:00 UTC+3)
         "daily-coaching": {
             "task": "app.notification_module.tasks.run_daily_coaching",
-            "schedule": crontab(minute="0"),
+            "schedule": crontab(hour="21", minute="0"),
         },
-        # Once a week on Sunday at 09:00 UTC
+        # Once a week on Sunday at 09:00 UTC (12:00 Egypt)
         "weekly-coaching": {
             "task": "app.notification_module.tasks.run_weekly_coaching",
             "schedule": crontab(hour="9", minute="0", day_of_week="0"),

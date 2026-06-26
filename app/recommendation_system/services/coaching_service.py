@@ -109,13 +109,9 @@ class CoachingService:
     # ── Batch coaching (called by Celery tasks) ──────────────────────────────
 
     def run_daily_coaching(self):
-        now = datetime.now(timezone.utc)
         rec_service = self._build_recommendation_service()
 
         for pref in self.pref_repo.get_with_coaching_enabled():
-            if now.hour != pref.coaching_daily_hour:
-                continue
-
             user_id = pref.user_id
             try:
                 suggestion = rec_service.get_daily_suggestion(user_id)

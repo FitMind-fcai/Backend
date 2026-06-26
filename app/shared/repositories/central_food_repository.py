@@ -80,482 +80,118 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         diet_type: str = "balanced",
         allergies: str = "",
         exclude_ingredients: List[str] = None,
-        limit: int = 50,
+        limit: int = 100,
         goal: str = "maintain",
         target_calories: Optional[int] = None,
         target_protein_g: Optional[int] = None,
         cuisine: str = "",
     ) -> str:
         """
-        Fetch a diverse list of foods matching a diet type while strictly EXCLUDING allergens,
-        unwanted ingredients, and nutritionally inappropriate items (baby food, alcohol, candy,
-        fast food, near-zero-calorie fillers). Returns formatted text constraint for the LLM.
+        Build a cuisine-aware food pool using pgvector semantic search.
+
+        Searches for foods matching cuisine-specific queries across 4 categories
+        (proteins, grains, vegetables, fats), then filters out allergens and
+        inappropriate items. Returns formatted text constraint for the LLM.
         """
-        query = self.db.query(CentralFood).filter(CentralFood.is_active == True)
-        
-        # 1. Macro / Diet Type Constraints
-        diet_type = str(diet_type).lower()
-        if diet_type in ["keto", "low-carb"]:
-            query = query.filter(CentralFood.carbs_per_100g < 10.0)
-        elif diet_type == "high-protein":
-            query = query.filter(CentralFood.protein_per_100g > 15.0)
-        elif diet_type == "low-fat":
-            query = query.filter(CentralFood.fats_per_100g < 5.0)
-            
-        # 2. Exclude Allergies (comma-separated string)
-        if allergies and allergies.lower() not in ["none", "n/a", "na", "", "nothing"]:
-            allergy_items = [a.strip() for a in allergies.split(",") if a.strip()]
-            for allergy in allergy_items:
-                query = query.filter(~CentralFood.food_name.ilike(f"%{allergy}%"))
-                
-        # 3. Exclude Specific Ingredients (List of strings)
-        if exclude_ingredients:
-            for ex in exclude_ingredients:
-                ex = str(ex).strip()
-                if ex:
-                    query = query.filter(~CentralFood.food_name.ilike(f"%{ex}%"))
+        from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 
-        # 4. Exclude obviously inappropriate foods by name keywords
-        BAD_NAME_KEYWORDS = [
-            "babyfood", "baby food", "toddler", "infant",
-            "alcoholic", "wine", "beer", "malt beverage", "spirits", "liqueur", "carignane",
-            "candy", "candies", "toblerone", "nougat", "chocolate bar",
-            "mcdonald", "burger king", "wendy",
-            "corn nut", "cornnuts",
-            "ice cream", "milk shake", "milkshake",
-            "margarine",
-            "gravy",
-            # Exotic / game meats
-            "bear", "bison", "buffalo", "caribou", "deer", "elk", "emu",
-            "moose", "ostrich", "rabbit", "venison", "wild boar", "game meat",
-            "alligator", "frog", "snail", "whale", "seal", "walrus",
-            # Processed snacks / cookies
-            "cookie", "cookies", "archway", "bear naked",
-            "brownie", "cake mix", "frosting",
-            # Dried/powdered/concentrated forms — not real cooking ingredients
-            "dried egg", "egg white powder", "egg powder",
-            "soy protein isolate", "soy protein concentrate",
-            "protein powder", "whey protein", "protein supplement",
-            "gelatin", "gelatins",
-            "meat extender",
-            "cottonseed flour", "cottonseed meal",
-            "peanut flour",
-            "vital wheat gluten",
-            # Fast food / restaurant items
-            "pizza", "domino", "pizza hut", "little caesars", "digiorno",
-            "applebee", "school lunch", "fast food",
-            "mozzarella stick",
-            # Snack brands not suitable as meal ingredients
-            "cheez-it", "sunshine", "power bar", "clif bar",
-            "austin", "goya crackers",
-            "formulated bar", "formulated nut",
-            # Alaska Native / specialty items
-            "alaska native",
-            "yachtwurst",
-        ]
-        for bad in BAD_NAME_KEYWORDS:
-            query = query.filter(~CentralFood.food_name.ilike(f"%{bad}%"))
-
-        # 5. Sensible calorie + protein floor (exclude near-zero-calorie fillers and pure fats)
-        query = (
-            query
-            .filter(CentralFood.calories_per_100g >= 30.0)   # at least 30 kcal / 100 g
-            .filter(CentralFood.calories_per_100g <= 650.0)  # skip pure oils / solid fats
-            .filter(CentralFood.protein_per_100g >= 1.5)     # at least 1.5 g protein / 100 g
-        )
-            
-        # Stratified fetch: pull top items per food category by protein density,
-        # so we get diverse foods (chicken, fish, rice, lentils...) without
-        # loading thousands of rows or alphabetical bias.
-        raw_pool = self._stratified_fetch(query, pool_size=max(limit * 5, 250))
-        foods_pool = self._deduplicate_food_families(raw_pool, max_per_family=4)
-
-        # Phase 3: Score each food for goal + cuisine alignment before bucket selection
+        cuisine_val = (cuisine.value if hasattr(cuisine, "value") else str(cuisine or "")).strip()
+        cuisine_label = cuisine_val or "healthy"
         goal_norm = (goal or "maintain").lower().replace(" ", "_")
-        scored_pool = self._score_foods_for_goal(
-            foods_pool,
-            goal=goal_norm,
-            target_calories=target_calories,
-            target_protein_g=target_protein_g,
-            cuisine=cuisine,
-        )
-        foods = self._select_balanced_foods_for_prompt(scored_pool, limit)
 
-        if not foods:
-            return "Note: No strict food constraints applied due to overly restrictive filters. Generate generic healthy meals."
+        # Build search queries per food category
+        search_queries = [
+            (f"{cuisine_label} protein foods meat fish chicken eggs legumes", int(limit * 0.30)),
+            (f"{cuisine_label} grains rice bread pasta carbs", int(limit * 0.25)),
+            (f"{cuisine_label} vegetables fruits salad greens", int(limit * 0.25)),
+            (f"{cuisine_label} healthy fats nuts seeds oil avocado", int(limit * 0.20)),
+        ]
 
-        prompt_str = f"=== MANDATORY FOOD DATABASE ({len(foods)} ITEMS) ===\n"
+        # Build allergy/exclusion filter for SQL
+        exclusion_clauses = []
+        exclusion_params = {}
+        if allergies and allergies.lower() not in ("none", "n/a", "na", "", "nothing"):
+            for i, a in enumerate(a.strip() for a in allergies.split(",") if a.strip()):
+                key = f"allergy_{i}"
+                exclusion_clauses.append(f"food_name NOT ILIKE :{key}")
+                exclusion_params[key] = f"%{a}%"
+        if exclude_ingredients:
+            for i, ex in enumerate(ex.strip() for ex in exclude_ingredients if ex.strip()):
+                key = f"excl_{i}"
+                exclusion_clauses.append(f"food_name NOT ILIKE :{key}")
+                exclusion_params[key] = f"%{ex}%"
+
+        where_extra = (" AND " + " AND ".join(exclusion_clauses)) if exclusion_clauses else ""
+
+        # Diet type macro filter
+        diet_filter = ""
+        diet_type_lower = str(diet_type).lower()
+        if diet_type_lower in ("keto", "low-carb"):
+            diet_filter = " AND carbs_per_100g < 10.0"
+        elif diet_type_lower == "high-protein":
+            diet_filter = " AND protein_per_100g > 15.0"
+        elif diet_type_lower == "low-fat":
+            diet_filter = " AND fats_per_100g < 5.0"
+
+        seen_ids: set = set()
+        all_foods: list = []
+
+        for query_text, per_category_limit in search_queries:
+            vec = embed_text(query_text)
+            vec_str = vec_to_pg_str(vec)
+
+            # Fetch more than needed so we have room after dedup
+            fetch_limit = per_category_limit * 3
+
+            rows = self.db.execute(
+                text(f"""
+                    SELECT id, food_name, food_name_ar, food_category,
+                           calories_per_100g, protein_per_100g, carbs_per_100g,
+                           fats_per_100g, fiber_per_100g,
+                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
+                    FROM central_foods
+                    WHERE is_active = true
+                      AND name_embedding IS NOT NULL
+                      AND calories_per_100g BETWEEN 20 AND 650
+                      {diet_filter}
+                      {where_extra}
+                    ORDER BY name_embedding <=> CAST(:vec AS vector)
+                    LIMIT :lim
+                """),
+                {"vec": vec_str, "lim": fetch_limit, **exclusion_params},
+            ).fetchall()
+
+            count = 0
+            for r in rows:
+                if r.id in seen_ids:
+                    continue
+                # Deduplicate by food family (max 3 per family)
+                family = (r.food_name or "").split("(")[0].split(",")[0].strip().lower()
+                family_count = sum(1 for f in all_foods
+                                   if (f["food_name"] or "").split("(")[0].split(",")[0].strip().lower() == family)
+                if family_count >= 3:
+                    continue
+
+                seen_ids.add(r.id)
+                all_foods.append(dict(r._mapping))
+                count += 1
+                if count >= per_category_limit:
+                    break
+
+        if not all_foods:
+            return "Note: No foods matched the cuisine and dietary filters. Generate generic healthy meals."
+
+        prompt_str = f"=== MANDATORY FOOD DATABASE ({len(all_foods)} ITEMS) ===\n"
         prompt_str += "You MUST ONLY generate meals using the exact foods and IDs from this list below. Do not invent new foods.\n"
         prompt_str += "Select foods creatively to form balanced meals.\n\n"
 
-        for f in foods:
+        for f in all_foods:
             prompt_str += (
-                f"- [ID: {f.id}] {f.food_name} "
-                f"(Per 100g: {f.calories_per_100g} kcal | P:{f.protein_per_100g}g | C:{f.carbs_per_100g}g | F:{f.fats_per_100g}g)\n"
+                f"- [ID: {f['id']}] {f['food_name']} "
+                f"(Per 100g: {f['calories_per_100g']} kcal | P:{f['protein_per_100g']}g | C:{f['carbs_per_100g']}g | F:{f['fats_per_100g']}g)\n"
             )
 
         return prompt_str
-
-    # Keyed by CuisineType enum .value strings (exact match)
-    _CUISINE_KEYWORDS: dict[str, list[str]] = {
-        "Mediterranean": [
-            "olive", "feta", "hummus", "chickpea", "lentil", "tahini",
-            "couscous", "pita", "yogurt", "lamb", "fish", "salmon", "tuna",
-            "sardine", "tomato", "cucumber", "eggplant", "zucchini", "pepper",
-            "oregano", "basil", "garlic", "lemon", "grape", "fig", "date",
-            "almond", "walnut", "pistachio", "pomegranate", "spinach",
-            "artichoke", "fava", "white bean", "cannellini",
-        ],
-        "Middle Eastern": [
-            "hummus", "tahini", "falafel", "pita", "lamb", "chickpea",
-            "lentil", "bulgur", "freekeh", "za'atar", "sumac", "cumin",
-            "yogurt", "eggplant", "date", "fig", "pomegranate", "olive",
-            "sesame", "flatbread", "rice", "shawarma", "kofta",
-        ],
-        "Asian": [
-            "rice", "soy", "tofu", "noodle", "sesame", "ginger",
-            "bok choy", "edamame", "miso", "seaweed", "shrimp",
-            "coconut", "curry", "turmeric", "lemongrass", "fish sauce",
-        ],
-        "Latin American": [
-            "tortilla", "bean", "avocado", "corn", "salsa", "jalapeño",
-            "cilantro", "lime", "chicken", "rice", "pepper", "tomato",
-            "queso", "chipotle", "plantain",
-        ],
-        "Western": [
-            "chicken", "beef", "pork", "potato", "bread", "cheese",
-            "egg", "butter", "cream", "pasta", "oat", "corn",
-            "turkey", "ham", "steak", "broccoli", "carrot",
-        ],
-    }
-
-    def _score_foods_for_goal(
-        self,
-        foods: List[CentralFood],
-        goal: str = "maintain",
-        target_calories: Optional[int] = None,
-        target_protein_g: Optional[int] = None,
-        cuisine: str = "",
-    ) -> List[CentralFood]:
-        """
-        Score and sort foods by goal + cuisine alignment so that the best
-        candidates appear first when _select_balanced_foods_for_prompt fills quotas.
-
-        Scoring factors:
-          Calorie Match  — High  (30 pts)
-          Protein Match  — High  (30 pts)
-          Goal Match     — High  (30 pts)
-          Food Quality   — Medium (10 pts)
-          Cuisine Match  — High  (25 pts)
-        """
-        if not foods:
-            return foods
-
-        cuisine_val = (cuisine.value if hasattr(cuisine, "value") else str(cuisine or "")).strip()
-        cuisine_kws = self._CUISINE_KEYWORDS.get(cuisine_val, [])
-        cuisine_uses_arabic = cuisine_val == "Middle Eastern"
-
-        def _score(f: CentralFood) -> float:
-            s = 0.0
-            calories = float(f.calories_per_100g or 0)
-            protein  = float(f.protein_per_100g or 0)
-            carbs    = float(f.carbs_per_100g or 0)
-            fiber    = float(f.fiber_per_100g or 0)
-            name     = (f.food_name or "").lower()
-
-            # ── Protein Match (30 pts) — always valuable across all goals ───
-            if protein >= 25:
-                s += 30
-            elif protein >= 18:
-                s += 22
-            elif protein >= 12:
-                s += 14
-            elif protein >= 7:
-                s += 7
-
-            # ── Goal Match (30 pts) ──────────────────────────────────────────
-            if goal == "build_muscle":
-                # Dense, protein-rich foods; moderate-to-high calorie per 100 g
-                if protein >= 20 and calories >= 100:
-                    s += 30
-                elif protein >= 15:
-                    s += 20
-                if calories >= 200:
-                    s += 8   # calorie-dense foods useful for surplus
-            elif goal == "lose_weight":
-                # Low-calorie, high-fiber, high-satiety foods
-                if calories <= 80 and protein >= 8:
-                    s += 30
-                elif calories <= 120 and fiber >= 2:
-                    s += 22
-                if fiber >= 4:
-                    s += 10
-                if calories <= 50:
-                    s += 8
-            elif goal == "improve_fitness":
-                # Balance of protein + complex carbs + fibre
-                if protein >= 12 and carbs >= 10:
-                    s += 25
-                if fiber >= 3:
-                    s += 10
-            else:  # maintain
-                if protein >= 12:
-                    s += 20
-                if fiber >= 2:
-                    s += 8
-
-            # ── Calorie Match (30 pts) — reward density fit for the goal ────
-            if target_calories:
-                # Ideal per-100g density: target_calories / (meals * avg_serving_factor)
-                # A rough heuristic: foods between 80–300 kcal/100 g are most versatile
-                if goal == "build_muscle" and 120 <= calories <= 400:
-                    s += 20
-                elif goal == "lose_weight" and 30 <= calories <= 120:
-                    s += 20
-                elif 50 <= calories <= 300:
-                    s += 10
-
-            # ── Quality Signals (10 pts) ─────────────────────────────────────
-            quality_boost  = ["whole", "brown", "natural", "fresh", "raw", "oat"]
-            quality_penalty = ["processed", "refined", "instant", "flavored", "sweetened"]
-            if any(k in name for k in quality_boost):
-                s += 5
-            if any(k in name for k in quality_penalty):
-                s -= 5
-
-            # ── Cuisine Match (25 pts) ───────────────────────────────────────
-            if cuisine_kws:
-                if any(k in name for k in cuisine_kws):
-                    s += 25
-                if cuisine_uses_arabic and getattr(f, "food_name_ar", None):
-                    s += 20
-
-            return s
-
-        return sorted(foods, key=lambda f: (_score(f), f.food_name), reverse=True)
-
-    def _select_balanced_foods_for_prompt(self, foods: List[CentralFood], limit: int) -> List[CentralFood]:
-        """Build a deterministic, balanced food set for AI prompts."""
-        if not foods:
-            return []
-
-        limit = max(12, int(limit or 50))
-
-        proteins: List[CentralFood] = []
-        carbs: List[CentralFood] = []
-        produce: List[CentralFood] = []
-        fats: List[CentralFood] = []
-        others: List[CentralFood] = []
-
-        for food in foods:
-            bucket = self._classify_food_bucket(food)
-            if bucket == "protein":
-                proteins.append(food)
-            elif bucket == "carb":
-                carbs.append(food)
-            elif bucket == "produce":
-                produce.append(food)
-            elif bucket == "fat":
-                fats.append(food)
-            else:
-                others.append(food)
-
-        quotas = {
-            "protein": max(3, int(limit * 0.30)),
-            "carb": max(3, int(limit * 0.25)),
-            "produce": max(3, int(limit * 0.25)),
-            "fat": max(2, int(limit * 0.20)),
-        }
-
-        selected: List[CentralFood] = []
-        selected_ids = set()
-
-        def _pick(items: List[CentralFood], amount: int, key_name: str) -> None:
-            if amount <= 0 or not items:
-                return
-            ranked = self._rank_bucket_items(items, key_name)
-            for candidate in ranked:
-                if len(selected) >= limit:
-                    break
-                if candidate.id in selected_ids:
-                    continue
-                selected.append(candidate)
-                selected_ids.add(candidate.id)
-                if len([f for f in selected if self._classify_food_bucket(f) == key_name]) >= amount:
-                    break
-
-        _pick(proteins, quotas["protein"], "protein")
-        _pick(carbs, quotas["carb"], "carb")
-        _pick(produce, quotas["produce"], "produce")
-        _pick(fats, quotas["fat"], "fat")
-
-        # Fill any remaining slots with deterministic best-of leftovers.
-        leftovers = proteins + carbs + produce + fats + others
-        leftovers_ranked = sorted(
-            leftovers,
-            key=lambda f: (
-                -(f.protein_per_100g or 0),
-                -(f.fiber_per_100g or 0),
-                -(f.carbs_per_100g or 0),
-                f.food_name.lower(),
-            ),
-        )
-        for food in leftovers_ranked:
-            if len(selected) >= limit:
-                break
-            if food.id in selected_ids:
-                continue
-            selected.append(food)
-            selected_ids.add(food.id)
-
-        return selected[:limit]
-
-    def _classify_food_bucket(self, food: CentralFood) -> str:
-        """Classify food into broad meal-building buckets."""
-        name = (food.food_name or "").lower()
-        category = (food.food_category or "").lower()
-
-        produce_terms = [
-            "vegetable", "fruit", "greens", "salad", "tomato", "cucumber", "pepper",
-            "broccoli", "spinach", "lettuce", "apple", "banana", "berry", "orange",
-        ]
-        protein_terms = [
-            "chicken", "turkey", "beef", "fish", "salmon", "tuna", "egg", "tofu",
-            "tempeh", "lentil", "bean", "yogurt", "cottage", "protein",
-        ]
-        carb_terms = [
-            "rice", "bread", "oat", "pasta", "potato", "quinoa", "barley", "cereal",
-            "tortilla", "wrap", "noodle",
-        ]
-        fat_terms = [
-            "avocado", "olive", "almond", "walnut", "cashew", "peanut", "seed", "nut",
-            "tahini", "flax", "chia",
-        ]
-
-        search_space = f"{name} {category}"
-
-        if any(term in search_space for term in produce_terms):
-            return "produce"
-        if any(term in search_space for term in protein_terms) or (food.protein_per_100g or 0) >= 15:
-            return "protein"
-        if any(term in search_space for term in fat_terms) or ((food.fats_per_100g or 0) >= 12 and (food.protein_per_100g or 0) < 12):
-            return "fat"
-        if any(term in search_space for term in carb_terms) or (food.carbs_per_100g or 0) >= 20:
-            return "carb"
-        return "other"
-
-    def _rank_bucket_items(self, items: List[CentralFood], bucket: str) -> List[CentralFood]:
-        """Deterministic ranking by bucket-specific nutritional signals."""
-        if bucket == "protein":
-            return sorted(items, key=lambda f: (-(f.protein_per_100g or 0), f.food_name.lower()))
-        if bucket == "carb":
-            return sorted(items, key=lambda f: (-(f.carbs_per_100g or 0), -(f.fiber_per_100g or 0), f.food_name.lower()))
-        if bucket == "produce":
-            return sorted(items, key=lambda f: (-(f.fiber_per_100g or 0), f.food_name.lower()))
-        if bucket == "fat":
-            return sorted(items, key=lambda f: (-(f.fats_per_100g or 0), f.food_name.lower()))
-        return sorted(items, key=lambda f: f.food_name.lower())
-
-    def _stratified_fetch(self, base_query, pool_size: int = 250) -> List[CentralFood]:
-        """Fetch foods in strata by dominant macronutrient so every food type
-        is represented regardless of alphabetical position.
-
-        Each stratum uses calorie density ranges that select real cooking
-        ingredients rather than dried powders or supplements:
-          - Protein stratum orders by protein but caps calories at 350/100g
-            to skip dried powders (88g protein = dried isolate, not real food)
-          - Carb stratum selects moderate-calorie grains/bread (100-400 kcal)
-          - Fat stratum selects nuts/seeds/oils in normal calorie range
-          - Produce selects low-cal vegetables/fruits
-        """
-        per_stratum = pool_size // 5
-
-        strata_configs = [
-            # (filters, order_by) — each stratum has its own sort
-            # High protein: real meats, fish, eggs, legumes (not powders)
-            (
-                (CentralFood.protein_per_100g >= 15,
-                 CentralFood.calories_per_100g <= 350),
-                CentralFood.protein_per_100g.desc(),
-            ),
-            # High carb: grains, pasta, bread, rice
-            (
-                (CentralFood.carbs_per_100g >= 20,
-                 CentralFood.protein_per_100g < 15,
-                 CentralFood.calories_per_100g.between(80, 400)),
-                CentralFood.fiber_per_100g.desc(),
-            ),
-            # High fat: nuts, seeds, avocado, oils
-            (
-                (CentralFood.fats_per_100g >= 12,
-                 CentralFood.protein_per_100g < 15),
-                CentralFood.fats_per_100g.desc(),
-            ),
-            # Produce: vegetables, fruits (low calorie)
-            (
-                (CentralFood.calories_per_100g < 80,
-                 CentralFood.protein_per_100g < 15),
-                CentralFood.fiber_per_100g.desc(),
-            ),
-        ]
-
-        seen_ids: set = set()
-        result: List[CentralFood] = []
-
-        for filters, order in strata_configs:
-            stratum_query = base_query.filter(*filters)
-            rows = (
-                stratum_query
-                .order_by(order)
-                .limit(per_stratum)
-                .all()
-            )
-            for r in rows:
-                if r.id not in seen_ids:
-                    result.append(r)
-                    seen_ids.add(r.id)
-
-        # "Other" stratum — fill remaining with whatever scores well
-        remaining = (
-            base_query
-            .filter(CentralFood.calories_per_100g.between(50, 400))
-            .order_by(CentralFood.protein_per_100g.desc())
-            .limit(per_stratum * 2)
-            .all()
-        )
-        for r in remaining:
-            if r.id not in seen_ids:
-                result.append(r)
-                seen_ids.add(r.id)
-            if len(result) >= pool_size:
-                break
-
-        return result
-
-    def _deduplicate_food_families(self, foods: List[CentralFood], max_per_family: int = 4) -> List[CentralFood]:
-        """Limit items per food family to prevent one ingredient dominating the pool.
-        Family is derived from the first meaningful word of the food name
-        (e.g., 'Beef (braised...)' and 'Beef (grilled...)' share family 'beef')."""
-        import re
-        family_counts: dict[str, int] = {}
-        result: List[CentralFood] = []
-
-        for food in foods:
-            name = (food.food_name or "").strip()
-            # Extract the first word, stripping parentheses and commas
-            match = re.match(r"([A-Za-z]+)", name)
-            family = match.group(1).lower() if match else "unknown"
-
-            # Merge obvious synonyms
-            if family in ("beans", "bean"):
-                family = "bean"
-
-            count = family_counts.get(family, 0)
-            if count < max_per_family:
-                result.append(food)
-                family_counts[family] = count + 1
-
-        return result
 
     def search_by_vector(
         self,

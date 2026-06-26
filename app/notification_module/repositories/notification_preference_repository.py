@@ -38,11 +38,6 @@ class NotificationPreferenceRepository:
             NotificationPreference.meal_reminders_enabled == True
         ).all()
 
-    def get_with_workout_enabled(self) -> List[NotificationPreference]:
-        return self.db.query(NotificationPreference).filter(
-            NotificationPreference.workout_reminders_enabled == True
-        ).all()
-
     def get_with_sleep_enabled(self) -> List[NotificationPreference]:
         return self.db.query(NotificationPreference).filter(
             NotificationPreference.sleep_reminders_enabled == True
