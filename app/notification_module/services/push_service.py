@@ -42,11 +42,12 @@ def _init_firebase() -> bool:
 
 def _is_token_dead(exc: Exception) -> bool:
     from firebase_admin import messaging
-    return isinstance(exc, (
-        messaging.UnregisteredError,
-        messaging.InvalidArgumentError,
-        messaging.SenderIdMismatchError,
-    ))
+    dead_types = [messaging.UnregisteredError, messaging.SenderIdMismatchError]
+    for attr in ("InvalidArgumentError",):
+        cls = getattr(messaging, attr, None)
+        if cls:
+            dead_types.append(cls)
+    return isinstance(exc, tuple(dead_types))
 
 
 def send_push(token: str, title: str, body: str, data: Optional[Dict] = None) -> bool:
