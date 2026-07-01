@@ -44,19 +44,28 @@ def _summarize_workout(plan: WorkoutPlanDTO) -> str:
 
 
 def _summarize_nutrition(plan: NutritionPlanDTO) -> str:
+    """Produce a compact, judge-readable summary of the meal plan.
+
+    NutritionPlanDTO stores meals inside days (plan.days[i].meals).
+    meal.instructions contains the human-readable preparation text
+    (ingredient list + cooking method) which is what the judge needs
+    to detect hidden allergens and dietary violations.
+    """
     lines = [
         f"Plan: {plan.plan_name}",
         f"Daily calories: {plan.daily_calories} kcal  |  "
         f"Protein: {plan.daily_protein_g}g  Carbs: {plan.daily_carbs_g}g  "
         f"Fats: {plan.daily_fats_g}g",
     ]
-    for meal in plan.meals:
-        ingredients = (meal.ingredients or "not listed").strip()
-        lines.append(
-            f"  {meal.meal_type} — {meal.meal_name}  "
-            f"({meal.calories} kcal | P:{meal.protein_g}g C:{meal.carbs_g}g F:{meal.fats_g}g)\n"
-            f"    Ingredients: {ingredients}"
-        )
+    for day in plan.days:
+        lines.append(f"--- {day.day_name} ---")
+        for meal in day.meals:
+            prep = (meal.instructions or "").strip()
+            lines.append(
+                f"  {meal.meal_type} — {meal.meal_name}  "
+                f"({meal.calories} kcal | P:{meal.protein_g}g C:{meal.carbs_g}g F:{meal.fats_g}g)\n"
+                f"    Preparation: {prep or 'no details provided'}"
+            )
     return "\n".join(lines)
 
 

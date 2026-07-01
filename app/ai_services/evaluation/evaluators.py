@@ -100,8 +100,11 @@ def evaluate_nutrition_plan(
 ) -> EvalReport:
     checks: List[CheckResult] = []
 
-    # ── Rule-based: meals count ────────────────────────────────────────
-    actual_meals = len(plan.meals)
+    # ── Rule-based: meals count per day ───────────────────────────────
+    # NutritionPlanDTO stores meals inside days (plan.days[i].meals).
+    # Check the first day as representative of the daily meal structure.
+    first_day_meals = plan.days[0].meals if plan.days else []
+    actual_meals = len(first_day_meals)
     meals_ok = actual_meals == prefs.meals_per_day
     checks.append(CheckResult(
         name="meals_count_match",
@@ -110,9 +113,9 @@ def evaluate_nutrition_plan(
         score=1.0 if meals_ok else 0.0,
         weight=10,
         violations=[] if meals_ok else [
-            f"Expected {prefs.meals_per_day} meals, got {actual_meals}"
+            f"Expected {prefs.meals_per_day} meals per day, got {actual_meals}"
         ],
-        reasoning=f"Plan has {actual_meals} meals, {prefs.meals_per_day} requested.",
+        reasoning=f"Day 1 has {actual_meals} meals, {prefs.meals_per_day} requested.",
     ))
 
     # ── Rule-based: calorie accuracy (±15%) ───────────────────────────
@@ -123,7 +126,12 @@ def evaluate_nutrition_plan(
         base_calories += 300
     target_cal = prefs.custom_calorie_target or base_calories
 
-    total_cal = sum(m.calories or 0 for m in plan.meals)
+    # Use the plan's pre-computed daily_calories if set; otherwise sum first-day meals
+    if plan.daily_calories is not None:
+        total_cal = plan.daily_calories
+    else:
+        total_cal = sum(m.calories or 0 for m in first_day_meals)
+
     cal_diff_pct = abs(total_cal - target_cal) / max(target_cal, 1)
     cal_ok = cal_diff_pct <= 0.15
     checks.append(CheckResult(
@@ -133,10 +141,10 @@ def evaluate_nutrition_plan(
         score=1.0 if cal_ok else max(0.0, 1.0 - cal_diff_pct),
         weight=15,
         violations=[] if cal_ok else [
-            f"Target {target_cal} kcal, got {total_cal} kcal "
+            f"Target {target_cal} kcal, got {total_cal:.0f} kcal "
             f"({cal_diff_pct * 100:.1f}% off)"
         ],
-        reasoning=f"Total meal calories: {total_cal} kcal, target: {target_cal} kcal.",
+        reasoning=f"Daily calories: {total_cal:.0f} kcal, target: {target_cal} kcal.",
     ))
 
     # ── LLM judge ─────────────────────────────────────────────────────
