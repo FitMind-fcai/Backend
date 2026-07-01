@@ -240,9 +240,6 @@ docker exec FitMind_APIs pytest -m unit
 
 # Integration tests only (FastAPI TestClient, all services mocked)
 docker exec FitMind_APIs pytest -m integration
-
-# Evaluation tests only (requires a real GROQ_API_KEY — see below)
-docker exec -e GROQ_API_KEY=gsk_your_real_key FitMind_APIs pytest -m evaluation
 ```
 
 ### Run a Specific Test File
@@ -269,43 +266,53 @@ docker exec FitMind_APIs pytest tests/unit/test_security.py::TestPasswordHashing
 
 ### AI Evaluation Scripts
 
-These call the Groq API to evaluate plan safety and coaching relevance. A real `GROQ_API_KEY` is required.
+Evaluation scripts call the **real `AICoachService`** (via `AI_API_KEY` / OpenRouter) to generate plans and coaching messages, then use a **Groq LLM** (`EVAL_GROQ_API_KEY`) as an independent safety judge. The two keys are kept separate so the coach and judge are completely independent.
+
+| Script | `AI_API_KEY` | `EVAL_GROQ_API_KEY` |
+|---|---|---|
+| `run_evaluations.py` (all) | Required | Required |
+| `eval_plan_safety.py` | Required | Required |
+| `eval_coaching_relevance.py` | Required | Not needed |
 
 ```bash
-# Run all evaluations (plan safety + coaching relevance) and save a combined report
+# Run all evaluations (plan safety + coaching relevance) — saves combined_evaluation_report.json
 docker exec \
-  -e GROQ_API_KEY=gsk_your_real_key \
+  -e AI_API_KEY=sk-or-your-openrouter-key \
+  -e EVAL_GROQ_API_KEY=gsk_your_groq_key \
   FitMind_APIs \
   python tests/evaluation/run_evaluations.py
 
-# Plan safety only (3 core health profiles: diabetic, knee-injury, asthma)
+# Plan safety only (3 profiles: Type 2 Diabetes, Knee ACL Injury, Exercise-Induced Asthma)
 docker exec \
-  -e GROQ_API_KEY=gsk_your_real_key \
+  -e AI_API_KEY=sk-or-your-openrouter-key \
+  -e EVAL_GROQ_API_KEY=gsk_your_groq_key \
   FitMind_APIs \
   python tests/evaluation/eval_plan_safety.py
 
-# Plan safety — extended (23 profiles, more thorough)
+# Coaching relevance only (5 daily log scenarios — no Groq key needed)
 docker exec \
-  -e GROQ_API_KEY=gsk_your_real_key \
-  -e EVAL_PROFILES=extended \
-  FitMind_APIs \
-  python tests/evaluation/eval_plan_safety.py
-
-# Coaching relevance only (3 log scenarios)
-docker exec \
-  -e GROQ_API_KEY=gsk_your_real_key \
+  -e AI_API_KEY=sk-or-your-openrouter-key \
   FitMind_APIs \
   python tests/evaluation/eval_coaching_relevance.py
 
-# Custom Groq model (default: llama-3.3-70b-versatile)
+# Custom Groq judge model (default: llama-3.3-70b-versatile)
 docker exec \
-  -e GROQ_API_KEY=gsk_your_real_key \
-  -e GROQ_MODEL=llama-3.1-70b-versatile \
+  -e AI_API_KEY=sk-or-your-openrouter-key \
+  -e EVAL_GROQ_API_KEY=gsk_your_groq_key \
+  -e EVAL_GROQ_MODEL=llama-3.1-70b-versatile \
+  FitMind_APIs \
+  python tests/evaluation/run_evaluations.py
+
+# Custom output directory for results
+docker exec \
+  -e AI_API_KEY=sk-or-your-openrouter-key \
+  -e EVAL_GROQ_API_KEY=gsk_your_groq_key \
+  -e RESULTS_DIR=/app/eval_output \
   FitMind_APIs \
   python tests/evaluation/run_evaluations.py
 ```
 
-Results are saved to `tests/evaluation/results/` inside the container (mounted to `./tests/evaluation/results/` on the host).
+Results are saved to `tests/evaluation/results/` inside the container.
 
 ### Run Tests Without the Full Stack
 
