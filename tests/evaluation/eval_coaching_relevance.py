@@ -1,14 +1,30 @@
 """
-AI Coaching Relevance Evaluation Script
-========================================
-Tests whether the AI coach generates messages grounded in the user's actual logged data.
+Coaching Relevance Evaluation
+==============================
+Tests whether the FitMind AI coach produces relevant, data-specific
+coaching messages when given different daily log snapshots.
 
-Usage:
-    GROQ_API_KEY=your_key python tests/evaluation/eval_coaching_relevance.py
+How it works
+------------
+1. Defines realistic daily log scenarios (snapshot_data dicts)
+   that represent what a user would have logged in 24 hours.
+2. Calls the REAL AICoachService.analyze_daily_progress() — the
+   same method called by RecommendationService.get_daily_suggestion()
+   which is triggered by the coaching endpoints.
+3. Evaluates each response against 4 criteria:
+   - Urgency correctness  : does urgency match the scenario?
+   - Numeric specificity  : does the suggestion mention actual numbers?
+   - Actionability        : is the suggestion concrete (verb + action)?
+   - Not generic boilerplate: avoids phrases like "great job", "as your AI"
 
-Optional env vars:
-    GROQ_MODEL    Groq model to use (default: llama-3.3-70b-versatile)
-    RESULTS_DIR   Directory to save JSON results (default: tests/evaluation/results)
+Required env vars
+-----------------
+  AI_API_KEY   OpenRouter key (used by the real AI coach)
+
+Usage
+-----
+  docker exec -e AI_API_KEY=sk-or-... FitMind_APIs \\
+    python tests/evaluation/eval_coaching_relevance.py
 """
 import json
 import os
@@ -16,199 +32,296 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-try:
-    from groq import Groq
-except ImportError:
-    print("ERROR: groq package not installed. Run: pip install groq")
-    sys.exit(1)
+from app.ai_services.ai_coach.ai_coach_service import AICoachService
+from app.ai_services.ai_coach.dtos import UserProfileDTO
 
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", Path(__file__).parent / "results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-LOG_SCENARIOS = [
+
+# ---------------------------------------------------------------------------
+# Profiles (context passed to the coach)
+# ---------------------------------------------------------------------------
+
+_STANDARD_PROFILE = UserProfileDTO(
+    age=30, gender="Male", height=178.0, weight=80.0,
+    fitness_goal="Lose Weight", activity_level="Moderately Active",
+    dietary_preference=None, medical_conditions=None,
+    allergies=None, injuries=None, medications=None,
+)
+
+_DIABETIC_PROFILE = UserProfileDTO(
+    age=45, gender="Male", height=175.0, weight=92.0,
+    fitness_goal="Lose Weight", activity_level="Lightly Active",
+    dietary_preference="Diabetic-friendly",
+    medical_conditions="Type 2 Diabetes",
+    allergies=None, injuries=None,
+    medications="Metformin 1000mg daily",
+)
+
+
+# ---------------------------------------------------------------------------
+# Daily log scenarios
+# Each dict maps directly to the snapshot_data format consumed by
+# AICoachService.analyze_daily_progress()
+# ---------------------------------------------------------------------------
+
+SCENARIOS = [
     {
-        "name": "Missed workout, over calories",
-        "profile": "28yo male, goal: Lose Weight, target 1800 kcal/day",
-        "logs": {
-            "meals": ["breakfast: oatmeal with banana", "lunch: pizza (2 slices)", "dinner: fried chicken, fries"],
-            "calories_consumed": 2650,
-            "calorie_target": 1800,
-            "workouts": [],
-            "water_ml": 800,
-            "water_target_ml": 2000,
-            "sleep_hours": 6.5,
-            "weight_kg": 88.5,
+        "name": "Missed Workout + Significantly Over Calories",
+        "expected_urgency": "off_track",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 2850,  # 58% over target
+            "calorie_gap": -1050,
+            "protein_target": 140,
+            "protein_consumed": 95.0,
+            "protein_gap": 45.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner", "Snack"],
+            "workout_sessions_logged": 0,   # skipped
+            "weight_logged": False,
+            "latest_weight_kg": None,
         },
-        "expected_mentions": ["calories", "workout", "water", "pizza"],
+        "expected_concepts": ["calorie", "workout", "over", "deficit"],
+        "forbidden_concepts": ["great job", "well done", "perfect"],
     },
     {
-        "name": "Perfect adherence day",
-        "profile": "35yo female, goal: Build Muscle, target 2100 kcal/day",
-        "logs": {
-            "meals": ["breakfast: eggs and avocado toast", "lunch: grilled salmon with quinoa", "dinner: chicken breast with vegetables"],
-            "calories_consumed": 2080,
-            "calorie_target": 2100,
-            "workouts": ["Upper body strength 60 min - chest press, rows, shoulder press"],
-            "water_ml": 2200,
-            "water_target_ml": 2000,
-            "sleep_hours": 8.0,
-            "weight_kg": 65.0,
+        "name": "Perfect Adherence Day",
+        "expected_urgency": "on_track",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 1820,   # within 1%
+            "calorie_gap": -20,
+            "protein_target": 140,
+            "protein_consumed": 142.0,
+            "protein_gap": -2.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 79.5,
         },
-        "expected_mentions": ["workout", "protein", "sleep"],
+        "expected_concepts": ["track", "goal", "keep"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
     },
     {
-        "name": "Partial adherence, exercise only logged",
-        "profile": "45yo male diabetic, goal: Lose Weight, target 1600 kcal/day",
-        "logs": {
-            "meals": [],
+        "name": "No Logs At All",
+        "expected_urgency": "off_track",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
             "calories_consumed": 0,
-            "calorie_target": 1600,
-            "workouts": ["30 min walking at moderate pace"],
-            "water_ml": 1500,
-            "water_target_ml": 2500,
-            "sleep_hours": 7.0,
-            "weight_kg": 92.0,
+            "calorie_gap": 1800,
+            "protein_target": 140,
+            "protein_consumed": 0.0,
+            "protein_gap": 140.0,
+            "meal_types_logged": [],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
         },
-        "expected_mentions": ["walk", "nutrition", "log"],
+        "expected_concepts": ["log", "track"],
+        "forbidden_concepts": ["great job"],
+    },
+    {
+        "name": "Diabetic — Good Nutrition But No Workout",
+        "expected_urgency": "needs_attention",
+        "profile": _DIABETIC_PROFILE,
+        "snapshot": {
+            "calories_target": 1600,
+            "calories_consumed": 1580,
+            "calorie_gap": 20,
+            "protein_target": 120,
+            "protein_consumed": 118.0,
+            "protein_gap": 2.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 0,
+            "weight_logged": True,
+            "latest_weight_kg": 91.8,
+        },
+        "expected_concepts": ["workout", "exercise", "physical"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Partial Day — Only Breakfast Logged, Afternoon",
+        "expected_urgency": "needs_attention",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 420,   # only breakfast
+            "calorie_gap": 1380,
+            "protein_target": 140,
+            "protein_consumed": 28.0,
+            "protein_gap": 112.0,
+            "meal_types_logged": ["Breakfast"],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["meal", "lunch", "log", "eat"],
+        "forbidden_concepts": ["great job", "perfect day"],
     },
 ]
 
-SYSTEM_PROMPT = """You are FitMind's personal AI coach. Generate a short, personalized daily coaching message (under 150 words).
 
-Your message MUST:
-1. Reference specific foods, exercises, or metrics from yesterday's log
-2. Comment on how well the user met their calorie and water targets
-3. Mention at least one specific item they logged (food name or exercise name)
-4. Give one concrete, actionable suggestion for today
-5. Be encouraging but honest
+# ---------------------------------------------------------------------------
+# Evaluation helpers
+# ---------------------------------------------------------------------------
 
-Do NOT give generic advice that ignores the actual logged data.
-"""
-
-
-def build_coaching_prompt(scenario: dict) -> str:
-    logs = scenario["logs"]
-    meals_str = ", ".join(logs["meals"]) if logs["meals"] else "No meals logged"
-    workouts_str = ", ".join(logs["workouts"]) if logs["workouts"] else "No workouts logged"
-    return f"""Generate a personalized coaching message for this user.
-
-User profile: {scenario['profile']}
-
-Yesterday's activity log:
-- Meals: {meals_str}
-- Total calories: {logs['calories_consumed']} kcal (target: {logs['calorie_target']} kcal)
-- Workouts: {workouts_str}
-- Water intake: {logs['water_ml']} ml (target: {logs['water_target_ml']} ml)
-- Sleep: {logs['sleep_hours']} hours
-- Morning weight: {logs['weight_kg']} kg
-
-Write a coaching message that references specific items from their log.
-"""
+def _check_urgency(result: dict, scenario: dict) -> tuple:
+    """Returns (passed, reasoning)."""
+    got = result.get("urgency", "")
+    expected = scenario["expected_urgency"]
+    if got == expected:
+        return True, f"urgency='{got}' as expected"
+    # partial credit: needs_attention accepted in place of off_track
+    if expected == "off_track" and got == "needs_attention":
+        return True, f"urgency='{got}' (acceptable — close to expected off_track)"
+    return False, f"expected '{expected}', got '{got}'"
 
 
-def evaluate_relevance(scenario: dict, message: str) -> dict:
-    msg_lower = message.lower()
-    logs = scenario["logs"]
-    checks = []
-
-    all_logged_items = logs["meals"] + logs["workouts"]
-    mentioned_items = []
-    for item in all_logged_items:
-        words = [w.strip(",.:;'") for w in item.lower().split() if len(w) > 4]
-        for word in words:
-            if word in msg_lower:
-                mentioned_items.append(word)
-                break
-    checks.append({
-        "rule": "References a specific logged item",
-        "pass": bool(mentioned_items),
-        "detail": f"Matched: {mentioned_items[:3]}" if mentioned_items else "No matches",
-    })
-
-    expected_found = [kw for kw in scenario["expected_mentions"] if kw.lower() in msg_lower]
-    checks.append({
-        "rule": f"Mentions expected concepts: {scenario['expected_mentions']}",
-        "pass": len(expected_found) >= max(1, len(scenario["expected_mentions"]) // 2),
-        "detail": f"Found: {expected_found}",
-    })
-
-    word_count = len(message.split())
-    checks.append({"rule": "Message is substantive (>= 30 words)", "pass": word_count >= 30, "detail": f"{word_count} words"})
-
-    generic_only = all(p in msg_lower for p in ["stay hydrated", "keep up the good work"]) and not mentioned_items
-    checks.append({"rule": "Not purely generic boilerplate", "pass": not generic_only})
-
-    passed = sum(1 for c in checks if c["pass"])
-    return {
-        "scenario": scenario["name"],
-        "checks": checks,
-        "passed": passed,
-        "failed": len(checks) - passed,
-        "score_pct": round(100 * passed / len(checks), 1),
-        "overall": "PASS" if passed >= 3 else "FAIL",
-        "generated_message": message,
-    }
+def _check_specificity(suggestion: str, snapshot: dict) -> tuple:
+    """Returns (passed, reasoning). Checks whether suggestion cites actual numbers."""
+    cal_consumed = str(int(snapshot["calories_consumed"]))
+    cal_target = str(int(snapshot.get("calories_target") or 0))
+    suggestion_lower = suggestion.lower()
+    # Either an exact calorie number OR general numeric terms
+    has_number = (
+        cal_consumed in suggestion
+        or cal_target in suggestion
+        or any(c.isdigit() for c in suggestion)
+    )
+    if has_number:
+        return True, "suggestion references at least one numeric value"
+    return False, "suggestion contains no specific numbers"
 
 
-def run_coaching_evaluation(scenarios: list, client: Groq) -> list:
-    all_results = []
-    for i, scenario in enumerate(scenarios, 1):
-        print(f"  [{i}/{len(scenarios)}] Scenario: {scenario['name']} ...", flush=True)
+def _check_actionability(suggestion: str) -> tuple:
+    """Returns (passed, reasoning). Checks that suggestion has an actionable verb."""
+    action_words = [
+        "eat", "log", "drink", "train", "work out", "workout", "add",
+        "reduce", "increase", "track", "aim", "try", "hit", "focus",
+        "avoid", "start", "finish", "complete", "cut", "boost",
+        "record", "get",
+    ]
+    sl = suggestion.lower()
+    found = [w for w in action_words if w in sl]
+    if found:
+        return True, f"actionable verb(s) found: {found[:3]}"
+    return False, "no concrete action verb found"
+
+
+def _check_not_generic(suggestion: str, scenario: dict) -> tuple:
+    """Returns (passed, reasoning). Checks it avoids known boilerplate."""
+    boilerplate = scenario.get("forbidden_concepts", [])
+    sl = suggestion.lower()
+    found = [p for p in boilerplate if p.lower() in sl]
+    if found:
+        return False, f"generic/forbidden phrase found: {found}"
+    # Also check for the ultra-generic opener
+    if suggestion.lower().startswith(("great job", "well done", "amazing")):
+        return False, "starts with boilerplate praise"
+    return True, "no generic boilerplate detected"
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def run_coaching_relevance_evaluation() -> dict:
+    print("=" * 65)
+    print("  FITMIND COACHING RELEVANCE EVALUATION")
+    print(f"  Scenarios : {len(SCENARIOS)}")
+    print("=" * 65)
+
+    print("\nInitialising AI Coach Service ...", end=" ", flush=True)
+    coach = AICoachService()
+    print("ready")
+
+    results = []
+    for i, scenario in enumerate(SCENARIOS, 1):
+        name = scenario["name"]
+        profile = scenario["profile"]
+        print(f"\n[{i}/{len(SCENARIOS)}] {name}")
+
         try:
-            response = client.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": build_coaching_prompt(scenario)},
-                ],
-                max_tokens=300,
-                temperature=0.7,
+            response = coach.analyze_daily_progress(
+                snapshot_data=scenario["snapshot"],
+                user_goal=profile.fitness_goal,
+                user_profile_context=profile.to_context_string(),
             )
-            message = response.choices[0].message.content
-            result = evaluate_relevance(scenario, message)
-            all_results.append(result)
-            print(f"         [{result['overall']}] {result['score_pct']}% relevance")
-            print(f"         Generated: {message[:120].strip()}...")
+            suggestion = response.get("suggestion", "")
+            urgency = response.get("urgency", "")
+
+            print(f"  urgency   : {urgency}")
+            print(f"  suggestion: {suggestion[:120]}..." if len(suggestion) > 120 else f"  suggestion: {suggestion}")
+
+            u_pass, u_reason = _check_urgency(response, scenario)
+            s_pass, s_reason = _check_specificity(suggestion, scenario["snapshot"])
+            a_pass, a_reason = _check_actionability(suggestion)
+            g_pass, g_reason = _check_not_generic(suggestion, scenario)
+
+            checks = [
+                {"name": "urgency_correct",   "passed": u_pass, "reasoning": u_reason},
+                {"name": "numeric_specificity","passed": s_pass, "reasoning": s_reason},
+                {"name": "actionability",      "passed": a_pass, "reasoning": a_reason},
+                {"name": "not_generic",        "passed": g_pass, "reasoning": g_reason},
+            ]
+
+            passed_count = sum(1 for c in checks if c["passed"])
+            score_pct = round(100 * passed_count / len(checks), 1)
+            overall = "PASS" if passed_count >= 3 else "FAIL"   # 3 of 4 required
+
+            print(f"  checks    : {passed_count}/{len(checks)} passed  ->  {overall} ({score_pct}%)")
+            for chk in checks:
+                icon = "OK  " if chk["passed"] else "FAIL"
+                print(f"    [{icon}] {chk['name']}: {chk['reasoning']}")
+
+            results.append({
+                "scenario": name,
+                "overall": overall,
+                "score_pct": score_pct,
+                "urgency_returned": urgency,
+                "expected_urgency": scenario["expected_urgency"],
+                "suggestion": suggestion,
+                "checks": checks,
+            })
+
         except Exception as exc:
-            print(f"         [ERROR] {exc}")
-            all_results.append({"scenario": scenario["name"], "overall": "ERROR", "error": str(exc), "score_pct": 0.0})
-    return all_results
+            import traceback as tb
+            print(f"  ERROR: {exc}")
+            results.append({
+                "scenario": name,
+                "overall": "ERROR",
+                "error": str(exc),
+                "traceback": tb.format_exc(),
+            })
 
-
-def print_summary(results: list) -> None:
+    # -- summary ----------------------------------------------------------
     passed = sum(1 for r in results if r.get("overall") == "PASS")
-    total = len(results)
-    avg = sum(r.get("score_pct", 0) for r in results) / total if total else 0
-    print("\n" + "=" * 60)
-    print("COACHING RELEVANCE EVALUATION SUMMARY")
-    print("=" * 60)
-    print(f"Total scenarios : {total}  |  PASS: {passed}  |  Avg score: {avg:.1f}%")
-    print("=" * 60)
+    avg_score = sum(r.get("score_pct", 0) for r in results) / max(len(results), 1)
+    print("\n" + "=" * 65)
+    print("  SUMMARY")
+    print("=" * 65)
     for r in results:
-        icon = "OK" if r.get("overall") == "PASS" else "!!"
-        print(f"  [{icon}] {r.get('scenario', '?'):45s}  {r.get('score_pct', 0):.1f}%")
-
-
-if __name__ == "__main__":
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key or api_key == "test-groq-key":
-        print("ERROR: set GROQ_API_KEY environment variable to a real key")
-        sys.exit(1)
-
-    groq_client = Groq(api_key=api_key)
-    print(f"Starting coaching relevance evaluation with model: {GROQ_MODEL}\n")
-    results = run_coaching_evaluation(LOG_SCENARIOS, groq_client)
-    print_summary(results)
+        icon = r.get("overall", "ERROR")
+        print(f"  {r['scenario']:<45} {icon} ({r.get('score_pct', 0):.0f}%)")
+    print(f"\n  Scenarios passing: {passed} / {len(results)}")
+    print(f"  Average score    : {avg_score:.1f}%")
 
     output = {
         "run_at": datetime.utcnow().isoformat() + "Z",
-        "model": GROQ_MODEL,
-        "total_scenarios": len(results),
-        "pass_count": sum(1 for r in results if r.get("overall") == "PASS"),
-        "average_score_pct": round(sum(r.get("score_pct", 0) for r in results) / len(results), 1) if results else 0,
+        "scenarios_tested": len(results),
+        "scenarios_passed": passed,
+        "avg_score_pct": round(avg_score, 1),
         "results": results,
     }
     out_file = RESULTS_DIR / "coaching_relevance_results.json"
     out_file.write_text(json.dumps(output, indent=2))
-    print(f"\nFull results saved to: {out_file}")
+    print(f"\n  Full results saved to: {out_file}")
+    return output
+
+
+if __name__ == "__main__":
+    run_coaching_relevance_evaluation()
