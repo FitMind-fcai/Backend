@@ -10,7 +10,10 @@ services:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: fastapi_db
     ports:
-      - "5432:5432"
+      # Bound to localhost only — reachable from your machine via an SSH
+      # tunnel, not exposed to the public internet (was 0.0.0.0:5432 before,
+      # a constant target for automated brute-force scanning).
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +27,8 @@ services:
     container_name: FitMind_Redis
     restart: always
     ports:
-      - "6379:6379"
+      # Bound to localhost only — same reasoning as db above.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
