@@ -26,8 +26,8 @@ class TestCoachingStatus:
         assert "on_track" in body
         assert "suggestion" in body
 
-    def test_unauthenticated_returns_401_or_403(self, client):
-        resp = client.get("/v1/coaching/status")
+    def test_unauthenticated_returns_401_or_403(self, unauthenticated_client):
+        resp = unauthenticated_client.get("/v1/coaching/status")
         assert resp.status_code in (401, 403)
 
 

@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 import logging
 from app.auth_module.routes import authRouter
 from app.core.config import SQLALCHEMY_LOG_LEVEL, CORS_ALLOWED_ORIGINS
@@ -63,6 +64,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serves the app logo etc. for use in emails and verification landing pages
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Custom OpenAPI schema to properly document Bearer token
 def custom_openapi():

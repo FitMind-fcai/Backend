@@ -118,7 +118,7 @@ class TestAuthenticateUser:
         mock_user_repo.get_by_email.return_value = None
         with pytest.raises(HTTPException) as exc:
             auth_service.authenticate_user(
-                UserLogin(email="ghost@example.com", password="pass")
+                UserLogin(email="ghost@example.com", password="password")
             )
         assert exc.value.status_code == 401
 
@@ -127,7 +127,7 @@ class TestAuthenticateUser:
         with patch("app.auth_module.services.auth_service.verify_password", return_value=False):
             with pytest.raises(HTTPException) as exc:
                 auth_service.authenticate_user(
-                    UserLogin(email="alice@example.com", password="wrong")
+                    UserLogin(email="alice@example.com", password="wrongpw")
                 )
         assert exc.value.status_code == 401
 

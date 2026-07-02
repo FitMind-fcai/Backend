@@ -117,3 +117,19 @@ def token(verified_user):
 @pytest.fixture
 def headers(token):
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def unauthenticated_client(client):
+    """Client with the auth-user overrides temporarily removed, so real
+    JWT/HTTPBearer enforcement runs (needed to test 401/403 responses)."""
+    from app.core.dependencies import get_current_user, get_current_verified_user
+
+    removed = {}
+    for dep in (get_current_user, get_current_verified_user):
+        if dep in app.dependency_overrides:
+            removed[dep] = app.dependency_overrides.pop(dep)
+
+    yield client
+
+    app.dependency_overrides.update(removed)

@@ -1,0 +1,1126 @@
+{
+  "run_at": "2026-07-02T06:42:44.882542+00:00",
+  "pytest_exit_code": 0,
+  "tests": {
+    "total": 86,
+    "passed": 86,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_sec": 10.1,
+    "by_file": {
+      "tests": {
+        "passed": 86,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "coverage": {
+    "overall": {
+      "statements": 6604,
+      "missing": 3676,
+      "percent_covered": 44.3,
+      "files": {
+        "app/ai_services/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/ai_coach/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/ai_coach/ai_coach_service.py": {
+          "statements": 149,
+          "missing": 130,
+          "percent_covered": 12.8
+        },
+        "app/ai_services/ai_coach/calorie_calculator.py": {
+          "statements": 44,
+          "missing": 30,
+          "percent_covered": 31.8
+        },
+        "app/ai_services/ai_coach/context_builder.py": {
+          "statements": 96,
+          "missing": 72,
+          "percent_covered": 25.0
+        },
+        "app/ai_services/ai_coach/dtos.py": {
+          "statements": 124,
+          "missing": 20,
+          "percent_covered": 83.9
+        },
+        "app/ai_services/ai_coach/llm_client.py": {
+          "statements": 117,
+          "missing": 90,
+          "percent_covered": 23.1
+        },
+        "app/ai_services/ai_coach/plan_judge.py": {
+          "statements": 72,
+          "missing": 57,
+          "percent_covered": 20.8
+        },
+        "app/ai_services/ai_coach/plan_validator.py": {
+          "statements": 52,
+          "missing": 41,
+          "percent_covered": 21.2
+        },
+        "app/ai_services/ai_coach/prompt_builder.py": {
+          "statements": 98,
+          "missing": 89,
+          "percent_covered": 9.2
+        },
+        "app/ai_services/ai_coach/vector_db_service.py": {
+          "statements": 353,
+          "missing": 290,
+          "percent_covered": 17.8
+        },
+        "app/ai_services/embedding_utils.py": {
+          "statements": 35,
+          "missing": 18,
+          "percent_covered": 48.6
+        },
+        "app/ai_services/evaluation/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/evaluation/evaluators.py": {
+          "statements": 59,
+          "missing": 59,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/evaluation/judge.py": {
+          "statements": 58,
+          "missing": 58,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/evaluation/models.py": {
+          "statements": 34,
+          "missing": 34,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/evaluation/reporting.py": {
+          "statements": 132,
+          "missing": 132,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/evaluation/runner.py": {
+          "statements": 129,
+          "missing": 129,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/evaluation/test_cases.py": {
+          "statements": 63,
+          "missing": 63,
+          "percent_covered": 0.0
+        },
+        "app/ai_services/meal_scanner/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/meal_scanner/dtos.py": {
+          "statements": 48,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/meal_scanner/meal_scanner_service.py": {
+          "statements": 79,
+          "missing": 54,
+          "percent_covered": 31.6
+        },
+        "app/ai_services/voice_transcriber/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/voice_transcriber/dtos.py": {
+          "statements": 77,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/ai_services/voice_transcriber/voice_transcriber_service.py": {
+          "statements": 158,
+          "missing": 126,
+          "percent_covered": 20.3
+        },
+        "app/auth_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/config.py": {
+          "statements": 9,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/dependencies.py": {
+          "statements": 25,
+          "missing": 6,
+          "percent_covered": 76.0
+        },
+        "app/auth_module/core/redis_client.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/security.py": {
+          "statements": 18,
+          "missing": 6,
+          "percent_covered": 66.7
+        },
+        "app/auth_module/middleware/__init__.py": {
+          "statements": 2,
+          "missing": 2,
+          "percent_covered": 0.0
+        },
+        "app/auth_module/models/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/models/user.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/repositories/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/repositories/user_repository.py": {
+          "statements": 31,
+          "missing": 15,
+          "percent_covered": 51.6
+        },
+        "app/auth_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/routes/auth.py": {
+          "statements": 65,
+          "missing": 17,
+          "percent_covered": 73.8
+        },
+        "app/auth_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/schemas/user.py": {
+          "statements": 33,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/services/__init__.py": {
+          "statements": 5,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/services/auth_service.py": {
+          "statements": 69,
+          "missing": 2,
+          "percent_covered": 97.1
+        },
+        "app/auth_module/services/email_service.py": {
+          "statements": 22,
+          "missing": 14,
+          "percent_covered": 36.4
+        },
+        "app/auth_module/services/otp_service_redis.py": {
+          "statements": 108,
+          "missing": 90,
+          "percent_covered": 16.7
+        },
+        "app/auth_module/services/verification_service.py": {
+          "statements": 32,
+          "missing": 20,
+          "percent_covered": 37.5
+        },
+        "app/celery_app.py": {
+          "statements": 8,
+          "missing": 8,
+          "percent_covered": 0.0
+        },
+        "app/chatbot_module/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/chatbot_module/models/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/chatbot_module/routes/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/chatbot_module/schemas/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/chatbot_module/services/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/core/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/core/config.py": {
+          "statements": 52,
+          "missing": 2,
+          "percent_covered": 96.2
+        },
+        "app/core/dependencies.py": {
+          "statements": 48,
+          "missing": 33,
+          "percent_covered": 31.2
+        },
+        "app/core/redis_client.py": {
+          "statements": 29,
+          "missing": 17,
+          "percent_covered": 41.4
+        },
+        "app/core/security.py": {
+          "statements": 31,
+          "missing": 2,
+          "percent_covered": 93.5
+        },
+        "app/db/database.py": {
+          "statements": 15,
+          "missing": 4,
+          "percent_covered": 73.3
+        },
+        "app/notification_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/core/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/core/dependencies.py": {
+          "statements": 12,
+          "missing": 3,
+          "percent_covered": 75.0
+        },
+        "app/notification_module/models/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/models/device_token.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/models/notification_preference.py": {
+          "statements": 15,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/repositories/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/repositories/device_token_repository.py": {
+          "statements": 30,
+          "missing": 20,
+          "percent_covered": 33.3
+        },
+        "app/notification_module/repositories/notification_preference_repository.py": {
+          "statements": 29,
+          "missing": 18,
+          "percent_covered": 37.9
+        },
+        "app/notification_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/routes/notifications.py": {
+          "statements": 28,
+          "missing": 7,
+          "percent_covered": 75.0
+        },
+        "app/notification_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/schemas/notifications.py": {
+          "statements": 28,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/services/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/notification_module/services/notification_service.py": {
+          "statements": 16,
+          "missing": 7,
+          "percent_covered": 56.2
+        },
+        "app/notification_module/services/push_service.py": {
+          "statements": 73,
+          "missing": 62,
+          "percent_covered": 15.1
+        },
+        "app/notification_module/services/reminder_service.py": {
+          "statements": 104,
+          "missing": 80,
+          "percent_covered": 23.1
+        },
+        "app/notification_module/tasks.py": {
+          "statements": 46,
+          "missing": 46,
+          "percent_covered": 0.0
+        },
+        "app/planning_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/core/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/core/dependencies.py": {
+          "statements": 6,
+          "missing": 1,
+          "percent_covered": 83.3
+        },
+        "app/planning_module/core/planning_engine.py": {
+          "statements": 90,
+          "missing": 46,
+          "percent_covered": 48.9
+        },
+        "app/planning_module/models/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/models/enums.py": {
+          "statements": 40,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/models/plan.py": {
+          "statements": 146,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/repositories/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/repositories/nutrition_repository.py": {
+          "statements": 71,
+          "missing": 48,
+          "percent_covered": 32.4
+        },
+        "app/planning_module/repositories/workout_repository.py": {
+          "statements": 60,
+          "missing": 39,
+          "percent_covered": 35.0
+        },
+        "app/planning_module/routes/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/routes/nutrition_routes.py": {
+          "statements": 107,
+          "missing": 78,
+          "percent_covered": 27.1
+        },
+        "app/planning_module/routes/plan_generation_routes.py": {
+          "statements": 82,
+          "missing": 60,
+          "percent_covered": 26.8
+        },
+        "app/planning_module/routes/workout_routes.py": {
+          "statements": 68,
+          "missing": 45,
+          "percent_covered": 33.8
+        },
+        "app/planning_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/schemas/plan.py": {
+          "statements": 297,
+          "missing": 16,
+          "percent_covered": 94.6
+        },
+        "app/planning_module/services/__init__.py": {
+          "statements": 5,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/planning_module/services/converters.py": {
+          "statements": 39,
+          "missing": 27,
+          "percent_covered": 30.8
+        },
+        "app/planning_module/services/nutrition_plan_service.py": {
+          "statements": 35,
+          "missing": 19,
+          "percent_covered": 45.7
+        },
+        "app/planning_module/services/plan_generation_service.py": {
+          "statements": 264,
+          "missing": 223,
+          "percent_covered": 15.5
+        },
+        "app/planning_module/services/workout_plan_service.py": {
+          "statements": 32,
+          "missing": 15,
+          "percent_covered": 53.1
+        },
+        "app/profile_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/core/dependencies.py": {
+          "statements": 9,
+          "missing": 2,
+          "percent_covered": 77.8
+        },
+        "app/profile_module/models/enums.py": {
+          "statements": 15,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/models/profile.py": {
+          "statements": 21,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/repositories/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/repositories/profile_repository.py": {
+          "statements": 13,
+          "missing": 4,
+          "percent_covered": 69.2
+        },
+        "app/profile_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/routes/profile.py": {
+          "statements": 16,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/schemas/profile.py": {
+          "statements": 36,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/services/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/services/profile_service.py": {
+          "statements": 20,
+          "missing": 11,
+          "percent_covered": 45.0
+        },
+        "app/recommendation_system/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/core/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/core/dependencies.py": {
+          "statements": 15,
+          "missing": 1,
+          "percent_covered": 93.3
+        },
+        "app/recommendation_system/models/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/models/coaching_message.py": {
+          "statements": 14,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/repositories/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/repositories/coaching_message_repository.py": {
+          "statements": 39,
+          "missing": 28,
+          "percent_covered": 28.2
+        },
+        "app/recommendation_system/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/routes/coaching.py": {
+          "statements": 52,
+          "missing": 7,
+          "percent_covered": 86.5
+        },
+        "app/recommendation_system/routes/recommendations.py": {
+          "statements": 28,
+          "missing": 9,
+          "percent_covered": 67.9
+        },
+        "app/recommendation_system/schemas/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/schemas/coaching.py": {
+          "statements": 30,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/schemas/recommendations.py": {
+          "statements": 145,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/services/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/recommendation_system/services/coaching_service.py": {
+          "statements": 96,
+          "missing": 66,
+          "percent_covered": 31.2
+        },
+        "app/recommendation_system/services/feature_engineering.py": {
+          "statements": 151,
+          "missing": 130,
+          "percent_covered": 13.9
+        },
+        "app/recommendation_system/services/recommendation_service.py": {
+          "statements": 164,
+          "missing": 136,
+          "percent_covered": 17.1
+        },
+        "app/recommendation_system/services/score_service.py": {
+          "statements": 110,
+          "missing": 91,
+          "percent_covered": 17.3
+        },
+        "app/shared/__init__.py": {
+          "statements": 3,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/shared/repositories/__init__.py": {
+          "statements": 0,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/shared/repositories/base_repository.py": {
+          "statements": 58,
+          "missing": 43,
+          "percent_covered": 25.9
+        },
+        "app/shared/repositories/central_exercise_repository.py": {
+          "statements": 217,
+          "missing": 199,
+          "percent_covered": 8.3
+        },
+        "app/shared/repositories/central_food_repository.py": {
+          "statements": 106,
+          "missing": 90,
+          "percent_covered": 15.1
+        },
+        "app/shared/schemas/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/shared/services/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/shared/services/email_service.py": {
+          "statements": 39,
+          "missing": 32,
+          "percent_covered": 17.9
+        },
+        "app/shared/services/email_templates.py": {
+          "statements": 9,
+          "missing": 4,
+          "percent_covered": 55.6
+        },
+        "app/shared/services/web_templates.py": {
+          "statements": 11,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/shared/utils/__init__.py": {
+          "statements": 1,
+          "missing": 1,
+          "percent_covered": 0.0
+        },
+        "app/tracking_module/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/core/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/core/dependencies.py": {
+          "statements": 33,
+          "missing": 10,
+          "percent_covered": 69.7
+        },
+        "app/tracking_module/models/__init__.py": {
+          "statements": 7,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/enums.py": {
+          "statements": 11,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/hydration_log.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/meal_log.py": {
+          "statements": 24,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/sleep_log.py": {
+          "statements": 13,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/weight_log.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/workout_log.py": {
+          "statements": 19,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/repositories/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/repositories/hydration_log_repository.py": {
+          "statements": 20,
+          "missing": 10,
+          "percent_covered": 50.0
+        },
+        "app/tracking_module/repositories/meal_log_repository.py": {
+          "statements": 23,
+          "missing": 13,
+          "percent_covered": 43.5
+        },
+        "app/tracking_module/repositories/sleep_log_repository.py": {
+          "statements": 20,
+          "missing": 10,
+          "percent_covered": 50.0
+        },
+        "app/tracking_module/repositories/weight_log_repository.py": {
+          "statements": 21,
+          "missing": 11,
+          "percent_covered": 47.6
+        },
+        "app/tracking_module/repositories/workout_log_repository.py": {
+          "statements": 21,
+          "missing": 11,
+          "percent_covered": 47.6
+        },
+        "app/tracking_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/routes/tracking.py": {
+          "statements": 75,
+          "missing": 16,
+          "percent_covered": 78.7
+        },
+        "app/tracking_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/schemas/tracking.py": {
+          "statements": 281,
+          "missing": 4,
+          "percent_covered": 98.6
+        },
+        "app/tracking_module/services/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/services/tracking_service.py": {
+          "statements": 187,
+          "missing": 141,
+          "percent_covered": 24.6
+        }
+      }
+    },
+    "scoped_to_tested_modules": {
+      "statements": 1617,
+      "missing": 476,
+      "percent_covered": 70.6,
+      "files": {
+        "app/auth_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/config.py": {
+          "statements": 9,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/dependencies.py": {
+          "statements": 25,
+          "missing": 6,
+          "percent_covered": 76.0
+        },
+        "app/auth_module/core/redis_client.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/core/security.py": {
+          "statements": 18,
+          "missing": 6,
+          "percent_covered": 66.7
+        },
+        "app/auth_module/middleware/__init__.py": {
+          "statements": 2,
+          "missing": 2,
+          "percent_covered": 0.0
+        },
+        "app/auth_module/models/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/models/user.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/repositories/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/repositories/user_repository.py": {
+          "statements": 31,
+          "missing": 15,
+          "percent_covered": 51.6
+        },
+        "app/auth_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/routes/auth.py": {
+          "statements": 65,
+          "missing": 17,
+          "percent_covered": 73.8
+        },
+        "app/auth_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/schemas/user.py": {
+          "statements": 33,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/services/__init__.py": {
+          "statements": 5,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/auth_module/services/auth_service.py": {
+          "statements": 69,
+          "missing": 2,
+          "percent_covered": 97.1
+        },
+        "app/auth_module/services/email_service.py": {
+          "statements": 22,
+          "missing": 14,
+          "percent_covered": 36.4
+        },
+        "app/auth_module/services/otp_service_redis.py": {
+          "statements": 108,
+          "missing": 90,
+          "percent_covered": 16.7
+        },
+        "app/auth_module/services/verification_service.py": {
+          "statements": 32,
+          "missing": 20,
+          "percent_covered": 37.5
+        },
+        "app/core/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/core/config.py": {
+          "statements": 52,
+          "missing": 2,
+          "percent_covered": 96.2
+        },
+        "app/core/dependencies.py": {
+          "statements": 48,
+          "missing": 33,
+          "percent_covered": 31.2
+        },
+        "app/core/redis_client.py": {
+          "statements": 29,
+          "missing": 17,
+          "percent_covered": 41.4
+        },
+        "app/core/security.py": {
+          "statements": 31,
+          "missing": 2,
+          "percent_covered": 93.5
+        },
+        "app/profile_module/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/core/dependencies.py": {
+          "statements": 9,
+          "missing": 2,
+          "percent_covered": 77.8
+        },
+        "app/profile_module/models/enums.py": {
+          "statements": 15,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/models/profile.py": {
+          "statements": 21,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/repositories/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/repositories/profile_repository.py": {
+          "statements": 13,
+          "missing": 4,
+          "percent_covered": 69.2
+        },
+        "app/profile_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/routes/profile.py": {
+          "statements": 16,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/schemas/profile.py": {
+          "statements": 36,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/services/__init__.py": {
+          "statements": 1,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/profile_module/services/profile_service.py": {
+          "statements": 20,
+          "missing": 11,
+          "percent_covered": 45.0
+        },
+        "app/recommendation_system/routes/coaching.py": {
+          "statements": 52,
+          "missing": 7,
+          "percent_covered": 86.5
+        },
+        "app/recommendation_system/schemas/coaching.py": {
+          "statements": 30,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/core/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/core/dependencies.py": {
+          "statements": 33,
+          "missing": 10,
+          "percent_covered": 69.7
+        },
+        "app/tracking_module/models/__init__.py": {
+          "statements": 7,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/enums.py": {
+          "statements": 11,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/hydration_log.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/meal_log.py": {
+          "statements": 24,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/sleep_log.py": {
+          "statements": 13,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/weight_log.py": {
+          "statements": 12,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/models/workout_log.py": {
+          "statements": 19,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/repositories/__init__.py": {
+          "statements": 4,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/repositories/hydration_log_repository.py": {
+          "statements": 20,
+          "missing": 10,
+          "percent_covered": 50.0
+        },
+        "app/tracking_module/repositories/meal_log_repository.py": {
+          "statements": 23,
+          "missing": 13,
+          "percent_covered": 43.5
+        },
+        "app/tracking_module/repositories/sleep_log_repository.py": {
+          "statements": 20,
+          "missing": 10,
+          "percent_covered": 50.0
+        },
+        "app/tracking_module/repositories/weight_log_repository.py": {
+          "statements": 21,
+          "missing": 11,
+          "percent_covered": 47.6
+        },
+        "app/tracking_module/repositories/workout_log_repository.py": {
+          "statements": 21,
+          "missing": 11,
+          "percent_covered": 47.6
+        },
+        "app/tracking_module/routes/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/routes/tracking.py": {
+          "statements": 75,
+          "missing": 16,
+          "percent_covered": 78.7
+        },
+        "app/tracking_module/schemas/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/schemas/tracking.py": {
+          "statements": 281,
+          "missing": 4,
+          "percent_covered": 98.6
+        },
+        "app/tracking_module/services/__init__.py": {
+          "statements": 2,
+          "missing": 0,
+          "percent_covered": 100.0
+        },
+        "app/tracking_module/services/tracking_service.py": {
+          "statements": 187,
+          "missing": 141,
+          "percent_covered": 24.6
+        }
+      }
+    }
+  }
+}

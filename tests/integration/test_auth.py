@@ -40,8 +40,8 @@ class TestLogin:
         resp = client.post("/v1/auth/login", json=self.PAYLOAD)
         assert resp.status_code == 200
         body = resp.json()
-        assert "access_token" in body
-        assert body["access_token"] == "jwt-access-token"
+        assert "token" in body
+        assert body["token"] == "jwt-access-token"
 
     def test_wrong_password_returns_401(self, client, mock_auth):
         mock_auth.authenticate_user.side_effect = HTTPException(status_code=401, detail="Invalid credentials")
@@ -60,8 +60,8 @@ class TestGetMe:
         body = resp.json()
         assert body["email"] == verified_user.email
 
-    def test_no_token_returns_403_or_401(self, client):
-        resp = client.get("/v1/auth/me")
+    def test_no_token_returns_403_or_401(self, unauthenticated_client):
+        resp = unauthenticated_client.get("/v1/auth/me")
         assert resp.status_code in (401, 403)
 
 
@@ -82,12 +82,23 @@ class TestForgotPassword:
 
 
 class TestVerifyEmail:
-    def test_valid_token_returns_200(self, client, mock_auth, verified_user):
-        mock_auth.verify_user_email.return_value = verified_user
-        resp = client.post("/v1/auth/verify-email", json={"token": "valid-token-abc"})
-        assert resp.status_code == 200
+    """
+    /v1/auth/verify-email renders an HTML landing page (not JSON) since it's
+    opened directly from the email link — success/failure is distinguished by
+    page content, not HTTP status (both render 200 so browsers display it).
+    """
 
-    def test_invalid_token_returns_4xx(self, client, mock_auth):
+    def test_valid_token_returns_success_page(self, client, mock_auth, verified_user):
+        mock_auth.verify_user_email.return_value = verified_user
+        resp = client.get("/v1/auth/verify-email", params={"token": "valid-token-abc"})
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        assert "Email Verified" in resp.text
+
+    def test_invalid_token_returns_expired_page_with_resend_form(self, client, mock_auth):
         mock_auth.verify_user_email.side_effect = HTTPException(status_code=400, detail="Invalid token")
-        resp = client.post("/v1/auth/verify-email", json={"token": "bad-token"})
-        assert resp.status_code in (400, 404, 422)
+        resp = client.get("/v1/auth/verify-email", params={"token": "bad-token"})
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        assert "Link Expired or Invalid" in resp.text
+        assert "resend-form" in resp.text

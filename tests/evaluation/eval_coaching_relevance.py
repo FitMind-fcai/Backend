@@ -29,11 +29,16 @@ Usage
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
 from app.ai_services.ai_coach.ai_coach_service import AICoachService
 from app.ai_services.ai_coach.dtos import UserProfileDTO
+
+# How many scenarios to evaluate concurrently (bounded to stay under
+# OpenRouter rate limits while still cutting wall-clock time substantially).
+MAX_WORKERS = int(os.environ.get("EVAL_MAX_WORKERS", "5"))
 
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", Path(__file__).parent / "results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -57,6 +62,20 @@ _DIABETIC_PROFILE = UserProfileDTO(
     medical_conditions="Type 2 Diabetes",
     allergies=None, injuries=None,
     medications="Metformin 1000mg daily",
+)
+
+_ATHLETE_PROFILE = UserProfileDTO(
+    age=24, gender="Female", height=170.0, weight=62.0,
+    fitness_goal="Improve Endurance", activity_level="Very Active",
+    dietary_preference=None, medical_conditions=None,
+    allergies=None, injuries=None, medications=None,
+)
+
+_BEGINNER_PROFILE = UserProfileDTO(
+    age=52, gender="Male", height=176.0, weight=98.0,
+    fitness_goal="Lose Weight", activity_level="Sedentary",
+    dietary_preference=None, medical_conditions="Hypertension",
+    allergies=None, injuries=None, medications="Lisinopril 10mg daily",
 )
 
 
@@ -162,6 +181,272 @@ SCENARIOS = [
         "expected_concepts": ["meal", "lunch", "log", "eat"],
         "forbidden_concepts": ["great job", "perfect day"],
     },
+    {
+        "name": "Slightly Under Calories, Workout Done",
+        "expected_urgency": "on_track",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 1650,
+            "calorie_gap": 150,
+            "protein_target": 140,
+            "protein_consumed": 130.0,
+            "protein_gap": 10.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 79.8,
+        },
+        "expected_concepts": ["track", "goal", "protein"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Endurance Athlete — Long Run Logged, Under-fueled",
+        "expected_urgency": "needs_attention",
+        "profile": _ATHLETE_PROFILE,
+        "snapshot": {
+            "calories_target": 2600,
+            "calories_consumed": 1900,
+            "calorie_gap": 700,
+            "protein_target": 130,
+            "protein_consumed": 80.0,
+            "protein_gap": 50.0,
+            "meal_types_logged": ["Breakfast", "Lunch"],
+            "workout_sessions_logged": 1,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["calorie", "fuel", "eat", "protein"],
+        "forbidden_concepts": ["great job", "perfect"],
+    },
+    {
+        "name": "Athlete — Two Workouts, Fully Fueled",
+        "expected_urgency": "on_track",
+        "profile": _ATHLETE_PROFILE,
+        "snapshot": {
+            "calories_target": 2600,
+            "calories_consumed": 2580,
+            "calorie_gap": 20,
+            "protein_target": 130,
+            "protein_consumed": 128.0,
+            "protein_gap": 2.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner", "Snack"],
+            "workout_sessions_logged": 2,
+            "weight_logged": True,
+            "latest_weight_kg": 61.8,
+        },
+        "expected_concepts": ["track", "goal", "keep"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Hypertensive Beginner — Missed Workout, Over Sodium-Risk Meals",
+        "expected_urgency": "off_track",
+        "profile": _BEGINNER_PROFILE,
+        "snapshot": {
+            "calories_target": 1900,
+            "calories_consumed": 2400,
+            "calorie_gap": -500,
+            "protein_target": 110,
+            "protein_consumed": 70.0,
+            "protein_gap": 40.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner", "Snack"],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["calorie", "workout", "over"],
+        "forbidden_concepts": ["great job", "well done"],
+    },
+    {
+        "name": "Hypertensive Beginner — First Workout Completed",
+        "expected_urgency": "on_track",
+        "profile": _BEGINNER_PROFILE,
+        "snapshot": {
+            "calories_target": 1900,
+            "calories_consumed": 1880,
+            "calorie_gap": 20,
+            "protein_target": 110,
+            "protein_consumed": 105.0,
+            "protein_gap": 5.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 97.5,
+        },
+        "expected_concepts": ["track", "workout", "great start"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Diabetic — Skipped Meals, No Workout, No Logs Late Day",
+        "expected_urgency": "off_track",
+        "profile": _DIABETIC_PROFILE,
+        "snapshot": {
+            "calories_target": 1600,
+            "calories_consumed": 300,
+            "calorie_gap": 1300,
+            "protein_target": 120,
+            "protein_consumed": 15.0,
+            "protein_gap": 105.0,
+            "meal_types_logged": ["Breakfast"],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["log", "meal", "eat"],
+        "forbidden_concepts": ["great job"],
+    },
+    {
+        "name": "Diabetic — Slight Calorie Overage, Workout Done",
+        "expected_urgency": "needs_attention",
+        "profile": _DIABETIC_PROFILE,
+        "snapshot": {
+            "calories_target": 1600,
+            "calories_consumed": 1780,
+            "calorie_gap": -180,
+            "protein_target": 120,
+            "protein_consumed": 115.0,
+            "protein_gap": 5.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 91.5,
+        },
+        "expected_concepts": ["calorie", "over", "workout"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Weight Loss Goal — Small Protein Deficit",
+        "expected_urgency": "needs_attention",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 1750,
+            "calorie_gap": 50,
+            "protein_target": 140,
+            "protein_consumed": 90.0,
+            "protein_gap": 50.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 79.2,
+        },
+        "expected_concepts": ["protein", "increase", "goal"],
+        "forbidden_concepts": ["great job", "perfect"],
+    },
+    {
+        "name": "No Meals, But Workout Logged",
+        "expected_urgency": "needs_attention",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 0,
+            "calorie_gap": 1800,
+            "protein_target": 140,
+            "protein_consumed": 0.0,
+            "protein_gap": 140.0,
+            "meal_types_logged": [],
+            "workout_sessions_logged": 1,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["log", "meal", "eat", "track"],
+        "forbidden_concepts": ["great job"],
+    },
+    {
+        "name": "Weight Regression Logged Despite Good Adherence",
+        "expected_urgency": "needs_attention",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 1790,
+            "calorie_gap": 10,
+            "protein_target": 140,
+            "protein_consumed": 138.0,
+            "protein_gap": 2.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 1,
+            "weight_logged": True,
+            "latest_weight_kg": 81.2,  # up from previous readings
+        },
+        "expected_concepts": ["weight", "consistency", "patience"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Massive Overeating, No Workout",
+        "expected_urgency": "off_track",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 3400,
+            "calorie_gap": -1600,
+            "protein_target": 140,
+            "protein_consumed": 110.0,
+            "protein_gap": 30.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner", "Snack", "Snack"],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["calorie", "over", "deficit"],
+        "forbidden_concepts": ["great job", "well done", "perfect"],
+    },
+    {
+        "name": "Athlete — Rest Day, No Workout Expected",
+        "expected_urgency": "on_track",
+        "profile": _ATHLETE_PROFILE,
+        "snapshot": {
+            "calories_target": 2200,
+            "calories_consumed": 2180,
+            "calorie_gap": 20,
+            "protein_target": 130,
+            "protein_consumed": 125.0,
+            "protein_gap": 5.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 0,
+            "weight_logged": True,
+            "latest_weight_kg": 61.5,
+        },
+        "expected_concepts": ["recovery", "rest", "nutrition"],
+        "forbidden_concepts": ["as your AI", "I am an AI"],
+    },
+    {
+        "name": "Beginner — Two Consecutive Missed Workouts",
+        "expected_urgency": "off_track",
+        "profile": _BEGINNER_PROFILE,
+        "snapshot": {
+            "calories_target": 1900,
+            "calories_consumed": 2100,
+            "calorie_gap": -200,
+            "protein_target": 110,
+            "protein_consumed": 60.0,
+            "protein_gap": 50.0,
+            "meal_types_logged": ["Breakfast", "Lunch", "Dinner"],
+            "workout_sessions_logged": 0,
+            "weight_logged": False,
+            "latest_weight_kg": None,
+        },
+        "expected_concepts": ["workout", "start", "move"],
+        "forbidden_concepts": ["great job", "well done"],
+    },
+    {
+        "name": "Standard Profile — Only Water/Hydration Logged",
+        "expected_urgency": "needs_attention",
+        "profile": _STANDARD_PROFILE,
+        "snapshot": {
+            "calories_target": 1800,
+            "calories_consumed": 0,
+            "calorie_gap": 1800,
+            "protein_target": 140,
+            "protein_consumed": 0.0,
+            "protein_gap": 140.0,
+            "meal_types_logged": [],
+            "workout_sessions_logged": 0,
+            "weight_logged": True,
+            "latest_weight_kg": 80.1,
+        },
+        "expected_concepts": ["log", "meal", "eat", "track"],
+        "forbidden_concepts": ["great job"],
+    },
 ]
 
 
@@ -232,18 +517,17 @@ def _check_not_generic(suggestion: str, scenario: dict) -> tuple:
 def run_coaching_relevance_evaluation() -> dict:
     print("=" * 65)
     print("  FITMIND COACHING RELEVANCE EVALUATION")
-    print(f"  Scenarios : {len(SCENARIOS)}")
+    print(f"  Scenarios : {len(SCENARIOS)}  (running {MAX_WORKERS} concurrently)")
     print("=" * 65)
 
     print("\nInitialising AI Coach Service ...", end=" ", flush=True)
     coach = AICoachService()
     print("ready")
 
-    results = []
-    for i, scenario in enumerate(SCENARIOS, 1):
+    def _evaluate_scenario(scenario: dict) -> dict:
         name = scenario["name"]
         profile = scenario["profile"]
-        print(f"\n[{i}/{len(SCENARIOS)}] {name}")
+        lines = [f"\n[{name}]"]
 
         try:
             response = coach.analyze_daily_progress(
@@ -254,8 +538,11 @@ def run_coaching_relevance_evaluation() -> dict:
             suggestion = response.get("suggestion", "")
             urgency = response.get("urgency", "")
 
-            print(f"  urgency   : {urgency}")
-            print(f"  suggestion: {suggestion[:120]}..." if len(suggestion) > 120 else f"  suggestion: {suggestion}")
+            lines.append(f"  urgency   : {urgency}")
+            lines.append(
+                f"  suggestion: {suggestion[:120]}..." if len(suggestion) > 120
+                else f"  suggestion: {suggestion}"
+            )
 
             u_pass, u_reason = _check_urgency(response, scenario)
             s_pass, s_reason = _check_specificity(suggestion, scenario["snapshot"])
@@ -273,12 +560,14 @@ def run_coaching_relevance_evaluation() -> dict:
             score_pct = round(100 * passed_count / len(checks), 1)
             overall = "PASS" if passed_count >= 3 else "FAIL"   # 3 of 4 required
 
-            print(f"  checks    : {passed_count}/{len(checks)} passed  ->  {overall} ({score_pct}%)")
+            lines.append(f"  checks    : {passed_count}/{len(checks)} passed  ->  {overall} ({score_pct}%)")
             for chk in checks:
                 icon = "OK  " if chk["passed"] else "FAIL"
-                print(f"    [{icon}] {chk['name']}: {chk['reasoning']}")
+                lines.append(f"    [{icon}] {chk['name']}: {chk['reasoning']}")
 
-            results.append({
+            print("\n".join(lines))
+
+            return {
                 "scenario": name,
                 "overall": overall,
                 "score_pct": score_pct,
@@ -286,17 +575,28 @@ def run_coaching_relevance_evaluation() -> dict:
                 "expected_urgency": scenario["expected_urgency"],
                 "suggestion": suggestion,
                 "checks": checks,
-            })
+            }
 
         except Exception as exc:
             import traceback as tb
-            print(f"  ERROR: {exc}")
-            results.append({
+            lines.append(f"  ERROR: {exc}")
+            print("\n".join(lines))
+            return {
                 "scenario": name,
                 "overall": "ERROR",
                 "error": str(exc),
                 "traceback": tb.format_exc(),
-            })
+            }
+
+    results_by_name = {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_evaluate_scenario, s): s["name"] for s in SCENARIOS}
+        for future in as_completed(futures):
+            result = future.result()
+            results_by_name[result["scenario"]] = result
+
+    # Preserve original SCENARIOS order in the final report
+    results = [results_by_name[s["name"]] for s in SCENARIOS]
 
     # -- summary ----------------------------------------------------------
     passed = sum(1 for r in results if r.get("overall") == "PASS")

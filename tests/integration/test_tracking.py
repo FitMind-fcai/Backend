@@ -5,6 +5,8 @@ import pytest
 from unittest.mock import MagicMock
 from fastapi import HTTPException
 
+from app.tracking_module.schemas.tracking import SaveLogsResponse
+
 
 class TestSaveLogs:
     MEAL_PAYLOAD = {
@@ -17,12 +19,12 @@ class TestSaveLogs:
     }
 
     def test_save_meal_log_returns_201(self, client, headers, mock_tracking):
-        mock_tracking.save_logs.return_value = MagicMock(saved_count=1, logs=[])
+        mock_tracking.save_logs.return_value = SaveLogsResponse(category="meal", saved_count=1)
         resp = client.post("/v1/tracking/logs", json=self.MEAL_PAYLOAD, headers=headers)
         assert resp.status_code == 201
 
     def test_save_weight_log_returns_201(self, client, headers, mock_tracking):
-        mock_tracking.save_logs.return_value = MagicMock(saved_count=1, logs=[])
+        mock_tracking.save_logs.return_value = SaveLogsResponse(category="weight", saved_count=1)
         payload = {
             "category": "weight",
             "log_date": "2024-01-15",
@@ -36,8 +38,8 @@ class TestSaveLogs:
         resp = client.post("/v1/tracking/logs", json={"log_date": "2024-01-15"}, headers=headers)
         assert resp.status_code == 422
 
-    def test_unauthenticated_returns_401_or_403(self, client):
-        resp = client.post("/v1/tracking/logs", json=self.MEAL_PAYLOAD)
+    def test_unauthenticated_returns_401_or_403(self, unauthenticated_client):
+        resp = unauthenticated_client.post("/v1/tracking/logs", json=self.MEAL_PAYLOAD)
         assert resp.status_code in (401, 403)
 
 

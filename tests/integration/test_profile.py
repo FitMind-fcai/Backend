@@ -43,43 +43,43 @@ VALID_PAYLOAD = {
 
 class TestGetProfile:
     def test_returns_200_with_profile_data(self, client, headers, mock_profile):
-        mock_profile.get_profile.return_value = _make_profile_response()
-        resp = client.get("/v1/profile", headers=headers)
+        mock_profile.get_profile_by_user_id.return_value = _make_profile_response()
+        resp = client.get("/v1/profiles/me", headers=headers)
         assert resp.status_code == 200
 
     def test_no_profile_returns_404(self, client, headers, mock_profile):
-        mock_profile.get_profile.side_effect = HTTPException(status_code=404, detail="Not found")
-        resp = client.get("/v1/profile", headers=headers)
+        mock_profile.get_profile_by_user_id.side_effect = HTTPException(status_code=404, detail="Not found")
+        resp = client.get("/v1/profiles/me", headers=headers)
         assert resp.status_code == 404
 
-    def test_unauthenticated_returns_401_or_403(self, client):
-        resp = client.get("/v1/profile")
+    def test_unauthenticated_returns_401_or_403(self, unauthenticated_client):
+        resp = unauthenticated_client.get("/v1/profiles/me")
         assert resp.status_code in (401, 403)
 
 
 class TestCreateProfile:
     def test_valid_profile_creates_successfully(self, client, headers, mock_profile):
         mock_profile.create_profile.return_value = _make_profile_response()
-        resp = client.post("/v1/profile", json=VALID_PAYLOAD, headers=headers)
+        resp = client.post("/v1/profiles/", json=VALID_PAYLOAD, headers=headers)
         assert resp.status_code in (200, 201)
 
     def test_invalid_gender_returns_422(self, client, headers):
         bad = {**VALID_PAYLOAD, "gender": "Unknown"}
-        resp = client.post("/v1/profile", json=bad, headers=headers)
+        resp = client.post("/v1/profiles/", json=bad, headers=headers)
         assert resp.status_code == 422
 
     def test_invalid_activity_level_returns_422(self, client, headers):
         bad = {**VALID_PAYLOAD, "activity_level": "Ultra Active"}
-        resp = client.post("/v1/profile", json=bad, headers=headers)
+        resp = client.post("/v1/profiles/", json=bad, headers=headers)
         assert resp.status_code == 422
 
 
 class TestUpdateProfile:
     def test_partial_update_succeeds(self, client, headers, mock_profile):
         mock_profile.update_profile.return_value = _make_profile_response()
-        resp = client.patch("/v1/profile", json={"user_id": 1, "age": 30}, headers=headers)
+        resp = client.put("/v1/profiles/me", json={"user_id": 1, "age": 30}, headers=headers)
         assert resp.status_code == 200
 
     def test_invalid_field_value_returns_422(self, client, headers):
-        resp = client.patch("/v1/profile", json={"user_id": 1, "fitness_goal": "Fly to Moon"}, headers=headers)
+        resp = client.put("/v1/profiles/me", json={"user_id": 1, "fitness_goal": "Fly to Moon"}, headers=headers)
         assert resp.status_code == 422
