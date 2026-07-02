@@ -204,6 +204,77 @@ class AuthService:
         hashed_password = hash_password(new_password)
         self.user_repo.update_password(user, hashed_password)
 
+    def delete_account(self, user: User, password: str) -> None:
+        """
+        Permanently delete a user account and all of their data.
+
+        Args:
+            user: The authenticated user requesting deletion
+            password: Current password, required to confirm this irreversible action
+
+        Raises:
+            HTTPException 401: If the password is incorrect
+
+        Deletion order matters:
+          1. workout_logs first — they reference workout_day_exercises, which is
+             about to cascade away in step 3, so they'd otherwise dangle.
+          2. Other tracking logs — independent leaf tables, order-agnostic.
+          3. Workout/nutrition plans — deleted via ORM `session.delete()` per row
+             (not a bulk `.delete()` query) so the `cascade="all, delete-orphan"`
+             already configured on these models actually fires, removing
+             days/meals/exercises/ingredients underneath each plan.
+          4. Profile.
+          5. Catalog attribution (central_foods/central_exercises.created_by_user_id)
+             is nulled, not cascaded — these are shared catalog rows other users'
+             plans may still reference.
+          6. The user row itself — device_tokens, notification_preferences, and
+             coaching_messages are already ON DELETE CASCADE at the DB level.
+        """
+        if not verify_password(password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password"
+            )
+
+        # Imported locally to avoid a circular import: tracking_module/planning_module
+        # routes import AuthService (via get_current_verified_user), so importing their
+        # models at module load time here would create an import cycle.
+        from app.profile_module.models.profile import Profile
+        from app.planning_module.models.plan import WorkoutPlan, NutritionPlan, CentralFood, CentralExercise
+        from app.tracking_module.models.workout_log import WorkoutLog
+        from app.tracking_module.models.meal_log import MealLog
+        from app.tracking_module.models.sleep_log import SleepLog
+        from app.tracking_module.models.hydration_log import HydrationLog
+        from app.tracking_module.models.weight_log import WeightLog
+
+        db = self.user_repo.db
+        try:
+            db.query(WorkoutLog).filter(WorkoutLog.user_id == user.id).delete(synchronize_session=False)
+            db.query(MealLog).filter(MealLog.user_id == user.id).delete(synchronize_session=False)
+            db.query(SleepLog).filter(SleepLog.user_id == user.id).delete(synchronize_session=False)
+            db.query(HydrationLog).filter(HydrationLog.user_id == user.id).delete(synchronize_session=False)
+            db.query(WeightLog).filter(WeightLog.user_id == user.id).delete(synchronize_session=False)
+
+            for plan in db.query(WorkoutPlan).filter(WorkoutPlan.user_id == user.id).all():
+                db.delete(plan)
+            for plan in db.query(NutritionPlan).filter(NutritionPlan.user_id == user.id).all():
+                db.delete(plan)
+
+            db.query(Profile).filter(Profile.user_id == user.id).delete(synchronize_session=False)
+
+            db.query(CentralFood).filter(CentralFood.created_by_user_id == user.id).update(
+                {CentralFood.created_by_user_id: None}, synchronize_session=False
+            )
+            db.query(CentralExercise).filter(CentralExercise.created_by_user_id == user.id).update(
+                {CentralExercise.created_by_user_id: None}, synchronize_session=False
+            )
+
+            db.delete(user)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
     def get_user_by_email(self, email: str, require_verified: bool = False) -> User:
         """
         Get user by email address.

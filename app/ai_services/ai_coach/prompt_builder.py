@@ -94,6 +94,45 @@ These rules are NON-NEGOTIABLE and override all cuisine preferences.
 Any violation of a medical dietary requirement or food-drug interaction is a CRITICAL FAILURE."""
 
 
+def build_cultural_meal_pattern_block(cuisine_preference: str) -> str:
+    """
+    Cultural meal-timing/appropriateness rules for Egyptian/Arabic cuisine.
+
+    The generic "authentic {cuisine} spices and cooking methods" instruction
+    doesn't stop the model from putting culturally-wrong foods at the wrong
+    meal (e.g. grilled chicken breast for breakfast, which no Egyptian
+    household actually eats) — this block encodes which foods go with which
+    meal, not just which spices/ingredients to use.
+    """
+    cuisine_lower = (cuisine_preference or "").lower()
+    if not any(k in cuisine_lower for k in ("egypt", "arab", "middle east")):
+        return ""
+
+    return (
+        "=== CULTURAL MEAL-PATTERN RULES (Egyptian / Arabic) — FOLLOW STRICTLY ===\n"
+        "Authenticity means matching what people actually eat at each meal, not just using\n"
+        "regional spices. Apply these real Egyptian/Arabic eating patterns:\n\n"
+        "• BREAKFAST is light and does NOT normally include chicken, red meat, or fish.\n"
+        "  Typical Egyptian breakfast foods: ful medames (fava beans), taameya (falafel),\n"
+        "  boiled or fried eggs, white cheese (gebna beida), cream cheese (areesh/istanbouli),\n"
+        "  aish baladi (balady bread), olives, honey, jam, tahini, dukkah, tomato and cucumber.\n"
+        "• LUNCH is culturally the largest meal of the day and is where poultry/meat/fish\n"
+        "  most commonly appear — e.g. grilled chicken, kofta, or fish with rice, molokhia,\n"
+        "  bamya (okra stew), fasolya (green bean stew), or koshari.\n"
+        "• DINNER is typically lighter than lunch — often similar to breakfast items, a light\n"
+        "  sandwich, soup, or a smaller portion of a lunch-style dish. Avoid making dinner a\n"
+        "  heavy meat-centric meal unless the user's goal (e.g. Build Muscle with a late\n"
+        "  training session) specifically calls for extra protein at dinner.\n"
+        "• Staple carbohydrates are rice and aish baladi (bread); pasta appears in dishes like\n"
+        "  macarona bechamel and koshari.\n"
+        "• Common vegetables/legumes: molokhia, bamya, fasolya, ful, eggplant (batenjan),\n"
+        "  zucchini (koosa), spinach (sabanekh).\n"
+        "• Do NOT default to Western high-protein breakfast tropes (e.g. chicken breast,\n"
+        "  turkey/chicken sausage, protein pancakes) unless the user's goal or preferences\n"
+        "  explicitly call for a Western-style or bodybuilding-style breakfast.\n"
+    )
+
+
 def build_medical_workout_block(user_profile: UserProfileDTO) -> str:
     """
     Dynamic medical workout guidance block.
@@ -207,6 +246,8 @@ def build_nutrition_prompt(
         "  spices, and cooking methods typical of that cuisine."
     )
 
+    cultural_block = build_cultural_meal_pattern_block(cuisine)
+
     existing_ctx = ""
     regen_block  = ""
     if existing_plan:
@@ -232,7 +273,8 @@ def build_nutrition_prompt(
         "The <think> block must NOT appear in the final JSON output.\n\n"
         "  1. Accept the pre-computed targets above — do NOT recalculate calories or macros.\n"
         "  2. List ALL dietary exclusions from the medical block: conditions, medications, allergies, drug-food interactions.\n"
-        "  3. List 7 distinct breakfasts that fit the cuisine, portion targets, and ALL medical rules.\n"
+        "  3. List 7 distinct breakfasts that fit the cuisine, the cultural meal-pattern rules\n"
+        "     (if provided above), portion targets, and ALL medical rules.\n"
         "  4. List 7 distinct lunches.\n"
         "  5. List 7 distinct dinners, each with a different primary protein source.\n"
         "  6. List snack options (at most 3 repeats across the week).\n"
@@ -265,6 +307,9 @@ def build_nutrition_prompt(
         diversity_block,
         "",
     ]
+
+    if cultural_block:
+        sections += [cultural_block, ""]
 
     if regen_block:
         sections += [regen_block, ""]

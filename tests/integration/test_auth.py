@@ -65,6 +65,27 @@ class TestGetMe:
         assert resp.status_code in (401, 403)
 
 
+class TestDeleteAccount:
+    def test_correct_password_returns_204(self, client, headers, mock_auth):
+        mock_auth.delete_account.return_value = None
+        resp = client.request("DELETE", "/v1/auth/me", json={"password": "correct-pass"}, headers=headers)
+        assert resp.status_code == 204
+        mock_auth.delete_account.assert_called_once()
+
+    def test_wrong_password_returns_401(self, client, headers, mock_auth):
+        mock_auth.delete_account.side_effect = HTTPException(status_code=401, detail="Incorrect password")
+        resp = client.request("DELETE", "/v1/auth/me", json={"password": "wrong-pass"}, headers=headers)
+        assert resp.status_code == 401
+
+    def test_missing_password_returns_422(self, client, headers):
+        resp = client.request("DELETE", "/v1/auth/me", json={}, headers=headers)
+        assert resp.status_code == 422
+
+    def test_unauthenticated_returns_401_or_403(self, unauthenticated_client):
+        resp = unauthenticated_client.request("DELETE", "/v1/auth/me", json={"password": "whatever"})
+        assert resp.status_code in (401, 403)
+
+
 class TestForgotPassword:
     def test_sends_otp_for_existing_user(self, client, mock_auth):
         mock_auth.get_user_by_email.return_value = MagicMock(spec=User, email="alice@test.com")

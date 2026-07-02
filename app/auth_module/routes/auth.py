@@ -5,7 +5,7 @@ from app.auth_module.models.user import User
 from app.auth_module.schemas.user import (
     UserLogin, UserResponse, UserCreate, LoginResponse,
     EmailVerificationRequest, ForgotPasswordRequest,
-    VerifyOTPRequest, ResetPasswordRequest
+    VerifyOTPRequest, ResetPasswordRequest, DeleteAccountRequest
 )
 from app.auth_module.services.auth_service import AuthService
 from app.auth_module.services.otp_service_redis import OTPService
@@ -272,8 +272,23 @@ def check_otp_status(
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """
     Get authenticated user's profile information.
-    
+
     Requires valid JWT token in Authorization header.
     """
     return current_user
+
+
+# ========== DELETE ACCOUNT ==========
+@authRouter.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    request: DeleteAccountRequest,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    """
+    Permanently delete the authenticated user's account and all associated data
+    (profile, plans, tracking logs, device tokens, notification preferences,
+    coaching messages). Irreversible — requires the current password to confirm.
+    """
+    auth_service.delete_account(current_user, request.password)
 

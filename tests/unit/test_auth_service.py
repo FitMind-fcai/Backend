@@ -222,3 +222,31 @@ class TestResendVerification:
         mock_user_repo.get_by_email.return_value = sample_user
         token = auth_service.resend_verification("alice@example.com")
         assert token == "verif-token-abc123"
+
+
+# ---------------------------------------------------------------------------
+# delete_account
+# ---------------------------------------------------------------------------
+
+class TestDeleteAccount:
+    def test_raises_401_when_wrong_password(self, auth_service, mock_user_repo, sample_user):
+        with patch("app.auth_module.services.auth_service.verify_password", return_value=False):
+            with pytest.raises(HTTPException) as exc:
+                auth_service.delete_account(sample_user, "wrong-password")
+        assert exc.value.status_code == 401
+        mock_user_repo.db.commit.assert_not_called()
+
+    def test_deletes_user_and_commits_on_correct_password(self, auth_service, mock_user_repo, sample_user):
+        with patch("app.auth_module.services.auth_service.verify_password", return_value=True):
+            auth_service.delete_account(sample_user, "correct-password")
+        mock_user_repo.db.delete.assert_called_once_with(sample_user)
+        mock_user_repo.db.commit.assert_called_once()
+        mock_user_repo.db.rollback.assert_not_called()
+
+    def test_rolls_back_and_reraises_on_error(self, auth_service, mock_user_repo, sample_user):
+        mock_user_repo.db.query.side_effect = RuntimeError("db exploded")
+        with patch("app.auth_module.services.auth_service.verify_password", return_value=True):
+            with pytest.raises(RuntimeError):
+                auth_service.delete_account(sample_user, "correct-password")
+        mock_user_repo.db.rollback.assert_called_once()
+        mock_user_repo.db.commit.assert_not_called()

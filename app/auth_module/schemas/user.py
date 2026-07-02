@@ -47,3 +47,6 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     otp: str = Field(..., min_length=5, max_length=5)
     new_password: str = Field(..., min_length=6)
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., description="Current password, required to confirm account deletion")
