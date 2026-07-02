@@ -1,5 +1,6 @@
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse
 from app.auth_module.models.user import User
 from app.auth_module.schemas.user import (
     UserLogin, UserResponse, UserCreate, LoginResponse,
@@ -15,6 +16,7 @@ from app.auth_module.core.dependencies import (
     get_otp_service,
     get_auth_email_service
 )
+from app.shared.services.web_templates import render_status_page, render_resend_form
 
 AUTO_VERIFY = os.getenv("AUTO_VERIFY_USERS", "false").strip().lower() in {"1", "true", "yes"}
 
@@ -67,7 +69,7 @@ def login(
 
 
 # ========== VERIFY EMAIL ==========
-@authRouter.get("/verify-email")
+@authRouter.get("/verify-email", response_class=HTMLResponse, include_in_schema=False)
 def verify_email(
     token: str,
     auth_service: AuthService = Depends(get_auth_service)
@@ -75,19 +77,32 @@ def verify_email(
     """
     Verify user's email address via token from email link.
 
-    - Validates verification token
-    - Marks user as verified
-    - Clears verification token
+    Renders a browser-facing HTML page (not JSON) since this endpoint is
+    meant to be opened directly from the verification email link:
+    - Success: confirmation page.
+    - Expired/invalid token: page with a form to request a new link
+      (posts to /v1/auth/resend-verification).
 
     Dependencies injected:
         - AuthService: Handles email verification logic
     """
-    user = auth_service.verify_user_email(token)
+    try:
+        auth_service.verify_user_email(token)
+    except HTTPException:
+        html = render_status_page(
+            status="error",
+            heading="Link Expired or Invalid",
+            message="This verification link is no longer valid. Enter your email below and we'll send you a new one.",
+            extra_html=render_resend_form(),
+        )
+        return HTMLResponse(content=html, status_code=200)
 
-    return {
-        "message": "Email verified successfully! You can now login.",
-        "verified": True
-    }
+    html = render_status_page(
+        status="success",
+        heading="Email Verified!",
+        message="Your email has been verified successfully. You can now return to the FitMind app and log in.",
+    )
+    return HTMLResponse(content=html, status_code=200)
 
 
 # ========== RESEND VERIFICATION ==========

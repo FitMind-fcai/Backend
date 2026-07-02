@@ -3,6 +3,7 @@ Auth-specific email service.
 Handles sending verification emails, OTP emails, and other auth-related emails.
 """
 from app.shared.services.email_service import EmailService
+from app.shared.services.email_templates import render_email
 from app.core.config import APP_URL
 
 
@@ -36,32 +37,17 @@ class AuthEmailService:
         verification_link = f"{self.app_url}/v1/auth/verify-email?token={verification_token}"
         print(f"🔗 Verification link: {verification_link}")
 
-        html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 30px; border-radius: 10px;">
-                    <h2 style="color: #333;">Welcome! Please Verify Your Email</h2>
-                    <p style="color: #666; font-size: 16px;">
-                        Thank you for signing up! To complete your registration, please verify your email address by clicking the button below:
-                    </p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{verification_link}" 
-                           style="background-color: #CC6A14; color: white; padding: 15px 30px; 
-                                  text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">
-                            Verify Email Address
-                        </a>
-                    </div>
-                    <p style="color: #999; font-size: 14px;">
-                        Or copy and paste this link in your browser:<br>
-                        <a href="{verification_link}" style="color: #4CAF50;">{verification_link}</a>
-                    </p>
-                    <p style="color: #999; font-size: 12px; margin-top: 30px;">
-                        This link will expire in 24 hours. If you didn't create an account, please ignore this email.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html = render_email(
+            heading="Welcome to FitMind!",
+            preheader="Verify your email to start your fitness journey.",
+            body_html="""
+                <p>Thanks for signing up! Please verify your email address to activate
+                your account and start your fitness journey with your AI coach.</p>
+            """,
+            cta_text="Verify Email Address",
+            cta_url=verification_link,
+            footer_note="This link expires in 24 hours. If you didn't create a FitMind account, you can safely ignore this email.",
+        )
 
         return self.email_service.send_email(recipient_email, "Verify Your Email Address", html)
 
@@ -79,32 +65,17 @@ class AuthEmailService:
         verification_link = f"{self.app_url}/v1/auth/verify-email?token={verification_token}"
         print(f"🔗 Resend verification link: {verification_link}")
 
-        html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 30px; border-radius: 10px;">
-                    <h2 style="color: #333;">Email Verification Reminder</h2>
-                    <p style="color: #666; font-size: 16px;">
-                        You requested a new verification email. Please verify your email address by clicking the button below:
-                    </p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <a href="{verification_link}" 
-                           style="background-color: #CC6A14; color: white; padding: 15px 30px; 
-                                  text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">
-                            Verify Email Address
-                        </a>
-                    </div>
-                    <p style="color: #999; font-size: 14px;">
-                        Or copy and paste this link in your browser:<br>
-                        <a href="{verification_link}" style="color: #4CAF50;">{verification_link}</a>
-                    </p>
-                    <p style="color: #999; font-size: 12px; margin-top: 30px;">
-                        This link will expire in 24 hours.
-                    </p>
-                </div>
-            </body>
-        </html>
-        """
+        html = render_email(
+            heading="Here's Your New Verification Link",
+            preheader="Verify your email to finish setting up FitMind.",
+            body_html="""
+                <p>You requested a new verification email. Click the button below to
+                verify your email address and activate your FitMind account.</p>
+            """,
+            cta_text="Verify Email Address",
+            cta_url=verification_link,
+            footer_note="This link expires in 24 hours.",
+        )
 
         return self.email_service.send_email(recipient_email, "Verify Your Email Address - Resend", html)
 
@@ -121,30 +92,28 @@ class AuthEmailService:
         """
         print(f"🔐 Password reset OTP: {otp}")
 
-        html = f"""
-        <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 30px; border-radius: 10px;">
-                    <h2 style="color: #333;">Password Reset Request</h2>
-                    <p style="color: #666; font-size: 16px;">
-                        You requested to reset your password. Use the OTP below to proceed:
-                    </p>
-                    <div style="text-align: center; margin: 30px 0;">
-                        <div style="background-color: #CC6A14; color: white; padding: 20px; 
-                                    border-radius: 5px; font-size: 32px; font-weight: bold; letter-spacing: 5px;">
-                            {otp}
-                        </div>
-                    </div>
-                    <p style="color: #666; font-size: 14px;">
-                        This OTP will expire in 10 minutes.
-                    </p>
-                    <p style="color: #999; font-size: 12px; margin-top: 30px;">
-                        If you didn't request a password reset, please ignore this email and your password will remain unchanged.
-                    </p>
-                </div>
-            </body>
-        </html>
+        body_html = f"""
+            <p>You requested to reset your password. Use the one-time code below to proceed:</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+              <tr>
+                <td align="center">
+                  <div style="background: linear-gradient(135deg, {'#F97316'} 0%, {'#EA580C'} 100%); color: #ffffff;
+                              padding: 20px 28px; border-radius: 12px; font-size: 32px; font-weight: 700;
+                              letter-spacing: 8px; display: inline-block;">
+                    {otp}
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <p>This code expires in 10 minutes.</p>
         """
+
+        html = render_email(
+            heading="Password Reset Request",
+            preheader=f"Your FitMind password reset code is {otp}.",
+            body_html=body_html,
+            footer_note="If you didn't request a password reset, you can safely ignore this email — your password will remain unchanged.",
+        )
 
         return self.email_service.send_email(recipient_email, "Password Reset OTP", html)
 

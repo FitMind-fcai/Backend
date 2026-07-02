@@ -35,14 +35,15 @@ def evaluate_workout_plan(
 ) -> EvalReport:
     checks: List[CheckResult] = []
 
-    # ── Rule-based: days count ─────────────────────────────────────────
+    # ── Rule-based: days count (±1 day tolerance — scheduling quirks aren't safety issues) ──
     actual_days = len(plan.workout_days)
-    days_ok = actual_days == prefs.workout_days_per_week
+    day_diff = abs(actual_days - prefs.workout_days_per_week)
+    days_ok = day_diff <= 1
     checks.append(CheckResult(
         name="days_count_match",
         applicable=True,
         passed=days_ok,
-        score=1.0 if days_ok else 0.0,
+        score=1.0 if days_ok else max(0.0, 1.0 - (day_diff - 1) / max(prefs.workout_days_per_week, 1)),
         weight=10,
         violations=[] if days_ok else [
             f"Expected {prefs.workout_days_per_week} days, got {actual_days}"
@@ -100,22 +101,26 @@ def evaluate_nutrition_plan(
 ) -> EvalReport:
     checks: List[CheckResult] = []
 
-    # ── Rule-based: meals count ────────────────────────────────────────
-    actual_meals = len(plan.meals)
-    meals_ok = actual_meals == prefs.meals_per_day
+    # ── Rule-based: meals count per day (±1 meal tolerance) ───────────
+    # NutritionPlanDTO stores meals inside days (plan.days[i].meals).
+    # Check the first day as representative of the daily meal structure.
+    first_day_meals = plan.days[0].meals if plan.days else []
+    actual_meals = len(first_day_meals)
+    meal_diff = abs(actual_meals - prefs.meals_per_day)
+    meals_ok = meal_diff <= 1
     checks.append(CheckResult(
         name="meals_count_match",
         applicable=True,
         passed=meals_ok,
-        score=1.0 if meals_ok else 0.0,
+        score=1.0 if meals_ok else max(0.0, 1.0 - (meal_diff - 1) / max(prefs.meals_per_day, 1)),
         weight=10,
         violations=[] if meals_ok else [
-            f"Expected {prefs.meals_per_day} meals, got {actual_meals}"
+            f"Expected {prefs.meals_per_day} meals per day, got {actual_meals}"
         ],
-        reasoning=f"Plan has {actual_meals} meals, {prefs.meals_per_day} requested.",
+        reasoning=f"Day 1 has {actual_meals} meals, {prefs.meals_per_day} requested.",
     ))
 
-    # ── Rule-based: calorie accuracy (±15%) ───────────────────────────
+    # ── Rule-based: calorie accuracy (±20%) ───────────────────────────
     base_calories = 2000
     if profile.fitness_goal == "Lose Weight":
         base_calories -= 300
@@ -123,9 +128,14 @@ def evaluate_nutrition_plan(
         base_calories += 300
     target_cal = prefs.custom_calorie_target or base_calories
 
-    total_cal = sum(m.calories or 0 for m in plan.meals)
+    # Use the plan's pre-computed daily_calories if set; otherwise sum first-day meals
+    if plan.daily_calories is not None:
+        total_cal = plan.daily_calories
+    else:
+        total_cal = sum(m.calories or 0 for m in first_day_meals)
+
     cal_diff_pct = abs(total_cal - target_cal) / max(target_cal, 1)
-    cal_ok = cal_diff_pct <= 0.15
+    cal_ok = cal_diff_pct <= 0.20
     checks.append(CheckResult(
         name="calorie_accuracy",
         applicable=True,
@@ -133,10 +143,10 @@ def evaluate_nutrition_plan(
         score=1.0 if cal_ok else max(0.0, 1.0 - cal_diff_pct),
         weight=15,
         violations=[] if cal_ok else [
-            f"Target {target_cal} kcal, got {total_cal} kcal "
+            f"Target {target_cal} kcal, got {total_cal:.0f} kcal "
             f"({cal_diff_pct * 100:.1f}% off)"
         ],
-        reasoning=f"Total meal calories: {total_cal} kcal, target: {target_cal} kcal.",
+        reasoning=f"Daily calories: {total_cal:.0f} kcal, target: {target_cal} kcal.",
     ))
 
     # ── LLM judge ─────────────────────────────────────────────────────

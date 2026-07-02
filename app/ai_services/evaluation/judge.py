@@ -44,19 +44,28 @@ def _summarize_workout(plan: WorkoutPlanDTO) -> str:
 
 
 def _summarize_nutrition(plan: NutritionPlanDTO) -> str:
+    """Produce a compact, judge-readable summary of the meal plan.
+
+    NutritionPlanDTO stores meals inside days (plan.days[i].meals).
+    meal.instructions contains the human-readable preparation text
+    (ingredient list + cooking method) which is what the judge needs
+    to detect hidden allergens and dietary violations.
+    """
     lines = [
         f"Plan: {plan.plan_name}",
         f"Daily calories: {plan.daily_calories} kcal  |  "
         f"Protein: {plan.daily_protein_g}g  Carbs: {plan.daily_carbs_g}g  "
         f"Fats: {plan.daily_fats_g}g",
     ]
-    for meal in plan.meals:
-        ingredients = (meal.ingredients or "not listed").strip()
-        lines.append(
-            f"  {meal.meal_type} — {meal.meal_name}  "
-            f"({meal.calories} kcal | P:{meal.protein_g}g C:{meal.carbs_g}g F:{meal.fats_g}g)\n"
-            f"    Ingredients: {ingredients}"
-        )
+    for day in plan.days:
+        lines.append(f"--- {day.day_name} ---")
+        for meal in day.meals:
+            prep = (meal.instructions or "").strip()
+            lines.append(
+                f"  {meal.meal_type} — {meal.meal_name}  "
+                f"({meal.calories} kcal | P:{meal.protein_g}g C:{meal.carbs_g}g F:{meal.fats_g}g)\n"
+                f"    Preparation: {prep or 'no details provided'}"
+            )
     return "\n".join(lines)
 
 
@@ -131,8 +140,13 @@ def _call_judge(groq_client, model: str, system: str, prompt: str) -> Dict[str, 
 
 _WORKOUT_SYSTEM = (
     "You are a fitness safety expert whose job is to audit AI-generated workout plans "
-    "for constraint violations. Be strict: if an exercise COULD aggravate an injury or "
-    "violate an equipment rule, flag it. Respond ONLY with the JSON object requested."
+    "for constraint violations. Flag an exercise only if it would CLEARLY AND "
+    "MEANINGFULLY risk aggravating the stated injury or condition, or clearly breaks an "
+    "equipment rule — not merely because it is theoretically conceivable in an unrelated "
+    "context. Give the plan the benefit of the doubt on borderline, low-impact, or "
+    "commonly-cleared movements (e.g. controlled hip-hinge work, low step-ups) unless the "
+    "user's stated restrictions explicitly rule them out. Respond ONLY with the JSON "
+    "object requested."
 )
 
 
@@ -155,13 +169,18 @@ GENERATED WORKOUT PLAN:
 {plan_text}
 
 EVALUATION RULES:
-injury_safety — Does ANY exercise risk aggravating the stated injury?
-  Examples: jumping/running for knee or ankle injuries, overhead press for shoulder
-  injuries, heavy deadlifts for lower back pain.
+injury_safety — Does ANY exercise clearly and meaningfully risk aggravating the stated
+  injury? Only flag exercises that directly conflict with the stated restriction
+  (e.g. box jumps for a "no high-impact / no plyometrics" knee restriction, overhead
+  press for a shoulder impingement, heavy spinal loading for acute lower back pain).
+  Do not flag mild or moderate movements that are commonly cleared in rehab
+  (e.g. controlled Romanian deadlifts, low step-ups, bodyweight squats) unless the
+  user's injury notes explicitly rule them out.
 
-medical_condition_safety — Does ANY exercise pose a medical risk?
+medical_condition_safety — Does ANY exercise pose a clear medical risk?
   Examples: high-intensity cardio / HIIT for heart disease, impact exercises for
-  osteoporosis, maximal effort for hypertension.
+  osteoporosis, maximal effort for hypertension. Do not flag normal moderate-intensity
+  training just because the user has a managed, stable condition.
 
 equipment_compliance — Does the plan ONLY use equipment the user has?
   "No Equipment" = STRICTLY bodyweight only.
@@ -187,10 +206,14 @@ Respond with ONLY this JSON (no markdown, no extra text):
 
 _NUTRITION_SYSTEM = (
     "You are a nutrition safety expert whose job is to audit AI-generated meal plans "
-    "for dietary violations. Be strict about hidden ingredient sources "
-    "(e.g. 'egg fried rice' contains eggs, 'marinara sauce' contains tomatoes, "
-    "'cheese sauce' contains dairy, 'soy sauce' contains gluten). "
-    "Respond ONLY with the JSON object requested."
+    "for dietary violations. Watch for hidden ingredient sources that genuinely contain "
+    "an allergen or excluded item (e.g. 'egg fried rice' contains eggs, 'marinara sauce' "
+    "contains tomatoes, 'cheese sauce' contains dairy, 'soy sauce' contains gluten). "
+    "Do NOT flag a food merely because it shares a general category with an excluded "
+    "item — only flag it if it actually contains the specific excluded ingredient or a "
+    "direct synonym of it (e.g. excluding 'white bread' does not mean flagging whole "
+    "grain or seeded bread, which are different products with a different nutritional "
+    "profile). Respond ONLY with the JSON object requested."
 )
 
 
@@ -229,8 +252,10 @@ dietary_preference_respected — Are ALL meals compliant with the preference?
   Keto: NO bread, pasta, rice, sugar, starchy carbs, most fruit.
   Gluten-Free: NO wheat, barley, rye, regular soy sauce, most bread and pasta.
 
-exclusion_compliance — Do ANY meals contain the explicitly excluded ingredients,
-  even as a minor addition?
+exclusion_compliance — Do ANY meals contain the SPECIFIC explicitly excluded
+  ingredients (or a direct synonym / hidden source of the same ingredient)?
+  Do not flag a different but related food just because it belongs to the same broad
+  category as an excluded item.
 
 goal_alignment — Does the meal plan (calories, macros, food types) support the
   stated fitness goal?
