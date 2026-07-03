@@ -104,11 +104,16 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
             .first()
         )
 
-    def create_day(self, plan_id: int, day_data: dict) -> WorkoutDay:
+    def create_day(self, plan_id: int, day_data: dict, commit: bool = True) -> WorkoutDay:
         day = WorkoutDay(workout_plan_id=plan_id, **day_data)
         self.db.add(day)
-        self.db.commit()
-        self.db.refresh(day)
+        if commit:
+            self.db.commit()
+            self.db.refresh(day)
+        else:
+            # Flush only — assigns day.id without a round-trip commit, so
+            # callers can batch many days/exercises into one final commit.
+            self.db.flush()
         return day
 
     # ------------------------------------------------------------------
@@ -125,7 +130,7 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
         )
 
     def create_exercise_slot(
-        self, day_id: int, central_exercise_id: int, slot_data: dict
+        self, day_id: int, central_exercise_id: int, slot_data: dict, commit: bool = True
     ) -> WorkoutDayExercise:
         slot = WorkoutDayExercise(
             workout_day_id=day_id,
@@ -133,8 +138,11 @@ class WorkoutPlanRepository(BaseRepository[WorkoutPlan]):
             **slot_data
         )
         self.db.add(slot)
-        self.db.commit()
-        self.db.refresh(slot)
+        if commit:
+            self.db.commit()
+            self.db.refresh(slot)
+        else:
+            self.db.flush()
         return slot
 
     def delete_exercise_slots_by_day_id(self, day_id: int):

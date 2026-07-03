@@ -11,6 +11,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 
+from app.ai_services.embedding_utils import embed_texts
+
 logger = logging.getLogger(__name__)
 
 
@@ -506,12 +508,22 @@ class VectorDBService:
 
         semantic_k = max(k * self.SEMANTIC_TOP_K_MULTIPLIER, self.DENSE_TOP_K)
 
-        for variant in query_variants:
-            results = self.vectorstore.similarity_search_with_relevance_scores(
-                variant,
+        # Batch-embed all query variants in a single encode() call instead of
+        # one per variant (embed_query would otherwise re-invoke the model
+        # once per variant inside similarity_search_with_relevance_scores).
+        # The by-vector variant returns raw distance, not a relevance score, so
+        # the same relevance_score_fn Chroma would normally apply internally is
+        # applied here manually to keep scoring identical to before.
+        variant_embeddings = embed_texts(query_variants)
+        relevance_score_fn = self.vectorstore._select_relevance_score_fn()
+
+        for embedding in variant_embeddings:
+            raw_results = self.vectorstore.similarity_search_by_vector_with_relevance_scores(
+                embedding,
                 k=semantic_k,
                 filter=formatted_filter,
             )
+            results = [(doc, relevance_score_fn(score)) for doc, score in raw_results]
             for doc, score in results:
                 # Gold-source boost / blog penalty
                 title  = doc.metadata.get("title",  "").lower()

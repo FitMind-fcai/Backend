@@ -572,15 +572,15 @@ class PlanGenerationService:
                 "estimated_duration": day_create.estimated_duration,
                 "notes": day_create.notes
             }
-            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data)
+            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
 
             for exercise_create in day_create.exercises:
                 central_exercise = None
-                
+
                 # Use provided ID directly if available
                 if getattr(exercise_create, 'central_exercise_id', None):
                     central_exercise = self.central_exercise_repo.get_by_id(exercise_create.central_exercise_id)
-                
+
                 # Fallback to name search or create new placeholder
                 if not central_exercise:
                     catalog_data = {
@@ -607,11 +607,14 @@ class PlanGenerationService:
                 self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
                     central_exercise_id=central_exercise.id,
-                    slot_data=slot_data
+                    slot_data=slot_data,
+                    commit=False,
                 )
 
+        # Single commit for the whole plan instead of one per day/exercise row.
+        self.db.commit()
         return self.workout_service.get_plan_with_details(plan.id)
-    
+
     def _create_nutrition_plan_with_meals(
         self,
         user_id: int,
@@ -646,7 +649,7 @@ class PlanGenerationService:
                 "day_name": day_create.day_name,
                 "notes": day_create.notes
             }
-            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
+            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
 
             for meal_create in day_create.meals:
                 slot_data = {
@@ -666,13 +669,16 @@ class PlanGenerationService:
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,
-                    slot_data=slot_data
+                    slot_data=slot_data,
+                    commit=False,
                 )
 
+        # Single commit for the whole plan instead of one per day/meal row.
+        self.db.commit()
         return self.nutrition_service.get_plan_with_full_details(plan.id)
-    
 
-    
+
+
     def _delete_workout_plan_details(self, plan_id: int):
         """Delete all workout days and their junction rows for a plan (for update)"""
         for day in self.workout_repo.get_days_by_plan_id(plan_id):
@@ -719,15 +725,15 @@ class PlanGenerationService:
                 "estimated_duration": day_create.estimated_duration,
                 "notes": day_create.notes
             }
-            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data)
+            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
 
             for exercise_create in day_create.exercises:
                 central_exercise = None
-                
+
                 # Use provided ID directly if available
                 if getattr(exercise_create, 'central_exercise_id', None):
                     central_exercise = self.central_exercise_repo.get_by_id(exercise_create.central_exercise_id)
-                
+
                 # Fallback to name search or create new placeholder
                 if not central_exercise:
                     catalog_data = {
@@ -754,9 +760,12 @@ class PlanGenerationService:
                 self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
                     central_exercise_id=central_exercise.id,
-                    slot_data=slot_data
+                    slot_data=slot_data,
+                    commit=False,
                 )
 
+        # Single commit for the whole plan instead of one per day/exercise row.
+        self.db.commit()
         return self.workout_service.get_plan_with_details(plan.id)
 
     def _update_nutrition_plan_with_meals(
@@ -790,7 +799,7 @@ class PlanGenerationService:
                 "day_name": day_create.day_name,
                 "notes": day_create.notes
             }
-            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data)
+            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
 
             for meal_create in day_create.meals:
                 slot_data = {
@@ -810,7 +819,10 @@ class PlanGenerationService:
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,
-                    slot_data=slot_data
+                    slot_data=slot_data,
+                    commit=False,
                 )
 
+        # Single commit for the whole plan instead of one per day/meal row.
+        self.db.commit()
         return self.nutrition_service.get_plan_with_full_details(plan.id)

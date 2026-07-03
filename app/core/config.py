@@ -79,6 +79,12 @@ AI_COACH_MAX_TOKENS = int(os.getenv("AI_COACH_MAX_TOKENS", "4000"))
 EVAL_GROQ_API_KEY = os.getenv("EVAL_GROQ_API_KEY", GROQ_API_KEY)
 EVAL_GROQ_MODEL = os.getenv("EVAL_GROQ_MODEL", GROQ_MODEL)
 
+# Max attempts for the INITIAL plan generation call when the model returns
+# malformed JSON or output that fails schema validation (regenerate instead
+# of failing the request). Does not apply to the post-judge fix pass, which
+# already falls back to the original plan on failure.
+AI_MAX_GENERATION_RETRIES = int(os.getenv("AI_MAX_GENERATION_RETRIES", "2"))
+
 # Provider-agnostic LLM settings (used by AI Coach)
 # Supported providers include: groq, openrouter, openai, together, deepinfra, fireworks.
 AI_PROVIDER = os.getenv("AI_PROVIDER", "groq").lower()

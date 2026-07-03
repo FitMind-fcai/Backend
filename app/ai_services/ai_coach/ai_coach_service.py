@@ -15,6 +15,7 @@ from app.ai_services.ai_coach.dtos import (
 )
 from app.ai_services.ai_coach.llm_client import LLMClient
 from app.ai_services.ai_coach.plan_judge import PlanJudge
+from app.core import config
 
 if TYPE_CHECKING:
     from app.planning_module.core.planning_engine import PlanningEngineOutput
@@ -87,9 +88,9 @@ class AICoachService:
             "Any allergy violation is a critical failure."
         )
 
-        # ── Generate ──────────────────────────────────────────────────
+        # ── Generate (regenerates on malformed/invalid output) ────────
         logger.info("Nutrition — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
-        plan = self._generate_nutrition_once(
+        plan = self._generate_nutrition_with_retries(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_foods_str, planning_output,
             language=language,
@@ -157,9 +158,9 @@ class AICoachService:
             "Never suggest exercises that could harm the user."
         )
 
-        # ── Generate ──────────────────────────────────────────────────
+        # ── Generate (regenerates on malformed/invalid output) ────────
         logger.info("Workout — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
-        plan = self._generate_workout_once(
+        plan = self._generate_workout_with_retries(
             system_prompt, user_profile, preferences, duration_weeks,
             medical_rules, existing_plan, allowed_exercises_str, planning_output,
             language=language,
@@ -439,6 +440,75 @@ Respond with ONLY this JSON:
     # ------------------------------------------------------------------
     # Private generation helpers
     # ------------------------------------------------------------------
+
+    def _generate_nutrition_with_retries(
+        self,
+        system_prompt: str,
+        user_profile: UserProfileDTO,
+        preferences: NutritionPreferencesDTO,
+        duration_weeks: int,
+        medical_rules: str,
+        existing_plan: Optional[NutritionPlanDTO],
+        allowed_foods_str: str,
+        planning_output: Optional["PlanningEngineOutput"],
+        language: str,
+        model_override: Optional[str],
+    ) -> NutritionPlanDTO:
+        """
+        Wraps the initial generation attempt: if the model returns malformed
+        JSON or output that fails schema validation, regenerate instead of
+        failing the request. Only applies to the initial (non-fix) pass —
+        the post-judge fix pass already has its own fallback-to-original.
+        """
+        max_attempts = max(1, config.AI_MAX_GENERATION_RETRIES + 1)
+        last_err: Optional[ValueError] = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return self._generate_nutrition_once(
+                    system_prompt, user_profile, preferences, duration_weeks,
+                    medical_rules, existing_plan, allowed_foods_str, planning_output,
+                    language=language,
+                    model_override=model_override,
+                )
+            except ValueError as err:
+                last_err = err
+                logger.warning(
+                    "Nutrition — generation attempt %d/%d failed schema/JSON validation, regenerating: %s",
+                    attempt, max_attempts, err,
+                )
+        raise last_err
+
+    def _generate_workout_with_retries(
+        self,
+        system_prompt: str,
+        user_profile: UserProfileDTO,
+        preferences: WorkoutPreferencesDTO,
+        duration_weeks: int,
+        medical_rules: str,
+        existing_plan: Optional[WorkoutPlanDTO],
+        allowed_exercises_str: str,
+        planning_output: Optional["PlanningEngineOutput"],
+        language: str,
+        model_override: Optional[str],
+    ) -> WorkoutPlanDTO:
+        """Same retry wrapper as nutrition, for the workout generation path."""
+        max_attempts = max(1, config.AI_MAX_GENERATION_RETRIES + 1)
+        last_err: Optional[ValueError] = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return self._generate_workout_once(
+                    system_prompt, user_profile, preferences, duration_weeks,
+                    medical_rules, existing_plan, allowed_exercises_str, planning_output,
+                    language=language,
+                    model_override=model_override,
+                )
+            except ValueError as err:
+                last_err = err
+                logger.warning(
+                    "Workout — generation attempt %d/%d failed schema/JSON validation, regenerating: %s",
+                    attempt, max_attempts, err,
+                )
+        raise last_err
 
     def _generate_nutrition_once(
         self,

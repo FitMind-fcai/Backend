@@ -142,6 +142,24 @@ class LLMClient:
     # LLM call paths
     # ------------------------------------------------------------------
 
+    def _speed_routing_kwargs(self) -> Dict[str, Any]:
+        """
+        OpenRouter-only: hint it to route to whichever backend provider serving
+        the chosen model currently has the best throughput, instead of its
+        default (price-first) provider order. Does not change the model,
+        prompt, or temperature — purely a backend-selection hint, ignored by
+        other providers.
+
+        No quantization filter here: checked OpenRouter's live endpoint list
+        for the configured model (qwen/qwen3-235b-a22b-2507) and every serving
+        backend is fp8 (expected — a 235B-parameter model at bf16 would need
+        ~470GB+ VRAM per replica). Restricting to bf16/fp16 would exclude every
+        available provider and break generation outright, not just slow it down.
+        """
+        if self.provider != "openrouter":
+            return {}
+        return {"extra_body": {"provider": {"sort": "throughput"}}}
+
     def call_llm(self, system_prompt: str, user_prompt: str, json_mode: bool = True, model: Optional[str] = None) -> str:
         """Main generation call. Uses model override if given, else configured default."""
         call_kwargs: Dict[str, Any] = dict(
@@ -153,6 +171,7 @@ class LLMClient:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=0.90,
+            **self._speed_routing_kwargs(),
         )
         if json_mode:
             call_kwargs["response_format"] = {"type": "json_object"}
@@ -178,6 +197,7 @@ class LLMClient:
             max_tokens=self.judge_max_tokens,
             top_p=0.90,
             response_format={"type": "json_object"},
+            **self._speed_routing_kwargs(),
         )
         self._log_usage("judge", completion)
         return completion.choices[0].message.content
@@ -197,6 +217,7 @@ class LLMClient:
             temperature=0.1,
             max_tokens=self.context_builder_max_tokens,
             top_p=0.90,
+            **self._speed_routing_kwargs(),
         )
         self._log_usage("context_builder", completion)
         return completion.choices[0].message.content

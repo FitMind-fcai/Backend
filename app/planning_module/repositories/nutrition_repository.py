@@ -106,11 +106,16 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
     def get_day_by_id(self, day_id: int) -> Optional[NutritionPlanDay]:
         return self.db.query(NutritionPlanDay).filter(NutritionPlanDay.id == day_id).first()
 
-    def create_day(self, plan_id: int, day_data: dict) -> NutritionPlanDay:
+    def create_day(self, plan_id: int, day_data: dict, commit: bool = True) -> NutritionPlanDay:
         day = NutritionPlanDay(nutrition_plan_id=plan_id, **day_data)
         self.db.add(day)
-        self.db.commit()
-        self.db.refresh(day)
+        if commit:
+            self.db.commit()
+            self.db.refresh(day)
+        else:
+            # Flush only — assigns day.id without a round-trip commit, so
+            # callers can batch many days/meals into one final commit.
+            self.db.flush()
         return day
 
     # ------------------------------------------------------------------
@@ -139,19 +144,22 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
     def get_meal_by_id(self, meal_id: int) -> Optional[NutritionPlanMeal]:
         return self.db.query(NutritionPlanMeal).filter(NutritionPlanMeal.id == meal_id).first()
 
-    def create_meal_slot(self, day_id: int, slot_data: dict) -> NutritionPlanMeal:
+    def create_meal_slot(self, day_id: int, slot_data: dict, commit: bool = True) -> NutritionPlanMeal:
         from app.planning_module.models.plan import NutritionPlanMealIngredient
         ingredients_data = slot_data.pop("ingredients", [])
-        
+
         slot = NutritionPlanMeal(nutrition_plan_day_id=day_id, **slot_data)
-        
+
         for ing_data in ingredients_data:
             # We assume ing_data is a dict with central_food_id and amount_g
             slot.ingredients.append(NutritionPlanMealIngredient(**ing_data))
-            
+
         self.db.add(slot)
-        self.db.commit()
-        self.db.refresh(slot)
+        if commit:
+            self.db.commit()
+            self.db.refresh(slot)
+        else:
+            self.db.flush()
         return slot
 
     def delete_meal_slots_by_day_id(self, day_id: int):
