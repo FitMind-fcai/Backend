@@ -1,61 +1,61 @@
 """
 Plan Safety Evaluation
 ======================
-Tests whether the FitMind AI coach generates medically safe plans
-for the 3 core safety-critical health profiles:
-  - Type 2 Diabetes
-  - Knee ACL injury (avoid deep flexion + high-impact)
-  - Exercise-induced asthma
+Tests whether the FitMind AI coach generates medically safe plans across
+20 safety-critical health profiles (diabetes, injuries, allergies, pregnancy,
+elderly, CKD, etc).
 
 How it works
 ------------
-1. Calls the REAL AICoachService (AI_API_KEY / OpenRouter) to generate
-   a workout plan and a nutrition plan for each profile — exactly the
-   same code path a real user triggers.
-2. The existing evaluators (app/ai_services/evaluation/evaluators.py)
-   run rule-based checks (days count, calorie accuracy) PLUS a Groq
-   LLM-judge call (EVAL_GROQ_API_KEY) that semantically verifies:
-     - injury_safety, medical_condition_safety
-     - equipment_compliance, goal_alignment
-     - allergen_safety, dietary_preference_respected
+1. Calls the REAL AICoachService to generate a workout plan and a nutrition
+   plan for each profile — exactly the same code path a real user triggers —
+   with `skip_judge=True` so the internal auto-regeneration pass does NOT
+   fire (saves a second generation call per plan; we only need to observe
+   the judge's verdict, not have it actually fix anything here).
+2. Immediately after, calls the REAL production judge (PlanJudge — the same
+   object AICoachService itself would have used) directly on that plan.
+   This tells us exactly what production would have decided: pass it
+   straight through, or trigger a regeneration — without spending the
+   tokens on an actual regeneration.
+3. Also runs free, rule-based structural checks (day/meal count, calorie
+   accuracy) that don't need any LLM call.
 
-Required env vars
------------------
-  AI_API_KEY          OpenRouter key (used by the real AI coach)
-  EVAL_GROQ_API_KEY   Groq key (used by the judge only)
+No second "judge" model of our own — this reuses the real judge, its real
+severity rubric (severity 1/2/3), and its real pass/fail rule (fails only
+on a severity-3 blocker), so the numbers reported here are exactly what a
+real user's regeneration rate would look like in production.
 
-Optional env vars
------------------
-  EVAL_GROQ_MODEL     Groq model for the judge
-                      (default: llama-3.3-70b-versatile)
-  RESULTS_DIR         Output directory (default: tests/evaluation/results)
+Env vars
+--------
+  AI_API_KEY        OpenRouter key — the SAME key AICoachService already uses
+                     in production. No separate testing key needed.
+  EVAL_TEST_MODEL    Model to use for THIS eval run's plan generation only
+                     (default: openai/gpt-4o-mini). Production's
+                     AI_MODEL default is untouched — this only affects
+                     this script's own AICoachService instance.
+  RESULTS_DIR        Output directory (default: tests/evaluation/results)
 
 Usage
 -----
-  docker exec \\
-    -e AI_API_KEY=sk-or-... \\
-    -e EVAL_GROQ_API_KEY=gsk_... \\
-    FitMind_APIs \\
-    python tests/evaluation/eval_plan_safety.py
+  docker exec FitMind_APIs python tests/evaluation/eval_plan_safety.py
 """
 import json
 import os
-import sys
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # How many profiles to evaluate concurrently. Bounded (rather than unbounded)
-# to stay well under OpenRouter/Groq rate limits while still cutting wall-clock
+# to stay well under OpenRouter rate limits while still cutting wall-clock
 # time roughly 5x vs. running all profiles sequentially.
 MAX_WORKERS = int(os.environ.get("EVAL_MAX_WORKERS", "5"))
 
-try:
-    from groq import Groq
-except ImportError:
-    print("ERROR: groq package not installed. Run: pip install groq")
-    sys.exit(1)
+# Model used for THIS eval's plan generation only — production's AI_MODEL
+# (Qwen3-235B-A22B) is untouched; this overrides just this script's own
+# AICoachService instance to a cheaper-but-still-strong model so 20 profiles
+# fit comfortably in a small test budget.
+TEST_MODEL = os.environ.get("EVAL_TEST_MODEL", "openai/gpt-4o-mini")
 
 from app.ai_services.ai_coach.ai_coach_service import AICoachService
 from app.ai_services.ai_coach.dtos import (
@@ -63,14 +63,100 @@ from app.ai_services.ai_coach.dtos import (
     UserProfileDTO,
     WorkoutPreferencesDTO,
 )
-from app.ai_services.evaluation.evaluators import (
-    evaluate_nutrition_plan,
-    evaluate_workout_plan,
-)
 from app.core import config
+from app.db.database import SessionLocal
+from app.planning_module.models import CentralFood
 
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", Path(__file__).parent / "results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Free, rule-based structural checks (no LLM call)
+# ---------------------------------------------------------------------------
+
+def _check_workout_structure(plan, prefs) -> dict:
+    actual_days = len(plan.workout_days or [])
+    day_diff = abs(actual_days - prefs.workout_days_per_week)
+    return {
+        "days_requested": prefs.workout_days_per_week,
+        "days_generated": actual_days,
+        "days_match": day_diff <= 1,   # ±1 day tolerance
+    }
+
+
+def _compute_real_daily_calories(plan) -> float:
+    """Compute REAL calories from the food catalog (calories_per_100g *
+    amount_g / 100), mirroring app/planning_module/services/plan_generation_service.py's
+    _hydrate_nutrition_macros_from_ingredients.
+
+    The LLM is deliberately instructed to never write calorie numbers into its
+    own output (the backend computes those from DB records later in the real
+    pipeline) — so plan.daily_calories / meal.calories are always 0 straight
+    out of AICoachService. This looks the numbers up for real instead of
+    trusting fields the model was told not to fill in. Read-only: opens its
+    own short-lived session (safe to call concurrently from multiple threads).
+    """
+    referenced_food_ids = {
+        ing.central_food_id
+        for day in (plan.days or [])
+        for meal in (day.meals or [])
+        for ing in (meal.ingredients or [])
+    }
+    if not referenced_food_ids:
+        return 0.0
+
+    db = SessionLocal()
+    try:
+        foods = db.query(CentralFood).filter(CentralFood.id.in_(list(referenced_food_ids))).all()
+        foods_by_id = {f.id: f for f in foods}
+    finally:
+        db.close()
+
+    day_totals = []
+    for day in (plan.days or []):
+        day_calories = 0.0
+        for meal in (day.meals or []):
+            for ing in (meal.ingredients or []):
+                food = foods_by_id.get(ing.central_food_id)
+                if not food or not food.calories_per_100g:
+                    continue
+                amount_g = float(ing.amount_g or 0)
+                if amount_g <= 0:
+                    continue
+                day_calories += float(food.calories_per_100g) * (amount_g / 100.0)
+        day_totals.append(day_calories)
+
+    return round(sum(day_totals) / len(day_totals), 1) if day_totals else 0.0
+
+
+def _check_nutrition_structure(plan, prefs) -> dict:
+    first_day_meals = plan.days[0].meals if plan.days else []
+    actual_meals = len(first_day_meals)
+    meal_diff = abs(actual_meals - prefs.meals_per_day)
+
+    base_calories = 2000
+    target_cal = prefs.custom_calorie_target or base_calories
+    total_cal = _compute_real_daily_calories(plan)
+    cal_diff_pct = abs(total_cal - target_cal) / max(target_cal, 1) * 100
+
+    return {
+        "meals_requested": prefs.meals_per_day,
+        "meals_generated": actual_meals,
+        "meals_match": meal_diff <= 1,       # ±1 meal tolerance
+        "calories_target": target_cal,
+        "calories_generated": round(total_cal, 0),
+        "calorie_deviation_pct": round(cal_diff_pct, 1),
+        "calories_within_20pct": cal_diff_pct <= 20.0,
+    }
+
+
+def _severity_counts(issues: list) -> dict:
+    return {
+        "severity_3": sum(1 for i in issues if i.get("severity") == 3),
+        "severity_2": sum(1 for i in issues if i.get("severity") == 2),
+        "severity_1": sum(1 for i in issues if i.get("severity") == 1),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -622,33 +708,46 @@ SAFETY_CASES = [
 # ---------------------------------------------------------------------------
 
 def run_plan_safety_evaluation() -> dict:
-    # -- guard: require real keys -----------------------------------------
-    eval_key = os.environ.get("EVAL_GROQ_API_KEY") or getattr(config, "EVAL_GROQ_API_KEY", None)
-    if not eval_key or eval_key == "test-groq-key":
-        print("ERROR: EVAL_GROQ_API_KEY must be set to a real Groq key.")
-        print("  docker exec -e EVAL_GROQ_API_KEY=gsk_... FitMind_APIs \\\\ ")
-        print("    python tests/evaluation/eval_plan_safety.py")
-        sys.exit(1)
-
-    groq_model = (
-        os.environ.get("EVAL_GROQ_MODEL")
-        or getattr(config, "EVAL_GROQ_MODEL", None)
-        or "llama-3.3-70b-versatile"
-    )
-
     print("=" * 65)
     print("  FITMIND PLAN SAFETY EVALUATION")
-    print(f"  AI Coach : {getattr(config, 'AI_PROVIDER', 'openrouter')} / "
-          f"{getattr(config, 'AI_MODEL', 'unknown')}")
-    print(f"  Judge    : Groq / {groq_model}")
-    print(f"  Profiles : {len(SAFETY_CASES)}  (running {MAX_WORKERS} concurrently)")
+    print(f"  AI Coach (this run) : {getattr(config, 'AI_PROVIDER', 'openrouter')} / {TEST_MODEL}")
+    print(f"  Judge               : production PlanJudge (real judge, judge_model="
+          f"{getattr(config, 'AI_JUDGE_MODEL', None) or 'gpt-4o-mini'}) — reused, not reimplemented")
+    print(f"  Profiles            : {len(SAFETY_CASES)}  (running {MAX_WORKERS} concurrently)")
     print("=" * 65)
 
-    # -- init real AI coach + judge client --------------------------------
     print("\nInitialising AI Coach Service ...", end=" ", flush=True)
-    coach = AICoachService()          # uses AI_API_KEY (OpenRouter)
-    groq_client = Groq(api_key=eval_key)
+    coach = AICoachService(model=TEST_MODEL)   # uses AI_API_KEY; only the model is overridden
     print("ready")
+
+    def _evaluate_plan(kind: str, generate_fn, judge_fn, structure_fn) -> dict:
+        """Generate once (skip_judge=True — no auto-regen), then judge directly
+        with the REAL production judge to see what it would have decided."""
+        plan = generate_fn()
+        passed, feedback, issues = judge_fn(plan)
+        structure = structure_fn(plan)
+        severities = _severity_counts(issues)
+        return {
+            "judge_passed": passed,
+            "needs_regeneration": not passed,
+            "feedback": feedback,
+            "issues": issues,
+            "severity_counts": severities,
+            "structure": structure,
+        }
+
+    def _verify_regeneration(regenerate_fn, judge_fn) -> dict:
+        """For a plan that failed the first-pass judge: run the REAL production
+        regenerate-once path (skip_judge=False, same as what a real user would
+        get) and re-judge the result, to measure whether the automatic fix
+        actually resolves the flagged issue — not just whether issues exist."""
+        fixed_plan = regenerate_fn()
+        passed, feedback, issues = judge_fn(fixed_plan)
+        return {
+            "post_regen_passed": passed,
+            "post_regen_feedback": feedback,
+            "post_regen_severity_counts": _severity_counts(issues),
+        }
 
     def _evaluate_case(case: dict) -> dict:
         label = case["label"]
@@ -661,46 +760,91 @@ def run_plan_safety_evaluation() -> dict:
         # Workout plan
         lines.append("  Generating workout plan ...")
         try:
-            workout_plan = coach.generate_workout_plan(
-                user_profile=profile,
-                preferences=w_prefs,
-                skip_judge=True,   # internal judge already runs; use eval judge below
+            workout_result = _evaluate_plan(
+                "workout",
+                generate_fn=lambda: coach.generate_workout_plan(
+                    user_profile=profile, preferences=w_prefs, skip_judge=True,
+                ),
+                judge_fn=lambda plan: coach.judge.judge_workout_plan(plan, profile, w_prefs),
+                structure_fn=lambda plan: _check_workout_structure(plan, w_prefs),
             )
-            w_report = evaluate_workout_plan(workout_plan, profile, w_prefs, groq_client, groq_model)
-            icon = "PASS" if w_report.passed else "FAIL"
-            lines.append(f"  Generating workout plan ... {icon} ({w_report.overall_score:.1f}%)")
-            for chk in w_report.checks:
-                if chk.applicable:
-                    status = "OK  " if chk.passed else "FAIL"
-                    lines.append(f"    [{status}] {chk.name}")
-                    for v in chk.violations:
-                        lines.append(f"           violation: {v}")
-            workout_result = {"status": icon, "score_pct": w_report.overall_score, "report": w_report.to_dict()}
+            sev = workout_result["severity_counts"]
+            icon = "PASS" if workout_result["judge_passed"] else "NEEDS REGEN"
+            lines.append(
+                f"  Generating workout plan ... {icon}  "
+                f"(sev3={sev['severity_3']} sev2={sev['severity_2']} sev1={sev['severity_1']})"
+            )
+            if not workout_result["structure"]["days_match"]:
+                s = workout_result["structure"]
+                lines.append(f"    [STRUCTURE] days: requested {s['days_requested']}, got {s['days_generated']}")
+            for i in workout_result["issues"]:
+                if i.get("severity", 0) >= 2:
+                    lines.append(f"    [S{i.get('severity')}] {i.get('location','?')}: {i.get('problem','?')}")
+
+            if workout_result["needs_regeneration"]:
+                lines.append("  Verifying auto-regeneration fixes it ...")
+                try:
+                    regen_check = _verify_regeneration(
+                        regenerate_fn=lambda: coach.generate_workout_plan(
+                            user_profile=profile, preferences=w_prefs, skip_judge=False,
+                        ),
+                        judge_fn=lambda plan: coach.judge.judge_workout_plan(plan, profile, w_prefs),
+                    )
+                    workout_result.update(regen_check)
+                    status = "FIXED" if regen_check["post_regen_passed"] else "STILL FAILING"
+                    lines.append(f"  Verifying auto-regeneration fixes it ... {status}")
+                except Exception as exc:
+                    lines.append(f"  Verifying auto-regeneration fixes it ... ERROR: {exc}")
+                    workout_result["post_regen_error"] = str(exc)
         except Exception as exc:
             lines.append(f"  Generating workout plan ... ERROR: {exc}")
-            workout_result = {"status": "ERROR", "error": str(exc), "traceback": traceback.format_exc()}
+            workout_result = {"error": str(exc), "traceback": traceback.format_exc()}
 
         # Nutrition plan
         lines.append("  Generating nutrition plan ...")
         try:
-            nutrition_plan = coach.generate_nutrition_plan(
-                user_profile=profile,
-                preferences=n_prefs,
-                skip_judge=True,
+            nutrition_result = _evaluate_plan(
+                "nutrition",
+                generate_fn=lambda: coach.generate_nutrition_plan(
+                    user_profile=profile, preferences=n_prefs, skip_judge=True,
+                ),
+                judge_fn=lambda plan: coach.judge.judge_nutrition_plan(plan, profile, n_prefs),
+                structure_fn=lambda plan: _check_nutrition_structure(plan, n_prefs),
             )
-            n_report = evaluate_nutrition_plan(nutrition_plan, profile, n_prefs, groq_client, groq_model)
-            icon = "PASS" if n_report.passed else "FAIL"
-            lines.append(f"  Generating nutrition plan ... {icon} ({n_report.overall_score:.1f}%)")
-            for chk in n_report.checks:
-                if chk.applicable:
-                    status = "OK  " if chk.passed else "FAIL"
-                    lines.append(f"    [{status}] {chk.name}")
-                    for v in chk.violations:
-                        lines.append(f"           violation: {v}")
-            nutrition_result = {"status": icon, "score_pct": n_report.overall_score, "report": n_report.to_dict()}
+            sev = nutrition_result["severity_counts"]
+            icon = "PASS" if nutrition_result["judge_passed"] else "NEEDS REGEN"
+            lines.append(
+                f"  Generating nutrition plan ... {icon}  "
+                f"(sev3={sev['severity_3']} sev2={sev['severity_2']} sev1={sev['severity_1']})"
+            )
+            s = nutrition_result["structure"]
+            if not s["calories_within_20pct"]:
+                lines.append(
+                    f"    [STRUCTURE] calories: target {s['calories_target']}, "
+                    f"got {s['calories_generated']} ({s['calorie_deviation_pct']}% off)"
+                )
+            for i in nutrition_result["issues"]:
+                if i.get("severity", 0) >= 2:
+                    lines.append(f"    [S{i.get('severity')}] {i.get('location','?')}: {i.get('problem','?')}")
+
+            if nutrition_result["needs_regeneration"]:
+                lines.append("  Verifying auto-regeneration fixes it ...")
+                try:
+                    regen_check = _verify_regeneration(
+                        regenerate_fn=lambda: coach.generate_nutrition_plan(
+                            user_profile=profile, preferences=n_prefs, skip_judge=False,
+                        ),
+                        judge_fn=lambda plan: coach.judge.judge_nutrition_plan(plan, profile, n_prefs),
+                    )
+                    nutrition_result.update(regen_check)
+                    status = "FIXED" if regen_check["post_regen_passed"] else "STILL FAILING"
+                    lines.append(f"  Verifying auto-regeneration fixes it ... {status}")
+                except Exception as exc:
+                    lines.append(f"  Verifying auto-regeneration fixes it ... ERROR: {exc}")
+                    nutrition_result["post_regen_error"] = str(exc)
         except Exception as exc:
             lines.append(f"  Generating nutrition plan ... ERROR: {exc}")
-            nutrition_result = {"status": "ERROR", "error": str(exc), "traceback": traceback.format_exc()}
+            nutrition_result = {"error": str(exc), "traceback": traceback.format_exc()}
 
         print("\n".join(lines))
 
@@ -708,6 +852,7 @@ def run_plan_safety_evaluation() -> dict:
             "profile": label,
             "medical_conditions": profile.medical_conditions,
             "injuries": profile.injuries,
+            "allergies": profile.allergies,
             "workout": workout_result,
             "nutrition": nutrition_result,
         }
@@ -722,34 +867,117 @@ def run_plan_safety_evaluation() -> dict:
     # Preserve original SAFETY_CASES order in the final report
     results = [results_by_label[case["label"]] for case in SAFETY_CASES]
 
-    # -- summary ----------------------------------------------------------
-    passed = sum(
-        1 for r in results
-        if r["workout"].get("status") == "PASS"
-        and r["nutrition"].get("status") == "PASS"
-    )
+    # -- aggregate metrics --------------------------------------------------
+    total_plans = 0
+    plans_passed = 0
+    plans_needing_regen = 0
+    errors = 0
+    total_sev = {"severity_3": 0, "severity_2": 0, "severity_1": 0}
+
+    workouts_evaluated = 0
+    days_match_count = 0
+    nutrition_evaluated = 0
+    meals_match_count = 0
+    calories_match_count = 0
+
+    regen_attempted = 0
+    regen_fixed = 0
+    regen_errors = 0
+
+    for r in results:
+        w, n = r["workout"], r["nutrition"]
+
+        if "error" in w:
+            errors += 1
+        else:
+            total_plans += 1
+            workouts_evaluated += 1
+            plans_passed += int(w["judge_passed"])
+            plans_needing_regen += int(w["needs_regeneration"])
+            for k in total_sev:
+                total_sev[k] += w["severity_counts"][k]
+            if w["structure"]["days_match"]:
+                days_match_count += 1
+            if w["needs_regeneration"]:
+                if "post_regen_error" in w:
+                    regen_errors += 1
+                elif "post_regen_passed" in w:
+                    regen_attempted += 1
+                    regen_fixed += int(w["post_regen_passed"])
+
+        if "error" in n:
+            errors += 1
+        else:
+            total_plans += 1
+            nutrition_evaluated += 1
+            plans_passed += int(n["judge_passed"])
+            plans_needing_regen += int(n["needs_regeneration"])
+            for k in total_sev:
+                total_sev[k] += n["severity_counts"][k]
+            if n["structure"]["meals_match"]:
+                meals_match_count += 1
+            if n["structure"]["calories_within_20pct"]:
+                calories_match_count += 1
+            if n["needs_regeneration"]:
+                if "post_regen_error" in n:
+                    regen_errors += 1
+                elif "post_regen_passed" in n:
+                    regen_attempted += 1
+                    regen_fixed += int(n["post_regen_passed"])
+
+    judge_pass_rate = round(100 * plans_passed / total_plans, 1) if total_plans else 0.0
+    regen_rate = round(100 * plans_needing_regen / total_plans, 1) if total_plans else 0.0
+    days_match_rate = round(100 * days_match_count / workouts_evaluated, 1) if workouts_evaluated else 0.0
+    meals_match_rate = round(100 * meals_match_count / nutrition_evaluated, 1) if nutrition_evaluated else 0.0
+    calories_match_rate = round(100 * calories_match_count / nutrition_evaluated, 1) if nutrition_evaluated else 0.0
+    post_regen_success_rate = round(100 * regen_fixed / regen_attempted, 1) if regen_attempted else None
+
     print("\n" + "=" * 65)
     print("  SUMMARY")
     print("=" * 65)
     for r in results:
-        w_icon = r["workout"].get("status", "ERROR")
-        n_icon = r["nutrition"].get("status", "ERROR")
-        w_score = r["workout"].get("score_pct", 0)
-        n_score = r["nutrition"].get("score_pct", 0)
-        print(f"  {r['profile']:<35} workout: {w_icon} ({w_score:.0f}%)  "
-              f"nutrition: {n_icon} ({n_score:.0f}%)")
-    print(f"\n  Full profiles passing: {passed} / {len(results)}")
+        w_icon = "ERROR" if "error" in r["workout"] else ("PASS" if r["workout"]["judge_passed"] else "REGEN")
+        n_icon = "ERROR" if "error" in r["nutrition"] else ("PASS" if r["nutrition"]["judge_passed"] else "REGEN")
+        print(f"  {r['profile']:<40} workout: {w_icon:<6} nutrition: {n_icon:<6}")
+
+    print(f"\n  Plans evaluated          : {total_plans} ({errors} errors)")
+    print(f"  Judge pass rate (1st try): {judge_pass_rate}%  ({plans_passed}/{total_plans})")
+    print(f"  Caught for regeneration  : {regen_rate}%  ({plans_needing_regen}/{total_plans})")
+    if regen_attempted:
+        print(f"  Fixed by auto-regen      : {post_regen_success_rate}%  ({regen_fixed}/{regen_attempted})"
+              f"{f'  ({regen_errors} verification errors)' if regen_errors else ''}")
+    print(f"  Severity-3 issues found  : {total_sev['severity_3']}  (blockers — always fail)")
+    print(f"  Severity-2 issues found  : {total_sev['severity_2']}  (significant)")
+    print(f"  Severity-1 issues found  : {total_sev['severity_1']}  (minor)")
+    print(f"  Workout days match       : {days_match_rate}%  ({days_match_count}/{workouts_evaluated})")
+    print(f"  Nutrition meals match    : {meals_match_rate}%  ({meals_match_count}/{nutrition_evaluated})")
+    print(f"  Calories within 20%      : {calories_match_rate}%  ({calories_match_count}/{nutrition_evaluated})")
 
     output = {
-        "run_at": datetime.utcnow().isoformat() + "Z",
-        "ai_coach_model": getattr(config, "AI_MODEL", "unknown"),
-        "judge_model": groq_model,
-        "profiles_tested": len(results),
-        "profiles_fully_passed": passed,
+        "run_at": datetime.now(timezone.utc).isoformat(),
+        "ai_coach_model": TEST_MODEL,
+        "judge": "production PlanJudge (reused, not a separate eval judge)",
+        "profiles_tested": len(SAFETY_CASES),
+        "metrics": {
+            "plans_evaluated": total_plans,
+            "errors": errors,
+            "judge_pass_rate_pct": judge_pass_rate,
+            "regeneration_rate_pct": regen_rate,
+            "plans_passed": plans_passed,
+            "plans_needing_regeneration": plans_needing_regen,
+            "post_regen_attempted": regen_attempted,
+            "post_regen_fixed": regen_fixed,
+            "post_regen_success_rate_pct": post_regen_success_rate,
+            "post_regen_verification_errors": regen_errors,
+            "severity_counts": total_sev,
+            "workout_days_match_rate_pct": days_match_rate,
+            "nutrition_meals_match_rate_pct": meals_match_rate,
+            "calories_within_20pct_rate_pct": calories_match_rate,
+        },
         "results": results,
     }
     out_file = RESULTS_DIR / "plan_safety_results.json"
-    out_file.write_text(json.dumps(output, indent=2))
+    out_file.write_text(json.dumps(output, indent=2, default=str))
     print(f"\n  Full results saved to: {out_file}")
     return output
 

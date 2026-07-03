@@ -17,18 +17,20 @@ How it works
    - Actionability        : is the suggestion concrete (verb + action)?
    - Not generic boilerplate: avoids phrases like "great job", "as your AI"
 
-Required env vars
------------------
-  AI_API_KEY   OpenRouter key (used by the real AI coach)
+Env vars
+--------
+  AI_API_KEY        OpenRouter key — the SAME key AICoachService already uses
+                     in production. No separate testing key needed.
+  EVAL_TEST_MODEL    Model to use for THIS eval run only (default:
+                     openai/gpt-4o-mini). Production's AI_MODEL
+                     default is untouched.
 
 Usage
 -----
-  docker exec -e AI_API_KEY=sk-or-... FitMind_APIs \\
-    python tests/evaluation/eval_coaching_relevance.py
+  docker exec FitMind_APIs python tests/evaluation/eval_coaching_relevance.py
 """
 import json
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +41,9 @@ from app.ai_services.ai_coach.dtos import UserProfileDTO
 # How many scenarios to evaluate concurrently (bounded to stay under
 # OpenRouter rate limits while still cutting wall-clock time substantially).
 MAX_WORKERS = int(os.environ.get("EVAL_MAX_WORKERS", "5"))
+
+# Model used for THIS eval run only — production's AI_MODEL is untouched.
+TEST_MODEL = os.environ.get("EVAL_TEST_MODEL", "openai/gpt-4o-mini")
 
 RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", Path(__file__).parent / "results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -517,11 +522,12 @@ def _check_not_generic(suggestion: str, scenario: dict) -> tuple:
 def run_coaching_relevance_evaluation() -> dict:
     print("=" * 65)
     print("  FITMIND COACHING RELEVANCE EVALUATION")
-    print(f"  Scenarios : {len(SCENARIOS)}  (running {MAX_WORKERS} concurrently)")
+    print(f"  AI Coach (this run) : {TEST_MODEL}")
+    print(f"  Scenarios           : {len(SCENARIOS)}  (running {MAX_WORKERS} concurrently)")
     print("=" * 65)
 
     print("\nInitialising AI Coach Service ...", end=" ", flush=True)
-    coach = AICoachService()
+    coach = AICoachService(model=TEST_MODEL)   # uses AI_API_KEY; only the model is overridden
     print("ready")
 
     def _evaluate_scenario(scenario: dict) -> dict:

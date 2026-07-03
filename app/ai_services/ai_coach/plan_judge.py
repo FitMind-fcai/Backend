@@ -64,6 +64,17 @@ SEVERITY 1 — MINOR (note it; never fails the plan):
   • Small exercise selection optimisation
   • A coaching note missing on one day when others have it
 
+NON-ISSUES — DO NOT LIST THESE AT ALL (this is not optional):
+  If you check whether a restriction/condition applies to THIS user and conclude
+  it does NOT — for example "this movement would be a problem for shoulder
+  impingement, but this user has no shoulder condition" — that is a NON-ISSUE.
+  Do not add it to the issues array under ANY severity, even to note that it's
+  fine or "no fix needed." The issues array must contain ONLY genuine
+  violations of THIS user's actual, stated restrictions. If your own reasoning
+  concludes "this does not apply to this user" or "this is acceptable," the
+  correct action is to write NOTHING about it — silently move on to the next
+  exercise/meal. An empty issues array is a valid, good outcome.
+
 PASS / FAIL (applied by code — not by you):
   • PASS  = zero severity-3 issues AND fewer than 5 severity-2 issues
   • FAIL  = any severity-3 issue OR 5+ severity-2 issues
@@ -71,7 +82,11 @@ PASS / FAIL (applied by code — not by you):
 """
 
 _OVERHEAD_DEFINITION = """
-DEFINING "OVERHEAD" (critical for shoulder impingement assessment):
+DEFINING "OVERHEAD" (a biomechanical term used below ONLY if this user's own
+injuries/conditions list actually names a shoulder-related restriction —
+e.g. shoulder impingement, rotator cuff tear, labral tear, frozen shoulder.
+If this user's profile does NOT mention a shoulder condition, movements
+being "overhead" is IRRELEVANT — do not flag them on this basis at all.):
 
 "Overhead" = hands or load travels ABOVE shoulder height while the person is upright.
 
@@ -85,7 +100,8 @@ NOT overhead — even if the word "up" or "press" appears:
   ✓ Lateral raises kept BELOW 90° (below shoulder height)
   ✓ Dips (shoulder extension/depression — not overhead)
 
-IS overhead (contraindicated for shoulder impingement):
+IS overhead — relevant ONLY for a user whose own profile lists a shoulder
+condition/injury; irrelevant for every other user regardless of goal or difficulty:
   ✗ Overhead press, dumbbell shoulder press, Arnold press, push press
   ✗ Behind-the-neck press / behind-the-neck pull-down
   ✗ Upright row (taken to chin height — enters overhead arc)
@@ -161,7 +177,7 @@ class PlanJudge:
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
         planning_output=None,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, List[Dict]]:
         system = (
             "You are a senior clinical dietitian and food safety expert.\n"
             "Your role is to find GENUINE safety risks and quality issues — "
@@ -197,7 +213,12 @@ class PlanJudge:
             f"{_serialize_nutrition_plan(plan)}\n\n"
             "Evaluate these areas in order:\n"
             "1. ALLERGEN CHECK — read instructions text of every meal for any ingredient "
-            "matching the allergy list (exact or family). Severity 3 if found.\n"
+            "matching the allergy list (exact or family). Severity 3 if found. Only flag real, "
+            "clinically-recognized allergen families (e.g. shrimp/crab/lobster/shellfish are one "
+            "family; tree nuts are one family). Fin-fish (salmon, tuna, cod, etc.) is NOT the same "
+            "allergen family as shellfish (crustaceans/mollusks) and does not cross-react with it — "
+            "do not flag fish for a shellfish allergy, or vice versa, unless the user's allergy list "
+            "explicitly names both.\n"
             "2. MEDICAL VIOLATIONS — foods or preparations directly contraindicated for "
             "listed conditions. Severity 3 if dangerous, 2 if significant caution.\n"
             "3. DRUG-FOOD INTERACTIONS — ingredients with known interactions with listed "
@@ -222,7 +243,7 @@ class PlanJudge:
         user_profile: UserProfileDTO,
         preferences: WorkoutPreferencesDTO,
         planning_output=None,
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, List[Dict]]:
         system = (
             "You are a senior sports medicine physician and strength & conditioning specialist.\n"
             "Your role is to find GENUINE safety risks and programming issues — "
@@ -259,9 +280,15 @@ class PlanJudge:
             f"{_serialize_workout_plan(plan)}\n\n"
             "Evaluate these areas in order:\n"
             "1. CONTRAINDICATED MOVEMENTS — read the 'Movement description' for each exercise.\n"
-            "   Only severity 3 if the instructions CONFIRM the exercise loads the restricted "
-            "   joint in the contraindicated range. Use the overhead definition above.\n"
-            "   Do NOT judge by exercise name alone.\n"
+            "   Only severity 3 if the instructions CONFIRM the exercise loads a joint that THIS\n"
+            "   user's own INJURIES / LIMITATIONS field above actually restricts. Use the overhead\n"
+            "   definition above ONLY when this user's injuries mention a shoulder condition\n"
+            "   (impingement, rotator cuff, labral tear, frozen shoulder, etc.) — if the injuries\n"
+            "   field says 'None' or names an unrelated body part/condition, overhead movements are\n"
+            "   NOT a violation and must not be flagged. Do NOT judge by exercise name alone, and do\n"
+            "   NOT invent or assume a restriction the user's own profile doesn't state. If you catch\n"
+            "   yourself writing 'this would be a problem for X, but this user doesn't have X' —\n"
+            "   that is a NON-ISSUE (see rubric above): do not add it to the issues array at all.\n"
             "2. INTENSITY — severity 3 only if clearly exceeds safe range (e.g. max-effort HIIT "
             "   for uncontrolled hypertension). RPE 5-7 is moderate and acceptable for mild "
             "   hypertension. Severity 1-2 for minor intensity adjustments.\n"
@@ -278,7 +305,7 @@ class PlanJudge:
 
         return self._run_judge("workout", system, prompt)
 
-    def _run_judge(self, label: str, system: str, prompt: str) -> Tuple[bool, str]:
+    def _run_judge(self, label: str, system: str, prompt: str) -> Tuple[bool, str, List[Dict]]:
         try:
             response = self._llm.call_judge_llm(system, prompt)
             result   = self._llm.parse_json_response(response)
@@ -307,8 +334,8 @@ class PlanJudge:
                 ]
                 logger.warning("%s judge FAILED:\n%s", label, "\n".join(blocker_msgs))
 
-            return passed, feedback
+            return passed, feedback, issues
 
         except Exception as err:
             logger.warning("%s judge error (skipping): %s", label, err)
-            return True, ""
+            return True, "", []
