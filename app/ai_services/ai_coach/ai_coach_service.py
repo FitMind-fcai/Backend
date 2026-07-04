@@ -56,6 +56,7 @@ class AICoachService:
         language: str = "en",
         model_override: Optional[str] = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
@@ -65,6 +66,11 @@ class AICoachService:
         medical_rules is a pre-built, KB-grounded rule block from ContextBuilder
         (runs in a parallel thread in plan_generation_service).  It replaces both
         the inline Channel C medical block and the general RAG Channel A.
+
+        coach_feedback is optional free-text instructions from the weekly
+        coaching analysis (based on the user's actual logged data) describing
+        exactly what to change on an EXISTING plan — distinct from judge_feedback,
+        which is only ever produced internally by the post-generation judge.
         """
         target_calories = calculate_target_calories(user_profile, preferences.custom_calorie_target)
         macros          = calculate_macro_guidance(user_profile, target_calories)
@@ -95,6 +101,7 @@ class AICoachService:
             medical_rules, existing_plan, allowed_foods_str, planning_output,
             language=language,
             model_override=model_override,
+            coach_feedback=coach_feedback,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
@@ -112,6 +119,7 @@ class AICoachService:
                     system_prompt, user_profile, preferences, duration_weeks,
                     medical_rules, existing_plan, allowed_foods_str, planning_output,
                     judge_feedback=feedback,
+                    coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
                 )
@@ -137,6 +145,7 @@ class AICoachService:
         language: str = "en",
         model_override: Optional[str] = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> WorkoutPlanDTO:
         """
         Generate a personalised workout plan.
@@ -144,6 +153,10 @@ class AICoachService:
         Workflow: Generate → Judge → Fix once (if failed) → Return
 
         medical_rules is a pre-built, KB-grounded rule block from ContextBuilder.
+
+        coach_feedback is optional free-text instructions from the weekly
+        coaching analysis describing exactly what to change on an EXISTING
+        plan — see generate_nutrition_plan for the same mechanism.
         """
         logger.info("===================================")
         logger.info("INJECTED DB EXERCISES STRING:")
@@ -165,6 +178,7 @@ class AICoachService:
             medical_rules, existing_plan, allowed_exercises_str, planning_output,
             language=language,
             model_override=model_override,
+            coach_feedback=coach_feedback,
         )
 
         # ── Judge once → Fix once if failed ──────────────────────────
@@ -182,6 +196,7 @@ class AICoachService:
                     system_prompt, user_profile, preferences, duration_weeks,
                     medical_rules, existing_plan, allowed_exercises_str, planning_output,
                     judge_feedback=feedback,
+                    coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
                 )
@@ -358,13 +373,30 @@ Respond with ONLY this JSON:
   "positives": ["max 3 bullets — what is going well"],
   "improvements": ["max 3 bullets — what needs work"],
   "suggestions": ["max 3 specific, actionable next steps"],
-  "projection": "1 quantified sentence: what the client should expect if the current trend continues."
+  "projection": "1 quantified sentence: what the client should expect if the current trend continues.",
+  "nutrition_plan_adjustment": {{
+    "needed": true or false,
+    "instructions": "Only if needed=true: exact, specific changes to make to the EXISTING nutrition plan (e.g. 'increase daily protein by ~20g via larger portions of existing protein sources; reduce breakfast calories by 150 kcal — user consistently over target on weekday breakfasts'). Empty string if needed=false."
+  }},
+  "workout_plan_adjustment": {{
+    "needed": true or false,
+    "instructions": "Only if needed=true: exact, specific changes to make to the EXISTING workout plan (e.g. 'reduce leg day to 2 exercises — adherence dropping only on leg day for 3 weeks; add a 4th set to bench press — user has plateaued for 2+ weeks at same volume'). Empty string if needed=false."
+  }}
 }}
+
+RULES for the two *_plan_adjustment fields:
+- Only set needed=true when the DATA justifies a plan change (e.g. adherence below 60% for 2+ weeks
+  on a specific plan component, a clear plateau, or a target being consistently missed by a wide margin).
+  Do NOT set needed=true for a single off week or minor noise — that's what "improvements"/"suggestions" are for.
+- instructions must describe CONCRETE, ACTIONABLE changes to specific plan elements, not vague advice.
+- If there isn't enough data yet (period_days < 7, or very few logs), default both to needed=false.
 """.strip()
 
         system_prompt = (
             "You are an expert certified personal trainer and sports nutritionist. "
             "Analyse the engineered feature data and write a coaching progress report. "
+            "You also decide — strictly from the data, not general advice — whether the "
+            "user's actual active plan structure needs to change. "
             "Output ONLY the JSON object. No markdown fences. No extra text. "
             "Reference actual numbers. Be direct. Max 25 words per bullet."
         )
@@ -377,12 +409,21 @@ Respond with ONLY this JSON:
                 return [str(x) for x in v[:max_n]]
             return [str(v)] if v else []
 
+        def _to_adjustment(v) -> dict:
+            if not isinstance(v, dict):
+                return {"needed": False, "instructions": ""}
+            needed = bool(v.get("needed", False))
+            instructions = str(v.get("instructions", "") or "")
+            return {"needed": needed and bool(instructions.strip()), "instructions": instructions}
+
         return {
             "assessment":   str(result.get("assessment", "")),
             "positives":    _to_list(result.get("positives", [])),
             "improvements": _to_list(result.get("improvements", [])),
             "suggestions":  _to_list(result.get("suggestions", [])),
             "projection":   str(result.get("projection", "")),
+            "nutrition_adjustment": _to_adjustment(result.get("nutrition_plan_adjustment")),
+            "workout_adjustment":   _to_adjustment(result.get("workout_plan_adjustment")),
         }
 
     def ask_coach(
@@ -453,6 +494,7 @@ Respond with ONLY this JSON:
         planning_output: Optional["PlanningEngineOutput"],
         language: str,
         model_override: Optional[str],
+        coach_feedback: str = "",
     ) -> NutritionPlanDTO:
         """
         Wraps the initial generation attempt: if the model returns malformed
@@ -467,6 +509,7 @@ Respond with ONLY this JSON:
                 return self._generate_nutrition_once(
                     system_prompt, user_profile, preferences, duration_weeks,
                     medical_rules, existing_plan, allowed_foods_str, planning_output,
+                    coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
                 )
@@ -490,6 +533,7 @@ Respond with ONLY this JSON:
         planning_output: Optional["PlanningEngineOutput"],
         language: str,
         model_override: Optional[str],
+        coach_feedback: str = "",
     ) -> WorkoutPlanDTO:
         """Same retry wrapper as nutrition, for the workout generation path."""
         max_attempts = max(1, config.AI_MAX_GENERATION_RETRIES + 1)
@@ -499,6 +543,7 @@ Respond with ONLY this JSON:
                 return self._generate_workout_once(
                     system_prompt, user_profile, preferences, duration_weeks,
                     medical_rules, existing_plan, allowed_exercises_str, planning_output,
+                    coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
                 )
@@ -521,6 +566,7 @@ Respond with ONLY this JSON:
         allowed_foods_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        coach_feedback: str = "",
         language: str = "en",
         model_override: Optional[str] = None,
     ) -> Optional[NutritionPlanDTO]:
@@ -532,6 +578,7 @@ Respond with ONLY this JSON:
             medical_rules, existing_plan, allowed_foods_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            coach_feedback=coach_feedback,
             lang=language,
         )
 
@@ -568,6 +615,7 @@ Respond with ONLY this JSON:
         allowed_exercises_str: str,
         planning_output: Optional["PlanningEngineOutput"],
         judge_feedback: str = "",
+        coach_feedback: str = "",
         language: str = "en",
         model_override: Optional[str] = None,
     ) -> Optional[WorkoutPlanDTO]:
@@ -579,6 +627,7 @@ Respond with ONLY this JSON:
             medical_rules, existing_plan, allowed_exercises_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
+            coach_feedback=coach_feedback,
             lang=language,
         )
 

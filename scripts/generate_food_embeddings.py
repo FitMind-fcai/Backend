@@ -45,7 +45,10 @@ def main():
         conn.commit()
 
         all_rows = conn.execute(
-            text("SELECT id, food_name FROM central_foods WHERE is_active = true ORDER BY id"),
+            text(
+                "SELECT id, food_name, food_name_ar, food_category, dietary_tags "
+                "FROM central_foods WHERE is_active = true ORDER BY id"
+            ),
         ).fetchall()
 
         total = len(all_rows)
@@ -58,7 +61,19 @@ def main():
         processed = 0
         for batch_start in range(0, total, BATCH_SIZE):
             batch = all_rows[batch_start: batch_start + BATCH_SIZE]
-            names = [r.food_name for r in batch]
+            # Embed name + category + tags (+ Arabic name when present), not
+            # just the bare name — a bare dish name (e.g. "Molokhia") has no
+            # lexical/semantic overlap with a category-style retrieval query
+            # (e.g. "Egyptian vegetables fruits salad greens"), so it
+            # consistently loses the similarity race against generic USDA rows
+            # whose names ARE the category words (e.g. "Spinach, raw").
+            # Including category/tags/Arabic name gives the embedding real
+            # content to match against.
+            names = [
+                f"{r.food_name} {r.food_name_ar or ''} ({r.food_category or ''}) "
+                f"{' '.join(r.dietary_tags or [])}".strip()
+                for r in batch
+            ]
             embeddings = model.encode(names, normalize_embeddings=True, show_progress_bar=False)
 
             for row, emb in zip(batch, embeddings):

@@ -185,6 +185,7 @@ def build_nutrition_prompt(
     allowed_foods_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
     judge_feedback: str = "",
+    coach_feedback: str = "",
     lang: str = "en",
 ) -> str:
 
@@ -268,6 +269,16 @@ def build_nutrition_prompt(
             "Do NOT reproduce any of the violations identified above. Address each issue explicitly."
         )
 
+    coach_block = ""
+    if coach_feedback:
+        coach_block = (
+            "=== COACHING ADJUSTMENT — APPLY THESE CHANGES ===\n"
+            "Weekly progress analysis of this user's actual logged data found that the\n"
+            "existing plan needs updating. Apply ALL of the following changes:\n\n"
+            f"{coach_feedback}\n\n"
+            "Keep everything else from the existing plan unchanged unless a change above requires it."
+        )
+
     thinking_scaffold = (
         "Before writing the JSON, reason through these steps inside a <think> block.\n"
         "The <think> block must NOT appear in the final JSON output.\n\n"
@@ -315,6 +326,8 @@ def build_nutrition_prompt(
         sections += [regen_block, ""]
     if judge_block:
         sections += [judge_block, ""]
+    if coach_block:
+        sections += [coach_block, ""]
 
     sections += [
         "=== CHANNEL B: DATABASE FOOD CONSTRAINTS ===",
@@ -377,6 +390,7 @@ def build_workout_prompt(
     allowed_exercises_str: str = "",
     planning_output: Optional["PlanningEngineOutput"] = None,
     judge_feedback: str = "",
+    coach_feedback: str = "",
     lang: str = "en",
 ) -> str:
 
@@ -431,6 +445,16 @@ def build_workout_prompt(
             "Do NOT reproduce any of the violations identified above. Address each issue explicitly."
         )
 
+    coach_block = ""
+    if coach_feedback:
+        coach_block = (
+            "=== COACHING ADJUSTMENT — APPLY THESE CHANGES ===\n"
+            "Weekly progress analysis of this user's actual logged data found that the\n"
+            "existing plan needs updating. Apply ALL of the following changes:\n\n"
+            f"{coach_feedback}\n\n"
+            "Keep everything else from the existing plan unchanged unless a change above requires it."
+        )
+
     thinking_scaffold = (
         "Before writing the JSON, reason through these steps inside a <think> block.\n"
         "The <think> block must NOT appear in the final JSON output.\n\n"
@@ -470,6 +494,8 @@ def build_workout_prompt(
         parts += [regen_block, ""]
     if judge_block:
         parts += [judge_block, ""]
+    if coach_block:
+        parts += [coach_block, ""]
 
     parts += [
         "=== CHANNEL B: DATABASE EXERCISE CONSTRAINTS ===",

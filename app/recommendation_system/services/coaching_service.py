@@ -11,6 +11,8 @@ from app.notification_module.repositories.notification_preference_repository imp
 from app.notification_module.services.push_service import send_push_multi
 from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
+from app.planning_module.schemas.plan import NutritionPreferences, WorkoutPreferences
+from app.planning_module.services.plan_generation_service import PlanGenerationService
 from app.profile_module.repositories.profile_repository import ProfileRepository
 from app.recommendation_system.repositories.coaching_message_repository import CoachingMessageRepository
 from app.recommendation_system.schemas.recommendations import ProgressReport
@@ -26,7 +28,7 @@ from app.tracking_module.repositories.workout_log_repository import WorkoutLogRe
 logger = logging.getLogger(__name__)
 
 
-def _render_weekly_report_email_html(report: ProgressReport) -> str:
+def _render_weekly_report_email_html(report: ProgressReport, adjustments: List[str] = None) -> str:
     f = report.features
 
     def _list_items(items: List[str]) -> str:
@@ -70,6 +72,9 @@ def _render_weekly_report_email_html(report: ProgressReport) -> str:
         <h3 style="color:#111827; font-size:16px; margin: 24px 0 8px;">💡 Suggestions for next week</h3>
         {_list_items(report.suggestions)}
 
+        {f'''<h3 style="color:#111827; font-size:16px; margin: 24px 0 8px;">🔄 Your plan was updated</h3>
+        {_list_items(adjustments)}''' if adjustments else ""}
+
         <p style="background:#f4f4f5; border-radius:10px; padding:14px 16px; margin-top: 20px;">
           <strong>Looking ahead:</strong> {report.projection}
         </p>
@@ -93,7 +98,7 @@ class CoachingService:
         self.user_repo = UserRepository(db)
         self.email_service = EmailService()
 
-    def _send_weekly_report_email(self, user_id: int, report: ProgressReport) -> None:
+    def _send_weekly_report_email(self, user_id: int, report: ProgressReport, adjustments: List[str] = None) -> None:
         """Email the full weekly report (push notifications only carry a short summary)."""
         user = self.user_repo.get_by_id(user_id)
         if not user or not user.email:
@@ -101,7 +106,7 @@ class CoachingService:
             return
 
         status_word = "On Track" if report.features.on_track else "Needs Attention"
-        html = _render_weekly_report_email_html(report)
+        html = _render_weekly_report_email_html(report, adjustments or [])
         sent = self.email_service.send_email(
             user.email,
             f"Your Weekly FitMind Report — {status_word}",
@@ -109,6 +114,74 @@ class CoachingService:
         )
         if not sent:
             logger.warning("Failed to send weekly report email to user %s", user_id)
+
+    def _apply_plan_adjustments(self, user_id: int, report: ProgressReport) -> List[str]:
+        """
+        If the weekly analysis flagged that the nutrition and/or workout plan
+        needs updating, regenerate ONLY that plan in place (existing_plan +
+        coach_feedback — the same "keep what works, only touch flagged items"
+        mechanism used for the post-judge fix pass), using the same
+        preferences that generated it, and persist as an update, not a new plan.
+
+        Returns a list of short human-readable summaries of what was adjusted,
+        for inclusion in the weekly email. Never raises — a failed adjustment
+        is logged and skipped so it can't break the weekly report/notification.
+        """
+        summaries: List[str] = []
+
+        profile = ProfileRepository(self.db).get_by_user_id(user_id)
+        if not profile:
+            return summaries
+
+        plan_service = PlanGenerationService(self.db)
+
+        if report.nutrition_adjustment.needed:
+            try:
+                active = plan_service.nutrition_service.get_active_plan(user_id)
+                if active and active.generated_from_preferences:
+                    preferences = NutritionPreferences(**active.generated_from_preferences)
+                    draft = plan_service.generate_nutrition_plan(
+                        profile=profile,
+                        preferences=preferences,
+                        lang=active.language or "en",
+                        coach_feedback=report.nutrition_adjustment.instructions,
+                    )
+                    plan_service.save_nutrition_plan(
+                        user_id=user_id,
+                        profile_id=profile.id,
+                        plan_create=draft["draft_plan"],
+                        generated_from_preferences=draft["generated_from_preferences"],
+                        update_plan_id=draft["update_plan_id"],
+                    )
+                    summaries.append(f"Nutrition plan updated: {report.nutrition_adjustment.instructions}")
+                    logger.info("Nutrition plan auto-adjusted for user %s from weekly coaching analysis", user_id)
+            except Exception as exc:
+                logger.warning("Nutrition plan auto-adjustment failed for user %s: %s", user_id, exc)
+
+        if report.workout_adjustment.needed:
+            try:
+                active = plan_service.workout_service.get_active_plan(user_id)
+                if active and active.generated_from_preferences:
+                    preferences = WorkoutPreferences(**active.generated_from_preferences)
+                    draft = plan_service.generate_workout_plan(
+                        profile=profile,
+                        preferences=preferences,
+                        lang=active.language or "en",
+                        coach_feedback=report.workout_adjustment.instructions,
+                    )
+                    plan_service.save_workout_plan(
+                        user_id=user_id,
+                        profile_id=profile.id,
+                        plan_create=draft["draft_plan"],
+                        generated_from_preferences=draft["generated_from_preferences"],
+                        update_plan_id=draft["update_plan_id"],
+                    )
+                    summaries.append(f"Workout plan updated: {report.workout_adjustment.instructions}")
+                    logger.info("Workout plan auto-adjusted for user %s from weekly coaching analysis", user_id)
+            except Exception as exc:
+                logger.warning("Workout plan auto-adjustment failed for user %s: %s", user_id, exc)
+
+        return summaries
 
     def _build_recommendation_service(self) -> RecommendationService:
         return RecommendationService(
@@ -166,6 +239,7 @@ class CoachingService:
     def trigger_weekly_for_user(self, user_id: int) -> dict:
         rec_service = self._build_recommendation_service()
         report = rec_service.get_progress_report(user_id, period="week")
+        adjustments = self._apply_plan_adjustments(user_id, report)
 
         urgency = "on_track" if report.features.on_track else "needs_attention"
         title, body = self._weekly_push_title_body(report)
@@ -175,10 +249,11 @@ class CoachingService:
             title, body,
             {"type": "coaching", "category": "weekly"},
         )
-        self._send_weekly_report_email(user_id, report)
+        self._send_weekly_report_email(user_id, report, adjustments)
 
         result["on_track"] = report.features.on_track
         result["overall_score"] = report.features.overall_consistency_score
+        result["plan_adjustments"] = adjustments
         return result
 
     # ── Batch coaching (called by Celery tasks) ──────────────────────────────
@@ -216,6 +291,8 @@ class CoachingService:
                 logger.warning("Weekly coaching failed for user %s: %s", user_id, exc)
                 continue
 
+            adjustments = self._apply_plan_adjustments(user_id, report)
+
             urgency = "on_track" if report.features.on_track else "needs_attention"
             title, body = self._weekly_push_title_body(report)
 
@@ -224,7 +301,7 @@ class CoachingService:
                 title, body,
                 {"type": "coaching", "category": "weekly"},
             )
-            self._send_weekly_report_email(user_id, report)
+            self._send_weekly_report_email(user_id, report, adjustments)
             logger.info("Weekly coaching sent to user %s — on_track=%s", user_id, report.features.on_track)
 
     # ── Helpers ───────────────────────────────────────────────────────────────

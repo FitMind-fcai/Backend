@@ -14,6 +14,7 @@ from app.recommendation_system.schemas.recommendations import (
     NextMealResponse,
     NextPlanMeal,
     NextWorkoutResponse,
+    PlanAdjustment,
     PlanExerciseInfo,
     PlanMealIngredientInfo,
     ProgressFeatures,
@@ -400,6 +401,8 @@ class RecommendationService:
             improvements=ai_result["improvements"],
             suggestions=ai_result["suggestions"],
             projection=ai_result["projection"],
+            nutrition_adjustment=PlanAdjustment(**ai_result["nutrition_adjustment"]),
+            workout_adjustment=PlanAdjustment(**ai_result["workout_adjustment"]),
             generated_at=datetime.utcnow(),
         )
 

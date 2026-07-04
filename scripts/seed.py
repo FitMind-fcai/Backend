@@ -289,14 +289,24 @@ def generate_embeddings(engine, model):
     # Fetch the list of rows needing embeddings (short-lived connection)
     with engine.connect() as conn:
         food_rows = conn.execute(
-            text("SELECT id, food_name FROM central_foods WHERE is_active = true AND name_embedding IS NULL ORDER BY id")
+            text(
+                "SELECT id, food_name, food_name_ar, food_category, dietary_tags FROM central_foods "
+                "WHERE is_active = true AND name_embedding IS NULL ORDER BY id"
+            )
         ).fetchall()
         conn.commit()
     log.info("%d foods need embeddings", len(food_rows))
 
     for start in range(0, len(food_rows), BATCH_SIZE):
         batch = food_rows[start: start + BATCH_SIZE]
-        vecs  = model.encode([r.food_name for r in batch], normalize_embeddings=True, show_progress_bar=False)
+        # Same embedding text as scripts/generate_food_embeddings.py — name +
+        # Arabic name + category + tags, not just the bare name (see that file for why).
+        names = [
+            f"{r.food_name} {r.food_name_ar or ''} ({r.food_category or ''}) "
+            f"{' '.join(r.dietary_tags or [])}".strip()
+            for r in batch
+        ]
+        vecs  = model.encode(names, normalize_embeddings=True, show_progress_bar=False)
         with engine.connect() as conn:
             for row, vec in zip(batch, vecs):
                 conn.execute(

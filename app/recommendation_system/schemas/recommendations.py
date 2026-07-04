@@ -173,6 +173,14 @@ class ProgressFeatures(BaseModel):
     weight: WeightFeatures
 
 
+class PlanAdjustment(BaseModel):
+    """LLM's verdict on whether the user's ACTIVE plan itself needs to change,
+    based on their actual logged data — distinct from the generic behavioral
+    coaching text (assessment/positives/improvements/suggestions)."""
+    needed: bool = False
+    instructions: str = ""      # exact, specific changes to apply — empty if needed=False
+
+
 class ProgressReport(BaseModel):
     features: ProgressFeatures
     assessment: str                             # 1-2 sentence overall verdict
@@ -180,6 +188,8 @@ class ProgressReport(BaseModel):
     improvements: List[str]                     # what needs work
     suggestions: List[str]                      # specific, actionable next steps
     projection: str                             # what happens if this trend continues
+    nutrition_adjustment: PlanAdjustment = PlanAdjustment()
+    workout_adjustment: PlanAdjustment = PlanAdjustment()
     generated_at: datetime
 
 

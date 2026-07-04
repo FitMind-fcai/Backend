@@ -58,6 +58,7 @@ class PlanGenerationService:
         lang: str = "en",
         model_override: str = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> dict:
         """
         Generate an AI workout plan DRAFT without saving it to the database.
@@ -68,6 +69,9 @@ class PlanGenerationService:
           - update_plan_id: int | None (existing plan ID to replace, or None for new)
 
         The caller must explicitly call save_workout_plan() to persist.
+
+        coach_feedback: optional free-text instructions (from weekly coaching
+        analysis) describing exactly what to change on the existing plan.
         """
         existing_plan = self.workout_service.get_active_plan(profile.user_id)
         existing_plan_dto = None
@@ -88,6 +92,7 @@ class PlanGenerationService:
             lang=lang,
             model_override=model_override,
             skip_judge=skip_judge,
+            coach_feedback=coach_feedback,
         )
 
     def generate_nutrition_plan(
@@ -98,6 +103,7 @@ class PlanGenerationService:
         lang: str = "en",
         model_override: str = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> dict:
         """
         Generate an AI nutrition plan DRAFT without saving it to the database.
@@ -108,6 +114,9 @@ class PlanGenerationService:
           - update_plan_id: int | None (existing plan ID to replace, or None for new)
 
         The caller must explicitly call save_nutrition_plan() to persist.
+
+        coach_feedback: optional free-text instructions (from weekly coaching
+        analysis) describing exactly what to change on the existing plan.
         """
         existing_plan = self.nutrition_service.get_active_plan(profile.user_id)
         existing_plan_dto = None
@@ -128,6 +137,7 @@ class PlanGenerationService:
             lang=lang,
             model_override=model_override,
             skip_judge=skip_judge,
+            coach_feedback=coach_feedback,
         )
 
     def generate_combined_plans(
@@ -257,6 +267,7 @@ class PlanGenerationService:
         lang: str = "en",
         model_override: str = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> dict:
         """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -310,6 +321,7 @@ class PlanGenerationService:
             language=lang,
             model_override=model_override,
             skip_judge=skip_judge,
+            coach_feedback=coach_feedback,
         )
 
         plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
@@ -332,6 +344,7 @@ class PlanGenerationService:
         lang: str = "en",
         model_override: str = None,
         skip_judge: bool = False,
+        coach_feedback: str = "",
     ) -> dict:
         """Internal: call AI and return NutritionPlanCreate draft dict (no DB writes)."""
         profile_dto     = profile_to_dto(profile)
@@ -386,6 +399,7 @@ class PlanGenerationService:
             language=lang,
             model_override=model_override,
             skip_judge=skip_judge,
+            coach_feedback=coach_feedback,
         )
 
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)
