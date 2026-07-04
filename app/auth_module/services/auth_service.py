@@ -255,10 +255,29 @@ class AuthService:
             db.query(HydrationLog).filter(HydrationLog.user_id == user.id).delete(synchronize_session=False)
             db.query(WeightLog).filter(WeightLog.user_id == user.id).delete(synchronize_session=False)
 
-            for plan in db.query(WorkoutPlan).filter(WorkoutPlan.user_id == user.id).all():
+            profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+            profile_id = profile.id if profile else None
+
+            # Match on user_id OR profile_id: a plan's profile_id should always
+            # equal this user's profile.id, but matching on both closes any gap
+            # if the two ever disagree (e.g. stale data), since the FK that
+            # actually blocks the profile delete below is on profile_id.
+            workout_filter = WorkoutPlan.user_id == user.id
+            nutrition_filter = NutritionPlan.user_id == user.id
+            if profile_id is not None:
+                workout_filter = workout_filter | (WorkoutPlan.profile_id == profile_id)
+                nutrition_filter = nutrition_filter | (NutritionPlan.profile_id == profile_id)
+
+            for plan in db.query(WorkoutPlan).filter(workout_filter).all():
                 db.delete(plan)
-            for plan in db.query(NutritionPlan).filter(NutritionPlan.user_id == user.id).all():
+            for plan in db.query(NutritionPlan).filter(nutrition_filter).all():
                 db.delete(plan)
+
+            # Explicit flush: the plan deletes above must actually reach the DB
+            # before the profile delete below, since profile.id is what the
+            # workout_plans/nutrition_plans FK constraints check — don't rely
+            # on autoflush timing for something this order-sensitive.
+            db.flush()
 
             db.query(Profile).filter(Profile.user_id == user.id).delete(synchronize_session=False)
 
