@@ -87,13 +87,20 @@ def validate_workout_plan(plan_data: Dict[str, Any]) -> WorkoutPlanDTO:
 def validate_nutrition_semantics(
     plan: NutritionPlanDTO,
     user_profile: UserProfileDTO,
+    food_id_to_name: Dict[int, str] = None,
 ) -> None:
     """
     Dynamic allergen scan on the finalised plan.
 
     Parses the free-text allergies field (any format, any allergen),
     expands umbrella terms to their constituent ingredients, then checks
-    every ingredient's food_name in the plan. Raises ValueError on any hit.
+    every ingredient's real food name in the plan. Raises ValueError on any hit.
+
+    IngredientDTO only ever carries a central_food_id + amount_g — the LLM
+    never outputs a food name, so food_id_to_name (built during retrieval,
+    see CentralFoodRepository.get_diet_friendly_foods_for_ai) is required to
+    resolve IDs back to real names. Without it this check cannot see what
+    food is actually in the meal and silently passes everything.
 
     This runs after schema validation as a last-resort safety net;
     the primary enforcement happens at generation time via the prompt.
@@ -103,6 +110,8 @@ def validate_nutrition_semantics(
     allergy_str = (user_profile.allergies or "").lower().strip()
     if not allergy_str or allergy_str == "none":
         return
+
+    food_id_to_name = food_id_to_name or {}
 
     raw_allergens = re.split(r"[,;/&\n]+|\band\b|\bor\b", allergy_str)
     base_keywords: List[str] = [
@@ -121,12 +130,12 @@ def validate_nutrition_semantics(
     for day in plan.days:
         for meal in day.meals:
             for ing in (meal.ingredients or []):
-                food_name = (getattr(ing, "food_name", None) or "").lower()
+                food_name = food_id_to_name.get(ing.central_food_id, "").lower()
                 for kw in allergen_keywords:
                     if kw and kw in food_name:
                         msg = (
                             f"Day {day.day_number} — {meal.meal_name}: "
-                            f"ingredient '{getattr(ing, 'food_name', ing)}' "
+                            f"ingredient '{food_name}' (id={ing.central_food_id}) "
                             f"contains allergen '{kw}'"
                         )
                         violations.append(msg)
@@ -137,3 +146,61 @@ def validate_nutrition_semantics(
             "Nutrition plan rejected — allergy violations detected:\n"
             + "\n".join(violations)
         )
+
+
+# ---------------------------------------------------------------------------
+# Meal / ingredient consistency check (log-only diagnostic)
+# ---------------------------------------------------------------------------
+
+_CONSISTENCY_STOPWORDS = {
+    "with", "and", "the", "for", "from", "over", "your", "this", "that",
+    "fresh", "grilled", "baked", "roasted", "steamed", "boiled", "fried",
+    "spicy", "sweet", "sour", "mixed", "style", "homemade", "traditional",
+    "classic", "salad", "bowl", "plate", "wrap", "sandwich", "soup", "stew",
+    "dish", "meal", "snack", "breakfast", "lunch", "dinner", "recipe",
+    "special", "delight", "medley", "platter", "combo", "topped", "served",
+}
+
+
+def check_meal_ingredient_consistency(
+    plan: NutritionPlanDTO,
+    food_id_to_name: Dict[int, str] = None,
+) -> List[str]:
+    """
+    Deterministic, LLM-free heuristic: flags meals whose name mentions a
+    food-like word not backed by any actual listed ingredient — e.g. a meal
+    named "Ful Medames with Baladi Bread" whose real ingredients are just
+    tomatoes/onions/peppers, with no fava beans or bread among them.
+
+    This is a diagnostic, not an enforcement gate — it logs mismatches for
+    visibility (does not raise or block generation) so retrieval/prompt
+    improvements can be measured rather than trusted blindly.
+    """
+    food_id_to_name = food_id_to_name or {}
+    mismatches: List[str] = []
+
+    for day in plan.days:
+        for meal in day.meals:
+            ingredient_names = [
+                food_id_to_name.get(ing.central_food_id, "").lower()
+                for ing in (meal.ingredients or [])
+            ]
+            ingredient_blob = " ".join(n for n in ingredient_names if n)
+            if not ingredient_blob.strip():
+                continue
+
+            name_words = re.findall(r"[a-zA-Z']+", meal.meal_name.lower())
+            unmatched = [
+                w for w in name_words
+                if len(w) >= 4
+                and w not in _CONSISTENCY_STOPWORDS
+                and w not in ingredient_blob
+            ]
+            if unmatched:
+                mismatches.append(
+                    f"Day {day.day_number} [{meal.meal_type}] '{meal.meal_name}': "
+                    f"name mentions {unmatched} not found in any listed ingredient "
+                    f"({', '.join(n for n in ingredient_names if n) or 'none'})"
+                )
+
+    return mismatches

@@ -384,8 +384,8 @@ class PlanGenerationService:
             rules_future = pool.submit(
                 context_builder.build_nutrition_rules, profile_dto
             )
-            allowed_foods_str = foods_future.result()
-            medical_rules     = rules_future.result()
+            allowed_foods_str, food_id_to_name = foods_future.result()
+            medical_rules                      = rules_future.result()
 
         # Phase 3 — LLM generation + single-pass judge/fix
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
@@ -400,6 +400,7 @@ class PlanGenerationService:
             model_override=model_override,
             skip_judge=skip_judge,
             coach_feedback=coach_feedback,
+            food_id_to_name=food_id_to_name,
         )
 
         plan_create = nutrition_plan_dto_to_create(nutrition_plan_dto, duration_weeks)

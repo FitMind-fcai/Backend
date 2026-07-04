@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Dict, Optional, TYPE_CHECKING
 
 from app.ai_services.ai_coach import plan_validator, prompt_builder
 from app.ai_services.ai_coach.calorie_calculator import (
@@ -57,6 +57,7 @@ class AICoachService:
         model_override: Optional[str] = None,
         skip_judge: bool = False,
         coach_feedback: str = "",
+        food_id_to_name: Optional[Dict[int, str]] = None,
     ) -> NutritionPlanDTO:
         """
         Generate a personalised 7-day nutrition plan.
@@ -66,6 +67,10 @@ class AICoachService:
         medical_rules is a pre-built, KB-grounded rule block from ContextBuilder
         (runs in a parallel thread in plan_generation_service).  It replaces both
         the inline Channel C medical block and the general RAG Channel A.
+
+        food_id_to_name resolves each offered central_food_id to its real name —
+        the LLM only ever echoes back IDs, so this is required for the allergy
+        safety net and the meal/ingredient consistency check to work at all.
 
         coach_feedback is optional free-text instructions from the weekly
         coaching analysis (based on the user's actual logged data) describing
@@ -129,7 +134,17 @@ class AICoachService:
                     logger.warning("Nutrition — fix pass produced invalid output; keeping original plan")
 
         # ── Allergy safety gate (last-resort deterministic check) ─────
-        plan_validator.validate_nutrition_semantics(plan, user_profile)
+        plan_validator.validate_nutrition_semantics(plan, user_profile, food_id_to_name)
+
+        # ── Meal/ingredient consistency check (log-only diagnostic) ──
+        mismatches = plan_validator.check_meal_ingredient_consistency(plan, food_id_to_name)
+        if mismatches:
+            logger.warning(
+                "Nutrition — meal/ingredient consistency check found %d issue(s):",
+                len(mismatches),
+            )
+            for mismatch in mismatches:
+                logger.warning("  %s", mismatch)
 
         return plan
 

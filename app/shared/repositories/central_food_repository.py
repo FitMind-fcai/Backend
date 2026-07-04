@@ -1,8 +1,32 @@
 from sqlalchemy.orm import Session # type: ignore
 from sqlalchemy import func as sql_func, text # type: ignore
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralFood
+
+# Iconic cuisine staples guaranteed to be offered (via exact keyword match)
+# alongside the vector search below. Dense embedding similarity between a
+# generic category query (e.g. "Egyptian grains rice bread pasta carbs") and
+# a specific dish's bare name (e.g. "Baladi Bread") is inherently weak — the
+# query shares category vocabulary with generic USDA rows, not with proper
+# noun dish names — so well-known staples can lose the similarity race even
+# when they're exactly what the cuisine calls for. This keyword layer mirrors
+# the dense+BM25 hybrid retrieval already used for the knowledge-base RAG in
+# vector_db_service.py, applied here to the food catalog.
+_CUISINE_STAPLE_KEYWORDS: Dict[str, List[str]] = {
+    "egyptian": [
+        "baladi bread", "ful medames", "foul medames", "koshari", "molokhia",
+        "ta'ameya", "taameya", "falafel", "fattah", "hawawshi", "mahshi",
+        "shakshuka", "feteer", "basbousa", "kunafa",
+    ],
+}
+
+
+def _get_cuisine_staple_keywords(cuisine_label: str) -> List[str]:
+    cuisine_lower = cuisine_label.lower()
+    if any(k in cuisine_lower for k in ("egypt", "arab", "middle east")):
+        return _CUISINE_STAPLE_KEYWORDS["egyptian"]
+    return []
 
 
 class CentralFoodRepository(BaseRepository[CentralFood]):
@@ -85,13 +109,20 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
         target_calories: Optional[int] = None,
         target_protein_g: Optional[int] = None,
         cuisine: str = "",
-    ) -> str:
+    ) -> Tuple[str, Dict[int, str]]:
         """
         Build a cuisine-aware food pool using pgvector semantic search.
 
         Searches for foods matching cuisine-specific queries across 4 categories
         (proteins, grains, vegetables, fats), then filters out allergens and
-        inappropriate items. Returns formatted text constraint for the LLM.
+        inappropriate items.
+
+        Returns (prompt_str, food_id_to_name) — the formatted text constraint
+        for the LLM, plus an id->name lookup for the foods actually offered.
+        The lookup is needed downstream: the LLM only echoes back
+        central_food_id numbers in its output, so anything that needs to check
+        the ACTUAL food (allergy safety net, meal/ingredient consistency check)
+        needs this map to resolve those IDs back to real names.
         """
         from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 
@@ -178,8 +209,49 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
                 if count >= per_category_limit:
                     break
 
+        # Guarantee well-known cuisine staples are offered even if vector
+        # search missed them (see _CUISINE_STAPLE_KEYWORDS comment above).
+        staple_keywords = _get_cuisine_staple_keywords(cuisine_label)
+        if staple_keywords:
+            keyword_clauses = " OR ".join(
+                f"food_name ILIKE :staple_{i}" for i in range(len(staple_keywords))
+            )
+            staple_params = {f"staple_{i}": f"%{kw}%" for i, kw in enumerate(staple_keywords)}
+
+            staple_rows = self.db.execute(
+                text(f"""
+                    SELECT id, food_name, food_name_ar, food_category,
+                           calories_per_100g, protein_per_100g, carbs_per_100g,
+                           fats_per_100g, fiber_per_100g
+                    FROM central_foods
+                    WHERE is_active = true
+                      AND calories_per_100g BETWEEN 20 AND 650
+                      {diet_filter}
+                      {where_extra}
+                      AND ({keyword_clauses})
+                    LIMIT 20
+                """),
+                {**staple_params, **exclusion_params},
+            ).fetchall()
+
+            for r in staple_rows:
+                if r.id in seen_ids:
+                    continue
+                family = (r.food_name or "").split("(")[0].split(",")[0].strip().lower()
+                family_count = sum(
+                    1 for f in all_foods
+                    if (f["food_name"] or "").split("(")[0].split(",")[0].strip().lower() == family
+                )
+                if family_count >= 3:
+                    continue
+                seen_ids.add(r.id)
+                all_foods.append(dict(r._mapping))
+
         if not all_foods:
-            return "Note: No foods matched the cuisine and dietary filters. Generate generic healthy meals."
+            return (
+                "Note: No foods matched the cuisine and dietary filters. Generate generic healthy meals.",
+                {},
+            )
 
         prompt_str = f"=== MANDATORY FOOD DATABASE ({len(all_foods)} ITEMS) ===\n"
         prompt_str += "You MUST ONLY generate meals using the exact foods and IDs from this list below. Do not invent new foods.\n"
@@ -191,7 +263,8 @@ class CentralFoodRepository(BaseRepository[CentralFood]):
                 f"(Per 100g: {f['calories_per_100g']} kcal | P:{f['protein_per_100g']}g | C:{f['carbs_per_100g']}g | F:{f['fats_per_100g']}g)\n"
             )
 
-        return prompt_str
+        food_id_to_name = {f["id"]: f["food_name"] for f in all_foods}
+        return prompt_str, food_id_to_name
 
     def search_by_vector(
         self,
