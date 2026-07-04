@@ -77,7 +77,10 @@ class VectorDBService:
         # first use — without a lock each one independently reloads Chroma
         # from disk / rebuilds the BM25 index (seen in production logs as
         # duplicate "BM25 index built with N document chunks" lines).
-        self._lazy_lock = threading.Lock()
+        # RLock (not Lock): _build_bm25_index() itself reads self.vectorstore,
+        # which needs to re-enter this same lock on the same thread — a plain
+        # Lock would deadlock there.
+        self._lazy_lock = threading.RLock()
 
     # ------------------------------------------------------------------
     # Lazy-loaded properties
