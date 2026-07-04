@@ -19,6 +19,7 @@ The main prompt also drops Channel A (general RAG) because the context builder
 already extracts the relevant evidence into the rules block.
 """
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
@@ -259,12 +260,15 @@ class ContextBuilder:
 # ---------------------------------------------------------------------------
 
 _context_builder: Optional[ContextBuilder] = None
+_context_builder_lock = threading.Lock()
 
 
 def get_context_builder(llm_client: Optional[LLMClient] = None) -> ContextBuilder:
     global _context_builder
     if _context_builder is None:
-        from app.ai_services.ai_coach.ai_coach_service import get_ai_coach_service
-        client = llm_client or get_ai_coach_service().llm
-        _context_builder = ContextBuilder(client)
+        with _context_builder_lock:
+            if _context_builder is None:
+                from app.ai_services.ai_coach.ai_coach_service import get_ai_coach_service
+                client = llm_client or get_ai_coach_service().llm
+                _context_builder = ContextBuilder(client)
     return _context_builder

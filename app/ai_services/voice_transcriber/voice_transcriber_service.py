@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import tempfile
+import threading
 from typing import Optional, Dict, Any, List
 
 from groq import Groq
@@ -497,10 +498,13 @@ Rules:
 # ---------------------------------------------------------------------------
 
 _voice_transcriber_service: Optional[VoiceTranscriberService] = None
+_voice_transcriber_service_lock = threading.Lock()
 
 
 def get_voice_transcriber_service() -> VoiceTranscriberService:
     global _voice_transcriber_service
     if _voice_transcriber_service is None:
-        _voice_transcriber_service = VoiceTranscriberService()
+        with _voice_transcriber_service_lock:
+            if _voice_transcriber_service is None:
+                _voice_transcriber_service = VoiceTranscriberService()
     return _voice_transcriber_service

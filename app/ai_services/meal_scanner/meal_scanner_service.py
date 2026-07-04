@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import logging
+import threading
 from typing import Optional, Dict, Any, List
 
 from openai import OpenAI
@@ -311,10 +312,13 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
 # ---------------------------------------------------------------------------
 
 _meal_scanner_service: Optional[MealScannerService] = None
+_meal_scanner_service_lock = threading.Lock()
 
 
 def get_meal_scanner_service() -> MealScannerService:
     global _meal_scanner_service
     if _meal_scanner_service is None:
-        _meal_scanner_service = MealScannerService()
+        with _meal_scanner_service_lock:
+            if _meal_scanner_service is None:
+                _meal_scanner_service = MealScannerService()
     return _meal_scanner_service

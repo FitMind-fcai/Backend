@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Dict, Optional, TYPE_CHECKING
 
 from app.ai_services.ai_coach import plan_validator, prompt_builder
@@ -675,10 +676,13 @@ RULES for the two *_plan_adjustment fields:
 # ---------------------------------------------------------------------------
 
 _ai_coach_service: Optional[AICoachService] = None
+_ai_coach_service_lock = threading.Lock()
 
 
 def get_ai_coach_service() -> AICoachService:
     global _ai_coach_service
     if _ai_coach_service is None:
-        _ai_coach_service = AICoachService()
+        with _ai_coach_service_lock:
+            if _ai_coach_service is None:
+                _ai_coach_service = AICoachService()
     return _ai_coach_service

@@ -3,6 +3,7 @@ import json
 import logging
 import shutil
 import re
+import threading
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 from langchain_community.document_loaders import PyPDFLoader
@@ -71,6 +72,13 @@ class VectorDBService:
         self._bm25_index   = None
         self._bm25_docs: List[Dict[str, Any]] = []
 
+        # This service is a shared module-level singleton (get_vector_db_service),
+        # so many request threads hit these lazy properties concurrently on
+        # first use — without a lock each one independently reloads Chroma
+        # from disk / rebuilds the BM25 index (seen in production logs as
+        # duplicate "BM25 index built with N document chunks" lines).
+        self._lazy_lock = threading.Lock()
+
     # ------------------------------------------------------------------
     # Lazy-loaded properties
     # ------------------------------------------------------------------
@@ -78,20 +86,26 @@ class VectorDBService:
     @property
     def embeddings(self):
         if self._embeddings is None:
-            from app.ai_services.embedding_utils import get_shared_embeddings
-            self._embeddings = get_shared_embeddings()
+            with self._lazy_lock:
+                if self._embeddings is None:
+                    from app.ai_services.embedding_utils import get_shared_embeddings
+                    self._embeddings = get_shared_embeddings()
         return self._embeddings
 
     @property
     def vectorstore(self) -> Chroma:
         if self._vectorstore is None:
-            self._vectorstore = self._load_vectorstore()
+            with self._lazy_lock:
+                if self._vectorstore is None:
+                    self._vectorstore = self._load_vectorstore()
         return self._vectorstore
 
     @property
     def bm25_index(self):
         if self._bm25_index is None:
-            self._build_bm25_index()
+            with self._lazy_lock:
+                if self._bm25_index is None:
+                    self._build_bm25_index()
         return self._bm25_index
 
     # ------------------------------------------------------------------
@@ -616,12 +630,15 @@ class VectorDBService:
 # ---------------------------------------------------------------------------
 
 _vector_db_service: Optional[VectorDBService] = None
+_vector_db_service_lock = threading.Lock()
 
 
 def get_vector_db_service() -> VectorDBService:
     global _vector_db_service
     if _vector_db_service is None:
-        _vector_db_service = VectorDBService()
+        with _vector_db_service_lock:
+            if _vector_db_service is None:
+                _vector_db_service = VectorDBService()
     return _vector_db_service
 
 

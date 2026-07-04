@@ -8,6 +8,7 @@ and cached once per process.
 """
 import os
 import logging
+import threading
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -16,14 +17,25 @@ EMBEDDING_MODEL_NAME = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-
 EMBEDDING_DIM = 384
 
 _model = None
+_model_lock = threading.Lock()
 
 
 def _get_model():
+    """
+    Double-checked locking: without the lock, every thread that calls this
+    before the first load finishes sees `_model is None` and independently
+    constructs its own copy (a full SentenceTransformer load, several seconds
+    each) — this is exactly what happens under concurrent requests, e.g. the
+    parallel RAG threads used per plan generation. The lock ensures only the
+    first caller actually loads it; everyone else just waits and reuses it.
+    """
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-        logger.info("Loading embedding model %s …", EMBEDDING_MODEL_NAME)
-        _model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        with _model_lock:
+            if _model is None:  # re-check: another thread may have loaded it while we waited
+                from sentence_transformers import SentenceTransformer
+                logger.info("Loading embedding model %s …", EMBEDDING_MODEL_NAME)
+                _model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _model
 
 
@@ -59,11 +71,14 @@ class SharedHuggingFaceEmbeddings:
 
 
 _shared_embeddings = None
+_shared_embeddings_lock = threading.Lock()
 
 
 def get_shared_embeddings() -> SharedHuggingFaceEmbeddings:
     global _shared_embeddings
     if _shared_embeddings is None:
-        _get_model()
-        _shared_embeddings = SharedHuggingFaceEmbeddings()
+        with _shared_embeddings_lock:
+            if _shared_embeddings is None:
+                _get_model()
+                _shared_embeddings = SharedHuggingFaceEmbeddings()
     return _shared_embeddings
