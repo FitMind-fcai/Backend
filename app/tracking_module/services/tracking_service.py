@@ -168,12 +168,58 @@ class TrackingService:
     # Private helpers — vector search
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _suggest_foods(self, query: str, limit: int = 5) -> List[MatchedFoodResponse]:
-        """pgvector cosine search — top catalog foods for a free-text query."""
+    def _suggest_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
+        """
+        Hybrid text + semantic search — top catalog foods for a free-text query.
+
+        Pure vector similarity can rank an exact/near-exact text match lower
+        than a merely-related item (embedding similarity isn't the same thing
+        as "the user typed this word"), so a direct substring match (English
+        or Arabic name) is checked first and given priority, then the
+        existing pgvector cosine search fills any remaining slots.
+        """
         if not query or not query.strip():
             return []
+        query_clean = query.strip()
+        seen_ids: set = set()
+        results: List[MatchedFoodResponse] = []
+
+        def _to_response(r, similarity: float) -> MatchedFoodResponse:
+            return MatchedFoodResponse(
+                id=r.id, food_name=r.food_name, food_name_ar=r.food_name_ar,
+                food_category=r.food_category,
+                calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
+                carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
+                fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
+                serving_description=r.serving_description, similarity_score=similarity,
+            )
+
         try:
-            vec = vec_to_pg_str(embed_text(query.strip()))
+            text_rows = self.meal_repo.db.execute(
+                sql_text("""
+                    SELECT id, food_name, food_name_ar, food_category,
+                           calories_per_100g, protein_per_100g, carbs_per_100g,
+                           fats_per_100g, fiber_per_100g, serving_size_g, serving_description
+                    FROM central_foods
+                    WHERE is_active = true
+                      AND (food_name ILIKE :q OR food_name_ar ILIKE :q)
+                    LIMIT :lim
+                """),
+                {"q": f"%{query_clean}%", "lim": limit},
+            ).fetchall()
+            for r in text_rows:
+                if r.id in seen_ids:
+                    continue
+                seen_ids.add(r.id)
+                results.append(_to_response(r, similarity=1.0))
+        except Exception as exc:
+            logger.warning("Food text search failed (continuing with vector only): %s", exc)
+
+        if len(results) >= limit:
+            return results[:limit]
+
+        try:
+            vec = vec_to_pg_str(embed_text(query_clean))
             rows = self.meal_repo.db.execute(
                 sql_text("""
                     SELECT id, food_name, food_name_ar, food_category,
@@ -185,30 +231,65 @@ class TrackingService:
                     ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
-                {"vec": vec, "lim": limit},
+                {"vec": vec, "lim": limit * 2},
             ).fetchall()
-            return [
-                MatchedFoodResponse(
-                    id=r.id, food_name=r.food_name, food_name_ar=r.food_name_ar,
-                    food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description, similarity_score=float(r.similarity),
-                )
-                for r in rows
-                if r.similarity >= 0.55
-            ]
+            for r in rows:
+                if r.id in seen_ids or r.similarity < 0.55:
+                    continue
+                seen_ids.add(r.id)
+                results.append(_to_response(r, similarity=float(r.similarity)))
+                if len(results) >= limit:
+                    break
         except Exception as exc:
-            logger.warning("Food vector search failed (returning empty): %s", exc)
-            return []
+            logger.warning("Food vector search failed (returning text-only results): %s", exc)
 
-    def _suggest_exercises(self, query: str, limit: int = 5) -> List[MatchedExerciseResponse]:
-        """pgvector cosine search — top catalog exercises for a free-text query."""
+        return results[:limit]
+
+    def _suggest_exercises(self, query: str, limit: int = 10) -> List[MatchedExerciseResponse]:
+        """
+        Hybrid text + semantic search — top catalog exercises for a free-text query.
+        See _suggest_foods for why a text layer is checked before/alongside vector search.
+        """
         if not query or not query.strip():
             return []
+        query_clean = query.strip()
+        seen_ids: set = set()
+        results: List[MatchedExerciseResponse] = []
+
+        def _to_response(r, similarity: float) -> MatchedExerciseResponse:
+            return MatchedExerciseResponse(
+                id=r.id, name=r.name, exercise_type=r.exercise_type,
+                primary_muscle_group=r.primary_muscle_group,
+                secondary_muscles=r.secondary_muscles,
+                equipment_required=r.equipment_required,
+                difficulty_level=r.difficulty_level, location=r.location,
+                similarity_score=similarity,
+            )
+
         try:
-            vec = vec_to_pg_str(embed_text(query.strip()))
+            text_rows = self.workout_repo.db.execute(
+                sql_text("""
+                    SELECT id, name, exercise_type, primary_muscle_group,
+                           secondary_muscles, equipment_required, difficulty_level, location
+                    FROM central_exercises
+                    WHERE is_active = true AND name ILIKE :q
+                    LIMIT :lim
+                """),
+                {"q": f"%{query_clean}%", "lim": limit},
+            ).fetchall()
+            for r in text_rows:
+                if r.id in seen_ids:
+                    continue
+                seen_ids.add(r.id)
+                results.append(_to_response(r, similarity=1.0))
+        except Exception as exc:
+            logger.warning("Exercise text search failed (continuing with vector only): %s", exc)
+
+        if len(results) >= limit:
+            return results[:limit]
+
+        try:
+            vec = vec_to_pg_str(embed_text(query_clean))
             rows = self.workout_repo.db.execute(
                 sql_text("""
                     SELECT id, name, exercise_type, primary_muscle_group,
@@ -219,32 +300,28 @@ class TrackingService:
                     ORDER BY name_embedding <=> CAST(:vec AS vector)
                     LIMIT :lim
                 """),
-                {"vec": vec, "lim": limit},
+                {"vec": vec, "lim": limit * 2},
             ).fetchall()
-            return [
-                MatchedExerciseResponse(
-                    id=r.id, name=r.name, exercise_type=r.exercise_type,
-                    primary_muscle_group=r.primary_muscle_group,
-                    secondary_muscles=r.secondary_muscles,
-                    equipment_required=r.equipment_required,
-                    difficulty_level=r.difficulty_level, location=r.location,
-                    similarity_score=float(r.similarity),
-                )
-                for r in rows
-                if r.similarity >= 0.55
-            ]
+            for r in rows:
+                if r.id in seen_ids or r.similarity < 0.55:
+                    continue
+                seen_ids.add(r.id)
+                results.append(_to_response(r, similarity=float(r.similarity)))
+                if len(results) >= limit:
+                    break
         except Exception as exc:
-            logger.warning("Exercise vector search failed (returning empty): %s", exc)
-            return []
+            logger.warning("Exercise vector search failed (returning text-only results): %s", exc)
+
+        return results[:limit]
 
     # ──────────────────────────────────────────────────────────────────────────
     # Search  (public — used by GET search endpoints)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def search_foods(self, query: str, limit: int = 5) -> List[MatchedFoodResponse]:
+    def search_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
         return self._suggest_foods(query, limit)
 
-    def search_exercises(self, query: str, limit: int = 5) -> List[MatchedExerciseResponse]:
+    def search_exercises(self, query: str, limit: int = 10) -> List[MatchedExerciseResponse]:
         return self._suggest_exercises(query, limit)
 
     # ──────────────────────────────────────────────────────────────────────────

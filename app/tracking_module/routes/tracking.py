@@ -53,14 +53,14 @@ tracking_router = APIRouter(prefix="/tracking")
     tags=["Search"],
     summary="Search foods by text",
     description=(
-        "Enter a free-text description of a food and get back the top catalog matches "
-        "ranked by semantic (vector) similarity.\n\n"
+        "Enter a free-text description of a food and get back the top catalog matches, "
+        "combining a direct text match with semantic (vector) similarity.\n\n"
         "Pick a result and pass its `id` as `central_food_id` when saving via `POST /tracking/logs`."
     ),
 )
 def search_meals(
     q: str = Query(..., min_length=2, description="e.g. 'grilled chicken with rice'"),
-    limit: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=10, ge=1, le=20),
     current_user: User = Depends(get_current_verified_user),
     service: TrackingService = Depends(get_tracking_service),
 ):
@@ -73,14 +73,14 @@ def search_meals(
     tags=["Search"],
     summary="Search exercises by text",
     description=(
-        "Enter a free-text description of an exercise and get back the top catalog matches "
-        "ranked by semantic (vector) similarity.\n\n"
+        "Enter a free-text description of an exercise and get back the top catalog matches, "
+        "combining a direct text match with semantic (vector) similarity.\n\n"
         "Pick a result and pass its `id` as `central_exercise_id` when saving via `POST /tracking/logs`."
     ),
 )
 def search_workouts(
     q: str = Query(..., min_length=2, description="e.g. 'chest push with barbell'"),
-    limit: int = Query(default=5, ge=1, le=20),
+    limit: int = Query(default=10, ge=1, le=20),
     current_user: User = Depends(get_current_verified_user),
     service: TrackingService = Depends(get_tracking_service),
 ):
