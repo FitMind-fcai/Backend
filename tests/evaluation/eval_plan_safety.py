@@ -734,6 +734,7 @@ def run_plan_safety_evaluation() -> dict:
             "issues": issues,
             "severity_counts": severities,
             "structure": structure,
+            "plan": plan.model_dump(mode="json"),
         }
 
     def _verify_regeneration(regenerate_fn, judge_fn) -> dict:
@@ -747,6 +748,7 @@ def run_plan_safety_evaluation() -> dict:
             "post_regen_passed": passed,
             "post_regen_feedback": feedback,
             "post_regen_severity_counts": _severity_counts(issues),
+            "post_regen_plan": fixed_plan.model_dump(mode="json"),
         }
 
     def _evaluate_case(case: dict) -> dict:

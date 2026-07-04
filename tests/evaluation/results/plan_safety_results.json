@@ -1,27 +1,27 @@
 {
-  "run_at": "2026-07-03T03:14:15.634183+00:00",
-  "ai_coach_model": "openai/gpt-4o-mini",
+  "run_at": "2026-07-04T19:31:34.576584+00:00",
+  "ai_coach_model": "qwen/qwen3-235b-a22b-2507",
   "judge": "production PlanJudge (reused, not a separate eval judge)",
   "profiles_tested": 20,
   "metrics": {
     "plans_evaluated": 40,
     "errors": 0,
-    "judge_pass_rate_pct": 77.5,
-    "regeneration_rate_pct": 22.5,
-    "plans_passed": 31,
-    "plans_needing_regeneration": 9,
-    "post_regen_attempted": 9,
+    "judge_pass_rate_pct": 87.5,
+    "regeneration_rate_pct": 12.5,
+    "plans_passed": 35,
+    "plans_needing_regeneration": 5,
+    "post_regen_attempted": 5,
     "post_regen_fixed": 4,
-    "post_regen_success_rate_pct": 44.4,
+    "post_regen_success_rate_pct": 80.0,
     "post_regen_verification_errors": 0,
     "severity_counts": {
-      "severity_3": 10,
-      "severity_2": 18,
-      "severity_1": 1
+      "severity_3": 16,
+      "severity_2": 11,
+      "severity_1": 12
     },
-    "workout_days_match_rate_pct": 100.0,
+    "workout_days_match_rate_pct": 90.0,
     "nutrition_meals_match_rate_pct": 100.0,
-    "calories_within_20pct_rate_pct": 50.0
+    "calories_within_20pct_rate_pct": 35.0
   },
   "results": [
     {
@@ -30,19 +30,12 @@
       "injuries": "None",
       "allergies": "None",
       "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Dumbbell Lateral Raise to avoid overhead movement and ensure safety for the user.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 1 \u2014 Seated Dumbbell Shoulder Press",
-            "problem": "The exercise involves pressing weights overhead, which is contraindicated for users with shoulder-related restrictions. However, this user has no stated shoulder injuries or limitations.",
-            "fix": "Replace Seated Dumbbell Shoulder Press with Dumbbell Lateral Raise (keeping the arms below shoulder height) because it avoids overhead movement and is safer for general fitness."
-          }
-        ],
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and adheres to the user's medical conditions and fitness goals. No issues were found.",
+        "issues": [],
         "severity_counts": {
-          "severity_3": 1,
+          "severity_3": 0,
           "severity_2": 0,
           "severity_1": 0
         },
@@ -50,19 +43,12 @@
           "days_requested": 4,
           "days_generated": 4,
           "days_match": true
-        },
-        "post_regen_passed": true,
-        "post_regen_feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Dumbbell Lateral Raises to avoid overhead loading. Improve the warm-up for Bodyweight Squats by adding dynamic movements like leg swings and hip circles. On Day 2, add a safety cue for the Plank to ensure proper form. On Day 3, enhance the warm-up for Bent Over Dumbbell Rows with dynamic movements like arm circles and torso twists. Finally, on Day 4, improve the cool-down after Standing Calf Raises by including specific calf stretches.",
-        "post_regen_severity_counts": {
-          "severity_3": 0,
-          "severity_2": 1,
-          "severity_1": 4
         }
       },
       "nutrition": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's dietary restrictions and medical conditions, ensuring a balanced approach to weight loss while managing Type 2 Diabetes.",
+        "feedback": "",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -74,9 +60,9 @@
           "meals_generated": 4,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 1604.0,
-          "calorie_deviation_pct": 19.8,
-          "calories_within_20pct": true
+          "calories_generated": 2401.0,
+          "calorie_deviation_pct": 20.0,
+          "calories_within_20pct": false
         }
       }
     },
@@ -88,24 +74,759 @@
       "workout": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "On Day 2, replace Dumbbell Shoulder Press with Lateral Raise (below shoulder height) to avoid overhead movement and ensure safety for the user.",
+        "feedback": "On Day 4, replace Seated Overhead Press Machine with Seated Dumbbell Lateral Raise to avoid overhead loading. On Day 1, add a cue for core engagement and back support during the Dumbbell Shoulder Press. On Day 3, add a cue to maintain knee alignment during the Glute Bridge.",
         "issues": [
           {
             "severity": 2,
-            "location": "Day 2 \u2014 Dumbbell Shoulder Press",
-            "problem": "The exercise involves pressing weights overhead, which could potentially place strain on the shoulder if the user had a shoulder condition. However, since the user's profile states no shoulder injuries, this is not a direct violation but could be flagged for intensity and safety cues.",
-            "fix": "Replace Dumbbell Shoulder Press with Lateral Raise (below shoulder height) because it avoids overhead movement and still engages the shoulder muscles safely."
+            "location": "Day 4 - Seated Overhead Press Machine",
+            "problem": "The movement description confirms pressing upward along a natural arc, which could potentially load the shoulder joint in an overhead position. Although this user has no shoulder condition, the exercise may still pose a risk due to the nature of the movement.",
+            "fix": "Replace Seated Overhead Press Machine with Seated Dumbbell Lateral Raise (below shoulder height) because it avoids overhead loading while still engaging the shoulder muscles."
+          },
+          {
+            "severity": 1,
+            "location": "Day 1 - Dumbbell Shoulder Press (Seated)",
+            "problem": "The movement description indicates pressing dumbbells overhead, which could be improved with additional safety cues regarding core engagement and back support.",
+            "fix": "Add a cue to ensure the user maintains a neutral spine and engages their core throughout the Dumbbell Shoulder Press to enhance stability."
+          },
+          {
+            "severity": 1,
+            "location": "Day 3 - Glute Bridge (Double Leg, Limited Range)",
+            "problem": "The movement description mentions avoiding arching the lower back, but could benefit from a cue to ensure proper alignment and prevent knee strain.",
+            "fix": "Add a cue to ensure the user keeps their knees aligned with their feet during the Glute Bridge to prevent any potential knee strain."
           }
         ],
         "severity_counts": {
           "severity_3": 0,
           "severity_2": 1,
+          "severity_1": 2
+        },
+        "structure": {
+          "days_requested": 4,
+          "days_generated": 4,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2838.0,
+          "calorie_deviation_pct": 41.9,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Exercise-Induced Asthma",
+      "medical_conditions": "Exercise-induced asthma",
+      "injuries": "None",
+      "allergies": "Dust, pollen",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and adheres to the user's medical conditions and fitness goals, ensuring safety and effectiveness.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
           "severity_1": 0
         },
         "structure": {
           "days_requested": 4,
           "days_generated": 4,
           "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, and dietary restrictions. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2898.0,
+          "calorie_deviation_pct": 44.9,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Hypertension (High Blood Pressure)",
+      "medical_conditions": "Hypertension (Stage 1)",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is safe and appropriate for the user with Stage 1 Hypertension, containing no issues that violate the user's constraints.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 1654.0,
+          "calorie_deviation_pct": 17.3,
+          "calories_within_20pct": true
+        }
+      }
+    },
+    {
+      "profile": "Lower Back Injury (Herniated Disc)",
+      "medical_conditions": "None",
+      "injuries": "L4-L5 herniated disc. Avoid heavy axial loading, deadlifts, spinal flexion under load, and high-impact jumping.",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "On Day 2, replace Seated Dumbbell Shoulder Press with Seated Dumbbell Lateral Raise to avoid overhead loading. On Day 3, replace Incline Dumbbell Press with Dumbbell Floor Press to limit range of motion and protect the spine.",
+        "issues": [
+          {
+            "severity": 2,
+            "location": "Day 2 - Seated Dumbbell Shoulder Press",
+            "problem": "The Seated Dumbbell Shoulder Press involves pressing weights overhead, which can place excessive strain on the lumbar spine and may lead to discomfort or injury given the user's L4-L5 herniated disc.",
+            "fix": "Replace Seated Dumbbell Shoulder Press with Seated Dumbbell Lateral Raise because it maintains a neutral spine and avoids overhead loading."
+          },
+          {
+            "severity": 2,
+            "location": "Day 3 - Incline Dumbbell Press (30-45\u00b0)",
+            "problem": "The Incline Dumbbell Press involves pressing weights above chest level, which can lead to lumbar hyperextension and discomfort for users with a herniated disc.",
+            "fix": "Replace Incline Dumbbell Press with Dumbbell Floor Press because it limits range of motion and protects the spine from excessive arching."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 2,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 4,
+          "meals_generated": 4,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2490.0,
+          "calorie_deviation_pct": 24.5,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Celiac Disease (Gluten Intolerance)",
+      "medical_conditions": "Celiac disease",
+      "injuries": "None",
+      "allergies": "Gluten (wheat, barley, rye)",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and aligns with the user's goals and medical conditions. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 5,
+          "days_generated": 7,
+          "days_match": false
+        }
+      },
+      "nutrition": {
+        "judge_passed": false,
+        "needs_regeneration": true,
+        "feedback": "On Day 2, replace gluten-free toast with a certified gluten-free alternative like rice cakes. On Day 3, replace buckwheat pancakes with a certified gluten-free pancake mix. On Day 6, replace polenta with certified gluten-free cornmeal. On Day 7, replace coconut flour pancakes with a certified gluten-free pancake mix.",
+        "issues": [
+          {
+            "severity": 3,
+            "location": "Day 2 \u2014 Breakfast",
+            "problem": "The meal includes gluten-free toast, which may not be safe if the bread is not certified gluten-free. The user has celiac disease and must avoid gluten entirely.",
+            "fix": "Replace gluten-free toast with a certified gluten-free alternative, such as gluten-free rice cakes or a gluten-free wrap, to ensure safety for celiac disease."
+          },
+          {
+            "severity": 3,
+            "location": "Day 3 \u2014 Breakfast",
+            "problem": "Buckwheat is often processed in facilities that handle gluten-containing grains, which can lead to cross-contamination. This poses a risk for the user with celiac disease.",
+            "fix": "Replace buckwheat pancakes with a certified gluten-free pancake mix made from alternative gluten-free flours, such as almond or coconut flour, to ensure safety."
+          },
+          {
+            "severity": 3,
+            "location": "Day 6 \u2014 Breakfast",
+            "problem": "Polenta can sometimes be processed with gluten-containing grains, which poses a risk for the user with celiac disease.",
+            "fix": "Replace polenta with certified gluten-free cornmeal to ensure safety for celiac disease."
+          },
+          {
+            "severity": 3,
+            "location": "Day 7 \u2014 Breakfast",
+            "problem": "Coconut flour pancakes may not be safe if the coconut flour is not certified gluten-free, posing a risk for the user with celiac disease.",
+            "fix": "Replace coconut flour pancakes with a certified gluten-free pancake mix made from alternative gluten-free flours, such as almond or gluten-free oat flour, to ensure safety."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 4,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 4,
+          "meals_generated": 4,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 1894.0,
+          "calorie_deviation_pct": 5.3,
+          "calories_within_20pct": true
+        },
+        "post_regen_passed": true,
+        "post_regen_feedback": "",
+        "post_regen_severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        }
+      }
+    },
+    {
+      "profile": "Tree Nut & Peanut Allergy",
+      "medical_conditions": "None",
+      "injuries": "None",
+      "allergies": "Severe tree nut and peanut allergy (anaphylaxis risk)",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and aligns with the user's goals, showing no significant safety risks or programming issues.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 4,
+          "days_generated": 4,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": false,
+        "needs_regeneration": true,
+        "feedback": "Replace sunflower seed butter with pumpkin seed butter in Day 1 Snack, Day 2 Breakfast, Day 3 Snack, Day 4 Snack, Day 5 Snack, Day 6 Snack, and replace sunflower seeds with pumpkin seeds in Day 7 Breakfast to eliminate the risk of allergen exposure.",
+        "issues": [
+          {
+            "severity": 3,
+            "location": "Day 1 \u2014 Snack",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 2 \u2014 Breakfast",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 3 \u2014 Snack",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 4 \u2014 Snack",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 5 \u2014 Snack",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 6 \u2014 Snack",
+            "problem": "Sunflower seed butter is included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seed butter with a certified nut-free alternative, such as pumpkin seed butter, to eliminate the risk of allergen exposure."
+          },
+          {
+            "severity": 3,
+            "location": "Day 7 \u2014 Breakfast",
+            "problem": "Sunflower seeds are included in the meal plan, which may pose a risk for cross-contamination with tree nuts, given the user's severe tree nut allergy.",
+            "fix": "Replace sunflower seeds with a certified nut-free alternative, such as pumpkin seeds, to eliminate the risk of allergen exposure."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 7,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 5,
+          "meals_generated": 5,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2694.0,
+          "calorie_deviation_pct": 34.7,
+          "calories_within_20pct": false
+        },
+        "post_regen_passed": true,
+        "post_regen_feedback": "The meal plan is free from allergen issues, medical violations, drug-food interactions, macro compliance issues, cuisine authenticity problems, goal alignment discrepancies, and variety concerns. No fixes are needed.",
+        "post_regen_severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        }
+      }
+    },
+    {
+      "profile": "Shoulder Injury (Rotator Cuff Tear)",
+      "medical_conditions": "None",
+      "injuries": "Partial rotator cuff tear, right shoulder. Avoid overhead pressing, heavy bench press, and behind-the-neck movements.",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": false,
+        "needs_regeneration": true,
+        "feedback": "Replace Seated Dumbbell Chest Press with Seated Dumbbell Floor Press on Day 2 to avoid overhead loading. Add safety cues for Plank on Day 1, Lat Pulldown on Day 2, and Dumbbell Reverse Fly on Day 3 to ensure shoulder safety.",
+        "issues": [
+          {
+            "severity": 3,
+            "location": "Day 2 \u2014 Seated Dumbbell Chest Press (Neutral Grip)",
+            "problem": "The exercise involves pressing dumbbells upward, which is an overhead movement that could aggravate the user's partial rotator cuff tear.",
+            "fix": "Replace Seated Dumbbell Chest Press with Seated Dumbbell Floor Press because it maintains a safer horizontal pressing position that avoids overhead loading."
+          },
+          {
+            "severity": 2,
+            "location": "Day 1 \u2014 Plank",
+            "problem": "The plank exercise does not include a specific safety cue for the right shoulder, which is a restricted body part for this user.",
+            "fix": "Add a safety cue to the Plank exercise: 'If you feel strain in your right shoulder, slightly widen your elbows to reduce load on the rotator cuff.'"
+          },
+          {
+            "severity": 2,
+            "location": "Day 2 \u2014 Lat Pulldown (Front, Neutral Grip)",
+            "problem": "The exercise description does not include a safety cue regarding the potential for shoulder strain, which is important given the user's shoulder condition.",
+            "fix": "Add a safety cue to the Lat Pulldown exercise: 'Ensure to keep the movement controlled and stop if you feel any discomfort in your right shoulder.'"
+          },
+          {
+            "severity": 2,
+            "location": "Day 3 \u2014 Dumbbell Reverse Fly (Bent-Over, Light Weight)",
+            "problem": "The exercise description lacks a safety cue for the right shoulder, which is a restricted body part for this user.",
+            "fix": "Add a safety cue to the Dumbbell Reverse Fly exercise: 'Use very light weights and stop if you feel any strain in your right shoulder.'"
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 1,
+          "severity_2": 3,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        },
+        "post_regen_passed": true,
+        "post_regen_feedback": "On Day 1, replace the Dumbbell Floor Press with Dumbbell Chest Press on a bench with a neutral grip to minimize shoulder extension. On Day 2, add a safety cue to the Lat Pulldown (Front, Neutral Grip) to ensure shoulder stability. On Day 3, replace the Seated Dumbbell Chest Press with Seated Dumbbell Fly (Neutral Grip) to avoid overhead pressing.",
+        "post_regen_severity_counts": {
+          "severity_3": 0,
+          "severity_2": 3,
+          "severity_1": 0
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's requirements, containing no allergens, medical violations, drug-food interactions, macro compliance issues, or authenticity concerns. It aligns well with the fitness goal and offers sufficient variety throughout the week.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2257.0,
+          "calorie_deviation_pct": 12.9,
+          "calories_within_20pct": true
+        }
+      }
+    },
+    {
+      "profile": "PCOS (Polycystic Ovary Syndrome)",
+      "medical_conditions": "PCOS, insulin resistance",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and adheres to the user's constraints and goals. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 4,
+          "days_generated": 4,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, medications, and dietary preferences. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 4,
+          "meals_generated": 4,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2320.0,
+          "calorie_deviation_pct": 16.0,
+          "calories_within_20pct": true
+        }
+      }
+    },
+    {
+      "profile": "Hypothyroidism",
+      "medical_conditions": "Hypothyroidism",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and adheres to the user's constraints and goals. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 1130.0,
+          "calorie_deviation_pct": 43.5,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "High Cholesterol",
+      "medical_conditions": "High LDL cholesterol",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 4,
+          "days_generated": 4,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, medications, and dietary preferences. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2706.0,
+          "calorie_deviation_pct": 35.3,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Vegan + Marathon Training",
+      "medical_conditions": "None",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and aligns with the user's goal of improving endurance without any identified safety risks or programming issues.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 6,
+          "days_generated": 6,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's dietary restrictions and goals, with no identified issues.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 5,
+          "meals_generated": 5,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2992.0,
+          "calorie_deviation_pct": 49.6,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Pregnancy (2nd Trimester)",
+      "medical_conditions": "Pregnancy, 2nd trimester",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Seated Lateral Raises to avoid overhead pressing risks. Also, replace Glute Bridges with Standing Glute Squeezes to avoid discomfort in supine positions. On Day 2, add a safety cue to the Cat-Cow Stretch to emphasize keeping movements small and controlled. On Day 3, add a safety cue to the Bird-Dog exercise to emphasize engaging the core throughout the movement.",
+        "issues": [
+          {
+            "severity": 2,
+            "location": "Day 1 - Full Body Strength \u2014 Seated Dumbbell Shoulder Press",
+            "problem": "The Seated Dumbbell Shoulder Press involves pressing weights overhead, which can place unnecessary strain on the shoulders, especially during pregnancy. Although the user has no stated shoulder conditions, this movement may still pose a risk due to the nature of pregnancy-related changes in the body.",
+            "fix": "Replace Seated Dumbbell Shoulder Press with Seated Lateral Raises (keeping arms below shoulder height) because it maintains shoulder engagement without the risks associated with overhead pressing."
+          },
+          {
+            "severity": 1,
+            "location": "Day 1 - Full Body Strength \u2014 Glute Bridges",
+            "problem": "The Glute Bridges exercise is performed in a supine position, which may not be comfortable for all pregnant individuals, especially as the pregnancy progresses.",
+            "fix": "Replace Glute Bridges with Standing Glute Squeezes (standing and squeezing glutes while maintaining an upright position) to avoid any discomfort associated with supine positions."
+          },
+          {
+            "severity": 1,
+            "location": "Day 2 - Active Recovery & Mobility \u2014 Cat-Cow Stretch (On Hands and Knees)",
+            "problem": "The Cat-Cow Stretch involves being on hands and knees, which is acceptable, but could benefit from a reminder to keep movements small and controlled to avoid excessive strain.",
+            "fix": "Add a safety cue to the Cat-Cow Stretch to emphasize keeping movements small and controlled to avoid excessive strain on the wrists and lower back."
+          },
+          {
+            "severity": 1,
+            "location": "Day 3 - Lower Body & Postural Stability \u2014 Bird-Dog (Modified on Hands and Knees)",
+            "problem": "The Bird-Dog exercise is performed on hands and knees, which is acceptable, but could benefit from a reminder to engage the core throughout the movement.",
+            "fix": "Add a safety cue to the Bird-Dog exercise to emphasize engaging the core throughout the movement to maintain stability and prevent sagging or hiking of the hips."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 1,
+          "severity_1": 3
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's dietary restrictions and medical conditions, ensuring safety and nutritional adequacy throughout the week.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 5,
+          "meals_generated": 5,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 3190.0,
+          "calorie_deviation_pct": 59.5,
+          "calories_within_20pct": false
+        }
+      }
+    },
+    {
+      "profile": "Elderly (Age 72) \u2014 Osteoarthritis",
+      "medical_conditions": "Osteoarthritis (both knees), osteopenia",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "Replace Seated Overhead Press (No Weight) with Seated Lateral Raise (No Weight) to avoid overhead movement. Add a safety cue to the Seated Chair Stand to emphasize performing within a pain-free range. Add a safety cue to the Seated Row with Resistance Band (Simulated) to maintain a neutral spine. Add a safety cue to the Glute Bridge (Supine, Double Leg) to engage the core throughout the movement.",
+        "issues": [
+          {
+            "severity": 2,
+            "location": "Day 1 \u2014 Seated Overhead Press (No Weight)",
+            "problem": "The movement description confirms that the arms are raised overhead, which could potentially lead to shoulder discomfort or impingement, especially if the user has any underlying shoulder issues, despite the user's profile stating 'None' for injuries.",
+            "fix": "Replace Seated Overhead Press (No Weight) with Seated Lateral Raise (No Weight) because it keeps the arms below shoulder height, reducing the risk of shoulder discomfort."
+          },
+          {
+            "severity": 1,
+            "location": "Day 1 \u2014 Seated Chair Stand",
+            "problem": "The instructions mention to avoid going below 90 degrees if uncomfortable, but it could be clearer that the user should only perform the movement within a pain-free range.",
+            "fix": "Add a safety cue to the Seated Chair Stand to emphasize that the user should only stand as high as is comfortable and to stop if any knee pain occurs."
+          },
+          {
+            "severity": 1,
+            "location": "Day 2 \u2014 Seated Row with Resistance Band (Simulated)",
+            "problem": "The movement description lacks a cue regarding maintaining a neutral spine during the exercise, which is important for preventing back strain.",
+            "fix": "Add a safety cue to the Seated Row with Resistance Band (Simulated) to remind the user to keep a neutral spine throughout the movement."
+          },
+          {
+            "severity": 1,
+            "location": "Day 3 \u2014 Glute Bridge (Supine, Double Leg)",
+            "problem": "The instructions mention to avoid arching the lower back, but it could be clearer that the user should engage their core to help maintain proper alignment.",
+            "fix": "Add a safety cue to the Glute Bridge (Supine, Double Leg) to remind the user to engage their core throughout the movement to prevent lower back arching."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 1,
+          "severity_1": 3
+        },
+        "structure": {
+          "days_requested": 3,
+          "days_generated": 3,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, medications, and dietary preferences. No issues were found.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "meals_requested": 3,
+          "meals_generated": 3,
+          "meals_match": true,
+          "calories_target": 2000,
+          "calories_generated": 2331.0,
+          "calorie_deviation_pct": 16.6,
+          "calories_within_20pct": true
+        }
+      }
+    },
+    {
+      "profile": "Teenager (Age 16) Athlete",
+      "medical_conditions": "None",
+      "injuries": "None",
+      "allergies": "None",
+      "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is well-structured and aligns with the user's goals, showing no safety risks or programming issues.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 5,
+          "days_generated": 3,
+          "days_match": false
         }
       },
       "nutrition": {
@@ -119,721 +840,12 @@
           "severity_1": 0
         },
         "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1564.0,
-          "calorie_deviation_pct": 21.8,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "Exercise-Induced Asthma",
-      "medical_conditions": "Exercise-induced asthma",
-      "injuries": "None",
-      "allergies": "Dust, pollen",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is compliant with the user's medical conditions and fitness goals, with appropriate warm-ups and cool-downs included for each session. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 4,
-          "days_generated": 4,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, and dietary preferences. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1585.0,
-          "calorie_deviation_pct": 20.8,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "Hypertension (High Blood Pressure)",
-      "medical_conditions": "Hypertension (Stage 1)",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is compliant with the user's medical conditions and fitness goals, with appropriate warm-ups and cool-downs included for each session. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, and dietary preferences. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1338.0,
-          "calorie_deviation_pct": 33.1,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "Lower Back Injury (Herniated Disc)",
-      "medical_conditions": "None",
-      "injuries": "L4-L5 herniated disc. Avoid heavy axial loading, deadlifts, spinal flexion under load, and high-impact jumping.",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Seated Dumbbell Chest Press to avoid overhead movement. Also, replace Incline Dumbbell Bench Press with Flat Dumbbell Bench Press to minimize spinal flexion. On Day 2, add a safety cue for maintaining a neutral spine during Leg Press. On Day 3, add a safety cue for maintaining a stable core during Dumbbell Lateral Raise.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 1 - Upper Body Push \u2014 Seated Dumbbell Shoulder Press",
-            "problem": "The movement description confirms that the exercise involves pressing overhead, which could place excessive strain on the spine and is contraindicated for this user with a herniated disc.",
-            "fix": "Replace Seated Dumbbell Shoulder Press with Seated Dumbbell Chest Press because it avoids overhead movement and reduces the risk of spinal loading."
-          },
-          {
-            "severity": 2,
-            "location": "Day 1 - Upper Body Push \u2014 Incline Dumbbell Bench Press",
-            "problem": "The incline position may still involve some spinal flexion under load, which is not ideal for a user with a herniated disc.",
-            "fix": "Replace Incline Dumbbell Bench Press with Flat Dumbbell Bench Press because it minimizes spinal flexion and maintains a neutral spine."
-          },
-          {
-            "severity": 2,
-            "location": "Day 2 - Lower Body and Core \u2014 Leg Press (Light Weight)",
-            "problem": "The movement description does not include a safety cue regarding maintaining a neutral spine, which is crucial for this user with a herniated disc.",
-            "fix": "Add a safety cue to Leg Press to emphasize maintaining a neutral spine throughout the movement."
-          },
-          {
-            "severity": 2,
-            "location": "Day 3 - Upper Body Pull \u2014 Dumbbell Lateral Raise",
-            "problem": "The movement description allows raising dumbbells to shoulder height, which could be risky for the spine if not performed correctly, and lacks a specific safety cue.",
-            "fix": "Add a safety cue to Dumbbell Lateral Raise to ensure the user maintains a stable core and avoids excessive swinging."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 3,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        },
-        "post_regen_passed": true,
-        "post_regen_feedback": "On Day 2, replace Leg Press with Bodyweight Squats or Goblet Squats with a light weight to minimize axial loading. On Day 1, add a coaching note to the Seated Dumbbell Lateral Raise to emphasize maintaining a slow and controlled movement. On Day 2, add a coaching note to the Seated Leg Curl to remind the user to choose a manageable weight to avoid straining the lower back.",
-        "post_regen_severity_counts": {
-          "severity_3": 0,
-          "severity_2": 1,
-          "severity_1": 2
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's allergies, medical conditions, medications, and dietary preferences. It effectively supports the fitness goal of building muscle with a variety of protein sources and healthy fats, while maintaining sufficient diversity over the week.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 4,
-          "meals_generated": 4,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 2216.0,
-          "calorie_deviation_pct": 10.8,
-          "calories_within_20pct": true
-        }
-      }
-    },
-    {
-      "profile": "Celiac Disease (Gluten Intolerance)",
-      "medical_conditions": "Celiac disease",
-      "injuries": "None",
-      "allergies": "Gluten (wheat, barley, rye)",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Dumbbell Lateral Raise to avoid overhead strain. On Day 4, replace Treadmill Intervals with a steady-state run at a moderate pace for 20 minutes to ensure safe intensity levels.",
-        "issues": [
-          {
-            "severity": 2,
-            "location": "Day 1 \u2014 Seated Dumbbell Shoulder Press",
-            "problem": "The Seated Dumbbell Shoulder Press involves pressing weights overhead, which could be risky for users with shoulder conditions. Although this user has no stated shoulder injuries, the exercise could still be flagged for intensity and safety concerns.",
-            "fix": "Replace Seated Dumbbell Shoulder Press with Dumbbell Lateral Raise because it keeps the arms below shoulder height and avoids any potential overhead strain."
-          },
-          {
-            "severity": 2,
-            "location": "Day 4 \u2014 Treadmill Intervals",
-            "problem": "The Treadmill Intervals may involve high-intensity sprints that could exceed a safe intensity level for maintaining weight, especially if the user is not accustomed to such high exertion.",
-            "fix": "Replace Treadmill Intervals with a steady-state run at a moderate pace for 20 minutes to ensure the intensity remains within a safe range."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 2,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 5,
-          "days_generated": 5,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "On Thursday (Day 4), replace the Oatmeal with Berries with gluten-free chia seed pudding to ensure safety for the user with celiac disease.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Thursday (Day 4) \u2014 Breakfast",
-            "problem": "Oatmeal with Berries contains gluten-free oats, which may not be safe for a user with celiac disease if cross-contamination occurs.",
-            "fix": "Replace oatmeal with a gluten-free chia seed pudding because it is safe for individuals with celiac disease."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 4,
-          "meals_generated": 4,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 2364.0,
-          "calorie_deviation_pct": 18.2,
-          "calories_within_20pct": true
-        },
-        "post_regen_passed": false,
-        "post_regen_feedback": "On Thursday (Day 4), ensure that all cooking utensils and surfaces are thoroughly cleaned and free from gluten contamination before preparing the gluten-free pancakes. On Sunday (Day 7), replace feta cheese in the Mediterranean Chickpea Bowl with a certified gluten-free cheese alternative to ensure safety for the user with celiac disease.",
-        "post_regen_severity_counts": {
-          "severity_3": 2,
-          "severity_2": 0,
-          "severity_1": 0
-        }
-      }
-    },
-    {
-      "profile": "Tree Nut & Peanut Allergy",
-      "medical_conditions": "None",
-      "injuries": "None",
-      "allergies": "Severe tree nut and peanut allergy (anaphylaxis risk)",
-      "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "No issues found that violate the user's constraints.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 1 - Overhead Dumbbell Press",
-            "problem": "The Overhead Dumbbell Press involves pressing weights overhead, which can place undue stress on the shoulder joints. However, the user's profile does not mention any shoulder-related restrictions, so this does not violate their constraints.",
-            "fix": "No fix needed as the user has no shoulder restrictions."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 4,
-          "days_generated": 4,
-          "days_match": true
-        },
-        "post_regen_passed": false,
-        "post_regen_feedback": "The plan is clean with no issues found.",
-        "post_regen_severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        }
-      },
-      "nutrition": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "For Day 4, replace almond milk with oat milk in the smoothie bowl to eliminate the severe allergy risk. For Day 6, replace cottage cheese with sliced fresh peaches to avoid cross-contamination. For Day 2, replace sunflower seed butter with plain Greek yogurt for dipping. For Day 3, replace hummus with tzatziki sauce for dipping to avoid cross-contamination. For Day 7, replace trail mix with a mix of seeds and dried fruits that are specifically labeled as nut-free.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 4 \u2014 Breakfast",
-            "problem": "The smoothie bowl contains almond milk, which is derived from tree nuts, posing a severe allergy risk for the user.",
-            "fix": "Replace almond milk with oat milk in the smoothie bowl because it is safe for individuals with tree nut allergies."
-          },
-          {
-            "severity": 3,
-            "location": "Day 6 \u2014 Snack",
-            "problem": "The cottage cheese with peaches snack does not specify the type of peaches, which could potentially be canned peaches that may contain tree nut cross-contamination.",
-            "fix": "Replace cottage cheese with sliced fresh peaches to eliminate the risk of cross-contamination with tree nuts."
-          },
-          {
-            "severity": 2,
-            "location": "Day 2 \u2014 Snack",
-            "problem": "The apple slices with sunflower seed butter may pose a risk for cross-contamination with tree nuts, as sunflower seed butter can sometimes be processed in facilities that handle tree nuts.",
-            "fix": "Replace sunflower seed butter with plain Greek yogurt for dipping to avoid any risk of cross-contamination."
-          },
-          {
-            "severity": 2,
-            "location": "Day 3 \u2014 Snack",
-            "problem": "The carrot sticks with hummus may pose a risk for cross-contamination with tree nuts, as hummus can sometimes be made with tahini, which is derived from sesame seeds but can be processed in facilities that handle tree nuts.",
-            "fix": "Replace hummus with tzatziki sauce for dipping to avoid any risk of cross-contamination."
-          },
-          {
-            "severity": 2,
-            "location": "Day 7 \u2014 Snack",
-            "problem": "The trail mix without nuts may still pose a risk for cross-contamination with tree nuts, as many commercial trail mixes are processed in facilities that handle tree nuts.",
-            "fix": "Replace trail mix with a mix of seeds and dried fruits that are specifically labeled as nut-free to ensure safety."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 2,
-          "severity_2": 3,
-          "severity_1": 0
-        },
-        "structure": {
           "meals_requested": 5,
           "meals_generated": 5,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 2223.0,
-          "calorie_deviation_pct": 11.1,
-          "calories_within_20pct": true
-        },
-        "post_regen_passed": false,
-        "post_regen_feedback": "On Thursday (Day 4), replace chia seed pudding with coconut milk chia seed pudding to eliminate the tree nut allergy risk. On Saturday (Day 6), replace rice cakes with cream cheese with rice cakes topped with plain yogurt to ensure safety. On Sunday (Day 7), replace fruit and yogurt parfait with a fruit and yogurt bowl topped with seeds to avoid potential allergen exposure.",
-        "post_regen_severity_counts": {
-          "severity_3": 3,
-          "severity_2": 0,
-          "severity_1": 0
-        }
-      }
-    },
-    {
-      "profile": "Shoulder Injury (Rotator Cuff Tear)",
-      "medical_conditions": "None",
-      "injuries": "Partial rotator cuff tear, right shoulder. Avoid overhead pressing, heavy bench press, and behind-the-neck movements.",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "For Day 1, add safety cues to the Seated Cable Row and Dumbbell Bicep Curl to ensure shoulder safety. Enhance the warm-up to include gentle shoulder mobility exercises to accommodate the user's partial rotator cuff tear.",
-        "issues": [
-          {
-            "severity": 2,
-            "location": "Day 1 - Upper Body Pull \u2014 Seated Cable Row",
-            "problem": "The movement description does not include a safety cue regarding the potential strain on the shoulder due to the partial rotator cuff tear, which could lead to exacerbation of the injury.",
-            "fix": "Add a safety cue to the Seated Cable Row: 'Ensure to keep the movement controlled and avoid excessive leaning back to prevent shoulder strain.'"
-          },
-          {
-            "severity": 2,
-            "location": "Day 1 - Upper Body Pull \u2014 Dumbbell Bicep Curl",
-            "problem": "The movement description lacks a safety cue regarding the positioning of the shoulder during the exercise, which could lead to discomfort or strain given the user's shoulder condition.",
-            "fix": "Add a safety cue to the Dumbbell Bicep Curl: 'Keep your shoulders relaxed and avoid raising them during the curl to prevent strain on the rotator cuff.'"
-          },
-          {
-            "severity": 1,
-            "location": "Day 1 - Upper Body Pull",
-            "problem": "The warm-up is mentioned but could be more specific to include shoulder mobility exercises that are safe for the user's condition.",
-            "fix": "Enhance the warm-up for Day 1 to include 'gentle shoulder mobility exercises such as pendulum swings or arm circles within a pain-free range.'"
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 2,
-          "severity_1": 1
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's allergies, medical conditions, and dietary restrictions. No issues were found regarding drug-food interactions, macro compliance, cuisine authenticity, goal alignment, or variety.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1811.0,
-          "calorie_deviation_pct": 9.4,
-          "calories_within_20pct": true
-        }
-      }
-    },
-    {
-      "profile": "PCOS (Polycystic Ovary Syndrome)",
-      "medical_conditions": "PCOS, insulin resistance",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is clean and meets the user's requirements without any safety risks or programming issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 4,
-          "days_generated": 4,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The nutrition plan is compliant with the user's allergies, medical conditions, medications, and dietary restrictions. No issues were found in the evaluation.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 4,
-          "meals_generated": 4,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1707.0,
-          "calorie_deviation_pct": 14.7,
-          "calories_within_20pct": true
-        }
-      }
-    },
-    {
-      "profile": "Hypothyroidism",
-      "medical_conditions": "Hypothyroidism",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is clean and meets the user's requirements without any issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's allergies, medical conditions, and dietary preferences. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1238.0,
-          "calorie_deviation_pct": 38.1,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "High Cholesterol",
-      "medical_conditions": "High LDL cholesterol",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is compliant with the user's medical conditions and fitness goals, with no identified issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 4,
-          "days_generated": 4,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "On Day 1, replace Baked Salmon with Baked Cod to lower saturated fat intake. On Day 2, replace Grilled Chicken with Grilled Turkey Breast to reduce saturated fat. On Day 5, replace Shrimp Tacos with Grilled Vegetable Tacos to avoid high cholesterol content.",
-        "issues": [
-          {
-            "severity": 2,
-            "location": "Day 1 \u2014 Dinner",
-            "problem": "Baked Salmon is high in saturated fat, which can negatively impact high LDL cholesterol levels.",
-            "fix": "Replace Baked Salmon with Baked Cod because cod is lower in saturated fat and better for managing high LDL cholesterol."
-          },
-          {
-            "severity": 2,
-            "location": "Day 2 \u2014 Dinner",
-            "problem": "Grilled Chicken may be higher in saturated fat depending on the cut used, which can negatively impact high LDL cholesterol levels.",
-            "fix": "Replace Grilled Chicken with Grilled Turkey Breast because turkey breast is generally lower in saturated fat."
-          },
-          {
-            "severity": 2,
-            "location": "Day 5 \u2014 Dinner",
-            "problem": "Shrimp Tacos may pose a risk due to the potential for high cholesterol content in shrimp, which can negatively impact high LDL cholesterol levels.",
-            "fix": "Replace Shrimp Tacos with Grilled Vegetable Tacos because they are lower in cholesterol and better for managing high LDL cholesterol."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 3,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1345.0,
-          "calorie_deviation_pct": 32.8,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "Vegan + Marathon Training",
-      "medical_conditions": "None",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is well-structured and aligns with the user's fitness goals, with appropriate intensity and safety measures in place.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 6,
-          "days_generated": 6,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The plan is clean with no allergen issues, medical violations, drug-food interactions, macro compliance issues, cuisine authenticity problems, goal alignment concerns, or variety deficiencies. No changes are needed.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 5,
-          "meals_generated": 5,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1501.0,
-          "calorie_deviation_pct": 25.0,
-          "calories_within_20pct": false
-        }
-      }
-    },
-    {
-      "profile": "Pregnancy (2nd Trimester)",
-      "medical_conditions": "Pregnancy, 2nd trimester",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is safe and appropriate for the user's conditions and goals, with no identified issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's dietary restrictions and medical conditions, ensuring safety and nutritional adequacy for pregnancy in the second trimester.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 5,
-          "meals_generated": 5,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1800.0,
-          "calorie_deviation_pct": 10.0,
-          "calories_within_20pct": true
-        }
-      }
-    },
-    {
-      "profile": "Elderly (Age 72) \u2014 Osteoarthritis",
-      "medical_conditions": "Osteoarthritis (both knees), osteopenia",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The workout plan is well-structured and adheres to the user's needs without any identified issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 3,
-          "days_generated": 3,
-          "days_match": true
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's allergies, medical conditions, medications, and dietary preferences. No issues were found.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 3,
-          "meals_generated": 3,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 1964.0,
-          "calorie_deviation_pct": 1.8,
-          "calories_within_20pct": true
-        }
-      }
-    },
-    {
-      "profile": "Teenager (Age 16) Athlete",
-      "medical_conditions": "None",
-      "injuries": "None",
-      "allergies": "None",
-      "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "On Day 1, replace Overhead Dumbbell Press with Dumbbell Shoulder Press to ensure safety and proper alignment with the user's profile.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 1 - Overhead Dumbbell Press",
-            "problem": "The movement description confirms that the exercise involves pressing weights overhead, which is contraindicated for users with shoulder-related restrictions. However, this user has no reported shoulder conditions.",
-            "fix": "Replace Overhead Dumbbell Press with Dumbbell Shoulder Press because it maintains shoulder engagement without moving into an overhead position."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 5,
-          "days_generated": 5,
-          "days_match": true
-        },
-        "post_regen_passed": false,
-        "post_regen_feedback": "For Day 1, add safety cues to the Dumbbell Shoulder Press and Incline Dumbbell Bench Press regarding maintaining a neutral spine and avoiding locking out elbows. For Day 2, add safety cues to the Barbell Squat about knee alignment and squat depth. For Day 3, add a safety cue to the Pull-Ups about engaging the core. For Day 4, add a safety cue to the Plank about body alignment. For Day 5, add safety cues to the Deadlift about keeping the bar close and engaging the lats.",
-        "post_regen_severity_counts": {
-          "severity_3": 2,
-          "severity_2": 0,
-          "severity_1": 6
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's dietary needs and goals, with no identified issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "meals_requested": 5,
-          "meals_generated": 5,
-          "meals_match": true,
-          "calories_target": 2000,
-          "calories_generated": 2109.0,
-          "calorie_deviation_pct": 5.5,
+          "calories_generated": 2377.0,
+          "calorie_deviation_pct": 18.8,
           "calories_within_20pct": true
         }
       }
@@ -844,15 +856,31 @@
       "injuries": "None",
       "allergies": "Dairy (lactose)",
       "workout": {
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "The workout plan is compliant with the user's medical profile and does not present any safety risks or programming issues.",
+        "issues": [],
+        "severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
+        },
+        "structure": {
+          "days_requested": 4,
+          "days_generated": 4,
+          "days_match": true
+        }
+      },
+      "nutrition": {
         "judge_passed": false,
         "needs_regeneration": true,
-        "feedback": "There are no severity-3 issues. The Overhead Dumbbell Press is acceptable as the user has no shoulder restrictions.",
+        "feedback": "On Day 2, replace the 'feta-style vegan cheese' in the Lunch meal with 'diced avocado' to eliminate the risk of lactose exposure.",
         "issues": [
           {
             "severity": 3,
-            "location": "Day 1 - Upper Body Push \u2014 Overhead Dumbbell Press",
-            "problem": "The Overhead Dumbbell Press involves pressing weights overhead, which is contraindicated for users with shoulder-related restrictions. However, this user has no stated shoulder injuries or limitations, making this exercise acceptable.",
-            "fix": "No replacement needed as the user has no shoulder restrictions."
+            "location": "Day 2 \u2014 Lunch",
+            "problem": "The meal contains feta-style vegan cheese, which may contain dairy or lactose derivatives, posing a risk for the user with lactose intolerance.",
+            "fix": "Replace 'feta-style vegan cheese' with 'diced avocado' to ensure the meal remains dairy-free and safe for the user."
           }
         ],
         "severity_counts": {
@@ -861,36 +889,20 @@
           "severity_1": 0
         },
         "structure": {
-          "days_requested": 4,
-          "days_generated": 4,
-          "days_match": true
-        },
-        "post_regen_passed": false,
-        "post_regen_feedback": "No significant issues found. The plan is compliant with the user's constraints.",
-        "post_regen_severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        }
-      },
-      "nutrition": {
-        "judge_passed": true,
-        "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's dietary restrictions and goals, with no identified issues.",
-        "issues": [],
-        "severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
           "meals_requested": 4,
           "meals_generated": 4,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 1981.0,
-          "calorie_deviation_pct": 0.9,
+          "calories_generated": 2275.0,
+          "calorie_deviation_pct": 13.7,
           "calories_within_20pct": true
+        },
+        "post_regen_passed": true,
+        "post_regen_feedback": "",
+        "post_regen_severity_counts": {
+          "severity_3": 0,
+          "severity_2": 0,
+          "severity_1": 0
         }
       }
     },
@@ -902,7 +914,7 @@
       "workout": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The workout plan is compliant with the user's medical conditions and fitness goals. No issues were found.",
+        "feedback": "",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -918,30 +930,11 @@
       "nutrition": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "On Day 4, replace Grilled Salmon with Grilled Chicken Breast due to high phosphorus content. On Day 6, replace Roasted Chicken with Baked Chicken Breast and Sweet Potatoes with Mashed Cauliflower to lower potassium levels. On Day 7, replace Pork Tenderloin with Baked Chicken Thighs to reduce phosphorus intake.",
-        "issues": [
-          {
-            "severity": 2,
-            "location": "Day 4 \u2014 Dinner",
-            "problem": "Grilled Salmon is high in phosphorus, which can be a concern for someone with Chronic Kidney Disease, Stage 3.",
-            "fix": "Replace Grilled Salmon with Grilled Chicken Breast because it is lower in phosphorus and more suitable for a renal diet."
-          },
-          {
-            "severity": 2,
-            "location": "Day 6 \u2014 Dinner",
-            "problem": "Roasted Chicken with Sweet Potatoes is high in potassium, which can be a concern for someone with Chronic Kidney Disease, Stage 3.",
-            "fix": "Replace Roasted Chicken with Baked Chicken Breast and Sweet Potatoes with Mashed Cauliflower because they are lower in potassium and more suitable for a renal diet."
-          },
-          {
-            "severity": 2,
-            "location": "Day 7 \u2014 Dinner",
-            "problem": "Pork Tenderloin is high in phosphorus, which can be a concern for someone with Chronic Kidney Disease, Stage 3.",
-            "fix": "Replace Pork Tenderloin with Baked Chicken Thighs because it is lower in phosphorus and more suitable for a renal diet."
-          }
-        ],
+        "feedback": "",
+        "issues": [],
         "severity_counts": {
           "severity_3": 0,
-          "severity_2": 3,
+          "severity_2": 0,
           "severity_1": 0
         },
         "structure": {
@@ -949,8 +942,8 @@
           "meals_generated": 3,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 1188.0,
-          "calorie_deviation_pct": 40.6,
+          "calories_generated": 2502.0,
+          "calorie_deviation_pct": 25.1,
           "calories_within_20pct": false
         }
       }
@@ -961,45 +954,44 @@
       "injuries": "ACL reconstruction, 6 weeks post-op. Non-weight-bearing impact contraindicated; no running, jumping, or deep squats. Cleared for light range-of-motion and upper body work only.",
       "allergies": "None",
       "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Seated Dumbbell Front Raise to ensure safety by keeping the arms below shoulder height. On Day 3, replace Standing Dumbbell Lateral Raises with Front Raises to avoid lateral movements that could stress the shoulder.",
+        "judge_passed": true,
+        "needs_regeneration": false,
+        "feedback": "On Day 1, replace Seated Dumbbell Shoulder Press with Seated Dumbbell Lateral Raise to avoid overhead movement. On Day 2, replace Seated Overhead Dumbbell Triceps Extension with Seated Dumbbell Triceps Kickback to eliminate overhead strain. On Day 3, replace Seated Dumbbell Front Raise with Seated Dumbbell Lateral Raise to avoid unnecessary shoulder strain.",
         "issues": [
           {
-            "severity": 3,
-            "location": "Day 1 \u2014 Seated Dumbbell Shoulder Press",
-            "problem": "The movement description confirms that the exercise involves pressing weights overhead, which is contraindicated for this user as they are only cleared for upper body work and have no shoulder-related restrictions.",
-            "fix": "Replace Seated Dumbbell Shoulder Press with Seated Dumbbell Front Raise because it keeps the arms below shoulder height and adheres to the user's restrictions."
+            "severity": 2,
+            "location": "Day 1 - Seated Dumbbell Shoulder Press",
+            "problem": "The exercise involves pressing dumbbells upward, which could place unnecessary strain on the shoulder joint despite the user not having a shoulder condition. However, the movement is not contraindicated based on the user's stated injuries.",
+            "fix": "Replace Seated Dumbbell Shoulder Press with Seated Dumbbell Lateral Raise because it maintains upper body strength without the risk of overhead movement."
           },
           {
             "severity": 2,
-            "location": "Day 3 \u2014 Standing Dumbbell Lateral Raises",
-            "problem": "The movement description indicates raising weights out to the side until shoulder height, which could be risky for the user as they are only cleared for light upper body work and should avoid overhead movements.",
-            "fix": "Replace Standing Dumbbell Lateral Raises with Front Raises to shoulder height because it avoids lateral movement that could stress the shoulder."
+            "location": "Day 2 - Seated Overhead Dumbbell Triceps Extension",
+            "problem": "The exercise involves extending a dumbbell overhead, which could potentially strain the shoulder joint despite the user not having a shoulder condition. However, the movement is not contraindicated based on the user's stated injuries.",
+            "fix": "Replace Seated Overhead Dumbbell Triceps Extension with Seated Dumbbell Triceps Kickback because it targets the triceps without placing the arms overhead."
+          },
+          {
+            "severity": 2,
+            "location": "Day 3 - Seated Dumbbell Front Raise",
+            "problem": "The exercise involves raising the arm forward to shoulder height, which could place unnecessary strain on the shoulder joint despite the user not having a shoulder condition. However, the movement is not contraindicated based on the user's stated injuries.",
+            "fix": "Replace Seated Dumbbell Front Raise with Seated Dumbbell Lateral Raise because it maintains upper body strength without the risk of overhead movement."
           }
         ],
         "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 1,
+          "severity_3": 0,
+          "severity_2": 3,
           "severity_1": 0
         },
         "structure": {
           "days_requested": 3,
           "days_generated": 3,
           "days_match": true
-        },
-        "post_regen_passed": true,
-        "post_regen_feedback": "On Day 1, replace incline push-ups with wall push-ups to reduce shoulder strain. On Day 3, replace plank on knees with seated torso twists to avoid pressure on the knees.",
-        "post_regen_severity_counts": {
-          "severity_3": 0,
-          "severity_2": 0,
-          "severity_1": 2
         }
       },
       "nutrition": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The plan is clean with no issues found.",
+        "feedback": "",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -1011,8 +1003,8 @@
           "meals_generated": 3,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 1281.0,
-          "calorie_deviation_pct": 36.0,
+          "calories_generated": 2420.0,
+          "calorie_deviation_pct": 21.0,
           "calories_within_20pct": false
         }
       }
@@ -1023,39 +1015,9 @@
       "injuries": "None",
       "allergies": "Severe shellfish allergy (shrimp, crab, lobster)",
       "workout": {
-        "judge_passed": false,
-        "needs_regeneration": true,
-        "feedback": "The plan is clean with no issues found.",
-        "issues": [
-          {
-            "severity": 3,
-            "location": "Day 1 - Upper Body Push \u2014 Overhead Dumbbell Press",
-            "problem": "The movement description confirms that the exercise involves pressing weights overhead, which is contraindicated for users with shoulder-related restrictions. However, this user has no injuries or limitations, so this does not apply.",
-            "fix": "No fix needed as the user has no shoulder restrictions."
-          }
-        ],
-        "severity_counts": {
-          "severity_3": 1,
-          "severity_2": 0,
-          "severity_1": 0
-        },
-        "structure": {
-          "days_requested": 6,
-          "days_generated": 6,
-          "days_match": true
-        },
-        "post_regen_passed": true,
-        "post_regen_feedback": "On Day 1, replace Overhead Dumbbell Press with Dumbbell Shoulder Press at a 90-degree angle to reduce shoulder strain. Additionally, enhance the Barbell Bench Press with a coaching note on maintaining a neutral spine and proper foot placement. On Day 5, add a coaching note to the Kettlebell Swing to emphasize hip hinge mechanics and core engagement.",
-        "post_regen_severity_counts": {
-          "severity_3": 0,
-          "severity_2": 1,
-          "severity_1": 2
-        }
-      },
-      "nutrition": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The meal plan is free of allergen issues, medical violations, drug-food interactions, macro compliance issues, cuisine authenticity problems, goal alignment discrepancies, and variety concerns. No changes are necessary.",
+        "feedback": "The workout plan is well-structured and aligns with the user's goals, showing no significant safety risks or programming issues.",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -1063,13 +1025,79 @@
           "severity_1": 0
         },
         "structure": {
+          "days_requested": 6,
+          "days_generated": 6,
+          "days_match": true
+        }
+      },
+      "nutrition": {
+        "judge_passed": false,
+        "needs_regeneration": true,
+        "feedback": "On Tuesday (Day 2), replace Baked Salmon with Baked Chicken Breast with Sweet Potato and Asparagus to eliminate cross-contamination risk. On Saturday (Day 6), replace Tuna Salad with Grilled Chicken Salad with Mixed Greens and Olive Oil to eliminate cross-contamination risk. On Tuesday (Day 9), replace Baked Salmon with Baked Chicken Thighs with Sweet Potato and Asparagus to eliminate cross-contamination risk. For Friday (Day 5), replace Cottage Cheese with Pineapple with Hummus and Veggie Sticks. For Sunday (Day 7), replace Greek Yogurt with Mixed Berries with Chia Pudding with Almond Milk and Berries. For Saturday (Day 6), replace Protein Shake with Almond Milk with Smoothie with Spinach, Banana, and Almond Milk. For Monday (Day 8), replace Cottage Cheese with Berries with Greek Yogurt with Honey and Nuts.",
+        "issues": [
+          {
+            "severity": 3,
+            "location": "Tuesday (Day 2) \u2014 Dinner",
+            "problem": "Baked Salmon contains salmon, which is not a shellfish but could pose a risk if cross-contamination occurs with shellfish during preparation.",
+            "fix": "Replace Baked Salmon with Baked Chicken Breast with Sweet Potato and Asparagus to eliminate any risk of cross-contamination."
+          },
+          {
+            "severity": 3,
+            "location": "Saturday (Day 6) \u2014 Lunch",
+            "problem": "Tuna Salad contains tuna, which is not a shellfish but could pose a risk if cross-contamination occurs with shellfish during preparation.",
+            "fix": "Replace Tuna Salad with Grilled Chicken Salad with Mixed Greens and Olive Oil to eliminate any risk of cross-contamination."
+          },
+          {
+            "severity": 3,
+            "location": "Tuesday (Day 9) \u2014 Dinner",
+            "problem": "Baked Salmon contains salmon, which is not a shellfish but could pose a risk if cross-contamination occurs with shellfish during preparation.",
+            "fix": "Replace Baked Salmon with Baked Chicken Thighs with Sweet Potato and Asparagus to eliminate any risk of cross-contamination."
+          },
+          {
+            "severity": 1,
+            "location": "Friday (Day 5) \u2014 Snack",
+            "problem": "Cottage Cheese with Pineapple exceeds the limit of three occurrences for this snack.",
+            "fix": "Replace Cottage Cheese with Pineapple with Hummus and Veggie Sticks to maintain variety."
+          },
+          {
+            "severity": 1,
+            "location": "Sunday (Day 7) \u2014 Snack",
+            "problem": "Greek Yogurt with Mixed Berries exceeds the limit of three occurrences for this snack.",
+            "fix": "Replace Greek Yogurt with Mixed Berries with Chia Pudding with Almond Milk and Berries to maintain variety."
+          },
+          {
+            "severity": 1,
+            "location": "Saturday (Day 6) \u2014 Snack",
+            "problem": "Protein Shake with Almond Milk exceeds the limit of three occurrences for this snack.",
+            "fix": "Replace Protein Shake with Almond Milk with Smoothie with Spinach, Banana, and Almond Milk to maintain variety."
+          },
+          {
+            "severity": 1,
+            "location": "Monday (Day 8) \u2014 Snack",
+            "problem": "Cottage Cheese with Berries exceeds the limit of three occurrences for this snack.",
+            "fix": "Replace Cottage Cheese with Berries with Greek Yogurt with Honey and Nuts to maintain variety."
+          }
+        ],
+        "severity_counts": {
+          "severity_3": 3,
+          "severity_2": 0,
+          "severity_1": 4
+        },
+        "structure": {
           "meals_requested": 6,
           "meals_generated": 6,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 3181.0,
-          "calorie_deviation_pct": 59.1,
+          "calories_generated": 4465.0,
+          "calorie_deviation_pct": 123.2,
           "calories_within_20pct": false
+        },
+        "post_regen_passed": false,
+        "post_regen_feedback": "On Day 3, replace Baked Cod with Baked Chicken Breast to ensure safety for the user with a severe shellfish allergy.",
+        "post_regen_severity_counts": {
+          "severity_3": 1,
+          "severity_2": 0,
+          "severity_1": 0
         }
       }
     },
@@ -1081,7 +1109,7 @@
       "workout": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The workout plan is appropriate for the user's conditions and goals, with no identified issues.",
+        "feedback": "",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -1097,7 +1125,7 @@
       "nutrition": {
         "judge_passed": true,
         "needs_regeneration": false,
-        "feedback": "The meal plan is compliant with the user's allergies, medical conditions, and dietary preferences. No issues were found in the evaluation.",
+        "feedback": "The nutrition plan is compliant with the user's dietary restrictions and goals, with no identified issues.",
         "issues": [],
         "severity_counts": {
           "severity_3": 0,
@@ -1109,8 +1137,8 @@
           "meals_generated": 4,
           "meals_match": true,
           "calories_target": 2000,
-          "calories_generated": 1590.0,
-          "calorie_deviation_pct": 20.5,
+          "calories_generated": 2643.0,
+          "calorie_deviation_pct": 32.1,
           "calories_within_20pct": false
         }
       }

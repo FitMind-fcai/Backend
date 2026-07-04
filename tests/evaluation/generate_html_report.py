@@ -152,6 +152,19 @@ tbody tr:last-child td { border-bottom: none; }
 .issue-list { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted); }
 .issue-list li { margin-bottom: 3px; }
 
+.plan-details { margin-top: 6px; font-size: 12px; }
+.plan-details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  user-select: none;
+}
+.plan-details summary:hover { text-decoration: underline; }
+.plan-day { margin: 8px 0 2px; font-weight: 600; color: var(--ink); }
+.plan-list { margin: 2px 0 6px; padding-left: 16px; color: var(--muted); }
+.plan-list li { margin-bottom: 2px; }
+.plan-note { color: var(--muted); font-style: italic; }
+
 .methodology {
   margin-top: 40px;
   padding: 20px 24px;
@@ -201,6 +214,64 @@ def _issues_list(result: dict) -> str:
     return f'<ul class="issue-list">{items}</ul>'
 
 
+def _render_workout_plan(plan: dict) -> str:
+    parts = [f'<p class="plan-note">{_esc(plan.get("plan_name", ""))}'
+             f' — {_esc(plan.get("frequency") or "")}, {_esc(plan.get("difficulty_level") or "")}</p>']
+    for day in plan.get("workout_days", []):
+        parts.append(f'<div class="plan-day">{_esc(day.get("day_name"))} — {_esc(day.get("focus_area") or "")}</div>')
+        items = []
+        for ex in day.get("exercises", []):
+            volume = (
+                f'{ex["sets"]}x{ex["reps"]}' if ex.get("sets") and ex.get("reps")
+                else (f'{ex["duration_seconds"]}s' if ex.get("duration_seconds") else "")
+            )
+            weight = f' @ {ex["weight_kg"]}kg' if ex.get("weight_kg") else ""
+            items.append(f'<li>{_esc(ex.get("exercise_name"))} — {_esc(volume)}{_esc(weight)}</li>')
+        parts.append(f'<ul class="plan-list">{"".join(items)}</ul>')
+    return "".join(parts)
+
+
+def _render_nutrition_plan(plan: dict) -> str:
+    parts = [
+        f'<p class="plan-note">{_esc(plan.get("plan_name", ""))}</p>',
+        '<p class="plan-note">Macros/calories show 0 here by design — the real backend computes them '
+        "from the central_foods DB after this stage; ingredients are listed by catalog ID + grams.</p>",
+    ]
+    for day in plan.get("days", []):
+        parts.append(f'<div class="plan-day">{_esc(day.get("day_name"))}</div>')
+        items = []
+        for meal in day.get("meals", []):
+            ingredients = ", ".join(
+                f'#{ing.get("central_food_id")} ({ing.get("amount_g")}g)'
+                for ing in (meal.get("ingredients") or [])
+            )
+            items.append(
+                f'<li>[{_esc(meal.get("meal_type"))}] {_esc(meal.get("meal_name"))}'
+                f'{" — " + _esc(ingredients) if ingredients else ""}</li>'
+            )
+        parts.append(f'<ul class="plan-list">{"".join(items)}</ul>')
+    return "".join(parts)
+
+
+def _plan_details(result: dict, renderer) -> str:
+    """Collapsible <details> block (native HTML, no JS) showing the full
+    generated plan — and the post-regen plan too, when a fix was attempted."""
+    if "error" in result:
+        return ""
+    blocks = []
+    plan = result.get("plan")
+    if plan:
+        blocks.append(
+            f'<details class="plan-details"><summary>View generated plan</summary>{renderer(plan)}</details>'
+        )
+    post_regen_plan = result.get("post_regen_plan")
+    if post_regen_plan:
+        blocks.append(
+            f'<details class="plan-details"><summary>View plan after auto-fix</summary>{renderer(post_regen_plan)}</details>'
+        )
+    return "".join(blocks)
+
+
 def generate_report(input_file: Path = INPUT_FILE, output_file: Path = OUTPUT_FILE) -> Path:
     if not input_file.exists():
         raise FileNotFoundError(
@@ -226,10 +297,21 @@ def generate_report(input_file: Path = INPUT_FILE, output_file: Path = OUTPUT_FI
       </div>
     """ if m.get("post_regen_attempted") else ""
 
+    # Overall accuracy = safe on first try + those successfully fixed by the
+    # judge's auto-regeneration pass — this is what a real user actually gets,
+    # since production always runs judge+fix, never ships a raw first-try
+    # plan unconditionally. Distinct from "Safe on First Try" (accuracy
+    # WITHOUT the judge fixing anything).
+    plans_passed = m["plans_passed"]
+    regen_fixed = m.get("post_regen_fixed", 0)
+    plans_evaluated = m["plans_evaluated"]
+    total_safe_after_regen = plans_passed + regen_fixed
+    overall_accuracy = round(100 * total_safe_after_regen / plans_evaluated, 1) if plans_evaluated else 0.0
+
     stat_cards = f"""
     <div class="stat-grid">
       <div class="stat-card">
-        <div class="label">Safe on First Try</div>
+        <div class="label">Safe on First Try (no judge fix)</div>
         <div class="value">{m['judge_pass_rate_pct']}%</div>
         <div class="sub">{m['plans_passed']} / {m['plans_evaluated']} plans</div>
       </div>
@@ -239,6 +321,11 @@ def generate_report(input_file: Path = INPUT_FILE, output_file: Path = OUTPUT_FI
         <div class="sub">{m['plans_needing_regeneration']} / {m['plans_evaluated']} plans</div>
       </div>
       {post_regen_card}
+      <div class="stat-card" style="border-color:var(--accent); border-width:2px;">
+        <div class="label">Overall Accuracy (after judge)</div>
+        <div class="value">{overall_accuracy}%</div>
+        <div class="sub">{total_safe_after_regen} / {plans_evaluated} plans safe</div>
+      </div>
       <div class="stat-card">
         <div class="label">Profiles Tested</div>
         <div class="value">{data['profiles_tested']}</div>
@@ -298,10 +385,12 @@ def generate_report(input_file: Path = INPUT_FILE, output_file: Path = OUTPUT_FI
           <td>
             {_verdict_cell(r['workout'])}<br>{_severity_inline(r['workout'])}
             {_issues_list(r['workout'])}
+            {_plan_details(r['workout'], _render_workout_plan)}
           </td>
           <td>
             {_verdict_cell(r['nutrition'])}<br>{_severity_inline(r['nutrition'])}
             {_issues_list(r['nutrition'])}
+            {_plan_details(r['nutrition'], _render_nutrition_plan)}
           </td>
         </tr>
         """)

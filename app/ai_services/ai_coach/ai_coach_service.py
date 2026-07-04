@@ -97,7 +97,12 @@ class AICoachService:
             "Strictly respect all allergy, medical, and portion-sizing constraints. "
             "Never write macro or calorie numbers into the JSON output — the backend "
             "computes those from database records. "
-            "Any allergy violation is a critical failure."
+            "Any allergy violation is a critical failure. "
+            "The output language is specified below and is STRICT: every text field must be "
+            "entirely in that one language, with zero mixing — this includes dish/meal names, "
+            "which must be translated or localized into the required language rather than left "
+            "in their original language (e.g. never leave an Arabic dish name untranslated in an "
+            "English-language plan, or vice versa)."
         )
 
         # ── Generate (regenerates on malformed/invalid output) ────────
@@ -184,7 +189,11 @@ class AICoachService:
             "Think carefully inside <think>...</think> first, then output a single valid "
             "JSON object — no markdown, no extra text. "
             "Strictly respect all injury and medical exercise restrictions. "
-            "Never suggest exercises that could harm the user."
+            "Never suggest exercises that could harm the user. "
+            "The output language is specified below and is STRICT: every text field must be "
+            "entirely in that one language, with zero mixing — this includes exercise/day names "
+            "and coaching notes, which must be translated or localized into the required language "
+            "rather than left in their original language."
         )
 
         # ── Generate (regenerates on malformed/invalid output) ────────

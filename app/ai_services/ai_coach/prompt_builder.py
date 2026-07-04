@@ -371,7 +371,21 @@ def build_nutrition_prompt(
         "",
         "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.",
         "",
-        f"LANGUAGE: {'Write ALL text fields (plan_name, description, meal_name, instructions, day_name, notes) in Arabic.' if lang == 'ar' else 'Write ALL text fields in English.'}",
+        "=== LANGUAGE — STRICT, NO EXCEPTIONS ===",
+        (
+            "Write EVERY text field (plan_name, description, meal_name, instructions, day_name, notes) "
+            "ENTIRELY in Arabic. Do not leave any word, dish name, or phrase in English — translate or "
+            "localize everything, including well-known dish names (write the Arabic name, not the "
+            "English/transliterated one)."
+            if lang == "ar" else
+            "Write EVERY text field (plan_name, description, meal_name, instructions, day_name, notes) "
+            "ENTIRELY in English. Do not leave any word, dish name, or phrase in Arabic or transliterated "
+            "Arabic — translate or localize everything, even authentic dish names "
+            '(e.g. describe a dish like "Ful Medames" as "Fava Bean Stew" or similar in English, '
+            "never by its Arabic/transliterated name)."
+        ),
+        "NEVER mix languages within a single field or across fields — the entire output must be "
+        "100% one language, with zero exceptions, even for a single word.",
     ]
 
     return "\n".join(sections).strip()
@@ -541,7 +555,18 @@ def build_workout_prompt(
         "",
         "CRITICAL: Output ONLY the JSON object. No markdown fences. No text before or after.",
         "",
-        f"LANGUAGE: {'Write ALL text fields (plan_name, description, day_name, focus_area, notes, instructions) in Arabic.' if lang == 'ar' else 'Write ALL text fields in English.'}",
+        "=== LANGUAGE — STRICT, NO EXCEPTIONS ===",
+        (
+            "Write EVERY text field (plan_name, description, day_name, focus_area, notes, instructions, "
+            "exercise_name) ENTIRELY in Arabic. Do not leave any word or phrase in English — translate "
+            "or localize everything, including exercise names."
+            if lang == "ar" else
+            "Write EVERY text field (plan_name, description, day_name, focus_area, notes, instructions, "
+            "exercise_name) ENTIRELY in English. Do not leave any word or phrase in Arabic or "
+            "transliterated Arabic — translate or localize everything, including exercise names."
+        ),
+        "NEVER mix languages within a single field or across fields — the entire output must be "
+        "100% one language, with zero exceptions, even for a single word.",
     ]
 
     return "\n".join(parts).strip()
