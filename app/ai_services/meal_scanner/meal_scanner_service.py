@@ -275,7 +275,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                     FROM central_foods
                     WHERE is_active = true AND name_embedding IS NOT NULL
                     ORDER BY name_embedding <=> CAST(:vec AS vector)
-                    LIMIT 5
+                    LIMIT 10
                 """),
                 {"vec": vec_str},
             ).fetchall()

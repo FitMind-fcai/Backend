@@ -158,8 +158,13 @@ class VoiceTranscriberService:
             model=self.parser_model,
             temperature=self.PARSER_TEMPERATURE,
             max_tokens=self.PARSER_MAX_TOKENS,
+            response_format={"type": "json_object"},
         )
-        return resp.choices[0].message.content
+        content = resp.choices[0].message.content
+        if not content:
+            finish_reason = resp.choices[0].finish_reason if resp.choices else None
+            raise ValueError(f"LLM parser returned empty content (finish_reason={finish_reason})")
+        return content
 
     @staticmethod
     def _parse_json(raw: str) -> Dict[str, Any]:
@@ -176,7 +181,7 @@ class VoiceTranscriberService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _search_foods(query_text: str, db, limit: int = 5) -> List[MatchedFoodDTO]:
+    def _search_foods(query_text: str, db, limit: int = 10) -> List[MatchedFoodDTO]:
         """Cosine similarity search against central_foods."""
         if db is None:
             return []
@@ -212,7 +217,7 @@ class VoiceTranscriberService:
             return []
 
     @staticmethod
-    def _search_exercises(query_text: str, db, limit: int = 5) -> List[MatchedExerciseDTO]:
+    def _search_exercises(query_text: str, db, limit: int = 10) -> List[MatchedExerciseDTO]:
         """Cosine similarity search against central_exercises."""
         if db is None:
             return []

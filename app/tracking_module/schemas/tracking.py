@@ -36,6 +36,7 @@ class WorkoutLogResponse(BaseModel):
     user_id: int
     central_exercise_id: Optional[int]
     workout_day_exercise_id: Optional[int]
+    exercise_name: Optional[str] = None
     log_date: date
     sets_completed: int
     reps_completed: int
@@ -43,6 +44,23 @@ class WorkoutLogResponse(BaseModel):
     duration_seconds: Optional[int]
     notes: Optional[str]
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _inject_exercise_name(cls, data: Any) -> Any:
+        """
+        WorkoutLog has no stored exercise-name column (unlike MealLog.meal_name,
+        which IS a snapshot column) — it only has central_exercise_id. The name
+        is only reachable via the already-eager-loaded `central_exercise`
+        relationship (see WorkoutLog.central_exercise, lazy="joined"), so pull
+        it in here rather than leaving API consumers with a bare ID.
+        """
+        if isinstance(data, dict):
+            return data
+        result = {name: getattr(data, name, None) for name in cls.model_fields if name != "exercise_name"}
+        central_exercise = getattr(data, "central_exercise", None)
+        result["exercise_name"] = central_exercise.name if central_exercise else None
+        return result
 
 
 class WeightLogResponse(BaseModel):
