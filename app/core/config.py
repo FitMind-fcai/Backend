@@ -87,10 +87,14 @@ AI_MAX_GENERATION_RETRIES = int(os.getenv("AI_MAX_GENERATION_RETRIES", "2"))
 # simultaneous medical/allergy/macro constraints. The judge and context-builder
 # stay on fast/cheap models elsewhere, since neither benefits from a bigger
 # model for their narrower job.
+# GPT over Claude here specifically: this app relies on strict JSON-schema
+# output (response_format={"type": "json_object"} in llm_client.py), which
+# OpenAI models enforce natively and reliably — Claude (even via OpenRouter)
+# lacks that same native enforcement and drifted from the schema more often.
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openrouter").lower()
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "")
-AI_MODEL = os.getenv("AI_MODEL", "anthropic/claude-sonnet-4.5")
+AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-4.1")
 
 # Optional provider-specific keys (fallback when AI_API_KEY is not set)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")

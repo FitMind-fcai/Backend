@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class LLMClient:
     DEFAULT_PROVIDER = "openrouter"
-    DEFAULT_MODEL = "anthropic/claude-sonnet-4.5"
+    DEFAULT_MODEL = "openai/gpt-4.1"
     DEFAULT_TEMPERATURE = 0.01
     DEFAULT_MAX_TOKENS = 8000
     DEFAULT_JUDGE_MODEL = "openai/gpt-4o-mini"
