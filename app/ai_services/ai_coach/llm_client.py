@@ -28,6 +28,7 @@ class LLMClient:
         "together": "https://api.together.xyz/v1",
         "deepinfra": "https://api.deepinfra.com/v1/openai",
         "fireworks": "https://api.fireworks.ai/inference/v1",
+        "nararouter": "https://router.bynara.id/v1",
     }
 
     def __init__(
@@ -138,6 +139,10 @@ class LLMClient:
             "fireworks": (
                 "FIREWORKS_API_KEY",
                 getattr(config, "FIREWORKS_API_KEY", ""),
+            ),
+            "nararouter": (
+                "NARAROUTER_API_KEY",
+                getattr(config, "NARAROUTER_API_KEY", ""),
             ),
         }
         if provider in mapping:

@@ -88,6 +88,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "")
 DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY", "")
 FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY", "")
+NARAROUTER_API_KEY = os.getenv("NARAROUTER_API_KEY", "")
 
 # Optional OpenRouter headers
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "")

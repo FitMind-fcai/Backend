@@ -7,7 +7,6 @@ from typing import Optional, Dict, Any, List
 
 from openai import OpenAI
 
-from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 from app.ai_services.meal_scanner.dtos import (
     MealScanRequestDTO,
     MealScanResultDTO,
@@ -272,44 +271,37 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # ------------------------------------------------------------------
 
     def _find_similar_foods(self, search_terms: List[str], db) -> List[MatchedFoodDTO]:
-        """Embed food names + tags and run cosine similarity search against central_foods."""
+        """
+        Match food names + tags against the catalog using the same shared
+        search (CentralFoodRepository.hybrid_search_by_text) used by the
+        manual search endpoint and the voice transcriber.
+        """
+        from app.shared.repositories.central_food_repository import (
+            CentralFoodRepository,
+        )
+
         try:
-            from sqlalchemy import text
-
-            vec_str = vec_to_pg_str(embed_text(" ".join(search_terms)))
-            rows = db.execute(
-                text("""
-                    SELECT id, food_name, food_category,
-                           calories_per_100g, protein_per_100g, carbs_per_100g,
-                           fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
-                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
-                    FROM central_foods
-                    WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> CAST(:vec AS vector)
-                    LIMIT 10
-                """),
-                {"vec": vec_str},
-            ).fetchall()
-
+            rows = CentralFoodRepository(db).hybrid_search_by_text(
+                search_terms, limit=10
+            )
             return [
                 MatchedFoodDTO(
-                    id=r.id,
-                    food_name=r.food_name,
-                    food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g,
-                    protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g,
-                    fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g,
-                    serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description,
-                    similarity_score=float(r.similarity),
+                    id=r["id"],
+                    food_name=r["food_name"],
+                    food_category=r.get("food_category"),
+                    calories_per_100g=r.get("calories_per_100g"),
+                    protein_per_100g=r.get("protein_per_100g"),
+                    carbs_per_100g=r.get("carbs_per_100g"),
+                    fats_per_100g=r.get("fats_per_100g"),
+                    fiber_per_100g=r.get("fiber_per_100g"),
+                    serving_size_g=r.get("serving_size_g"),
+                    serving_description=r.get("serving_description"),
+                    similarity_score=r["similarity_score"],
                 )
                 for r in rows
-                if r.similarity >= 0.55
             ]
         except Exception as exc:
-            logger.warning("Vector search failed (returning empty list): %s", exc)
+            logger.warning("Catalog search failed (returning empty list): %s", exc)
             return []
 
     @staticmethod

@@ -3,7 +3,9 @@ from datetime import date, datetime, time, timedelta
 from typing import List, Optional
 
 from app.ai_services.ai_coach.ai_coach_service import AICoachService
-from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
+from app.planning_module.repositories.nutrition_repository import (
+    NutritionPlanRepository,
+)
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
 from app.profile_module.repositories.profile_repository import ProfileRepository
 from app.recommendation_system.schemas.recommendations import (
@@ -20,9 +22,13 @@ from app.recommendation_system.schemas.recommendations import (
     ProgressFeatures,
     ProgressReport,
 )
-from app.recommendation_system.services.feature_engineering import FeatureEngineeringService
+from app.recommendation_system.services.feature_engineering import (
+    FeatureEngineeringService,
+)
 from app.recommendation_system.services.score_service import ScoreService
-from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
+from app.tracking_module.repositories.hydration_log_repository import (
+    HydrationLogRepository,
+)
 from app.tracking_module.repositories.meal_log_repository import MealLogRepository
 from app.tracking_module.repositories.sleep_log_repository import SleepLogRepository
 from app.tracking_module.repositories.weight_log_repository import WeightLogRepository
@@ -32,15 +38,15 @@ logger = logging.getLogger(__name__)
 
 
 _MEAL_TYPE_CENTERS: List[tuple] = [
-    ("pre-workout",       time(9,  30)),
-    ("post-workout",      time(16, 30)),
-    ("morning snack",     time(10, 30)),
-    ("afternoon snack",   time(16,  0)),
-    ("evening snack",     time(21,  0)),
-    ("breakfast",         time(7,  30)),
-    ("lunch",             time(13,  0)),
-    ("dinner",            time(19,  0)),
-    ("snack",             time(15,  0)),
+    ("pre-workout", time(9, 30)),
+    ("post-workout", time(16, 30)),
+    ("morning snack", time(10, 30)),
+    ("afternoon snack", time(16, 0)),
+    ("evening snack", time(21, 0)),
+    ("breakfast", time(7, 30)),
+    ("lunch", time(13, 0)),
+    ("dinner", time(19, 0)),
+    ("snack", time(15, 0)),
 ]
 
 
@@ -69,15 +75,15 @@ class RecommendationService:
         profile_repo: ProfileRepository,
         ai_coach: AICoachService,
     ):
-        self.meal_repo          = meal_repo
-        self.workout_repo       = workout_repo
-        self.weight_repo        = weight_repo
-        self.sleep_repo         = sleep_repo
-        self.hydration_repo     = hydration_repo
+        self.meal_repo = meal_repo
+        self.workout_repo = workout_repo
+        self.weight_repo = weight_repo
+        self.sleep_repo = sleep_repo
+        self.hydration_repo = hydration_repo
         self.nutrition_plan_repo = nutrition_plan_repo
-        self.workout_plan_repo  = workout_plan_repo
-        self.profile_repo       = profile_repo
-        self.ai_coach           = ai_coach
+        self.workout_plan_repo = workout_plan_repo
+        self.profile_repo = profile_repo
+        self.ai_coach = ai_coach
 
         self._features = FeatureEngineeringService(
             meal_repo=meal_repo,
@@ -118,7 +124,9 @@ class RecommendationService:
 
     # ── Next Meal ─────────────────────────────────────────────────────────────
 
-    def get_next_meal(self, user_id: int, query_time: Optional[time] = None) -> NextMealResponse:
+    def get_next_meal(
+        self, user_id: int, query_time: Optional[time] = None
+    ) -> NextMealResponse:
         nutrition_plan = self.nutrition_plan_repo.get_active_plan(user_id)
         if not nutrition_plan:
             return NextMealResponse(
@@ -134,7 +142,6 @@ class RecommendationService:
         query_time_str = query_time.strftime("%H:%M")
 
         today = date.today()
-        day_number = today.weekday() + 1
 
         plan_days = self.nutrition_plan_repo.get_days_by_plan_id(nutrition_plan.id)
         if not plan_days:
@@ -145,10 +152,11 @@ class RecommendationService:
                 message="The nutrition plan has no days configured.",
             )
 
-        today_plan_day = next((d for d in plan_days if d.day_number == day_number), None)
-        if today_plan_day is None:
-            day_in_cycle = (day_number - 1) % len(plan_days)
-            today_plan_day = sorted(plan_days, key=lambda d: d.day_number)[day_in_cycle]
+
+        days_since_start = max(0, (today - nutrition_plan.start_date).days)
+        sorted_days = sorted(plan_days, key=lambda d: d.day_number)
+        day_in_cycle = days_since_start % len(sorted_days)
+        today_plan_day = sorted_days[day_in_cycle]
 
         planned_meals = self.nutrition_plan_repo.get_meals_by_day_id(today_plan_day.id)
         if not planned_meals:
@@ -169,9 +177,13 @@ class RecommendationService:
         best_meal = min(planned_meals, key=distance)
 
         ingredients = []
-        for ing in (best_meal.ingredients or []):
-            food_name = ing.food.food_name if ing.food else f"Food #{ing.central_food_id}"
-            ingredients.append(PlanMealIngredientInfo(food_name=food_name, amount_g=ing.amount_g))
+        for ing in best_meal.ingredients or []:
+            food_name = (
+                ing.food.food_name if ing.food else f"Food #{ing.central_food_id}"
+            )
+            ingredients.append(
+                PlanMealIngredientInfo(food_name=food_name, amount_g=ing.amount_g)
+            )
 
         recommended = NextPlanMeal(
             meal_id=best_meal.id,
@@ -232,32 +244,42 @@ class RecommendationService:
 
         today_logs = self.workout_repo.list_logs(user_id=user_id, log_date=today)
         sessions_logged_today = len(set(l.log_date for l in today_logs))
-        logged_slot_ids = {l.workout_day_exercise_id for l in today_logs if l.workout_day_exercise_id}
-        logged_exercise_ids = {l.central_exercise_id for l in today_logs if l.central_exercise_id}
+        logged_slot_ids = {
+            l.workout_day_exercise_id for l in today_logs if l.workout_day_exercise_id
+        }
+        logged_exercise_ids = {
+            l.central_exercise_id for l in today_logs if l.central_exercise_id
+        }
 
-        exercise_slots = self.workout_plan_repo.get_exercises_by_day_id(today_workout_day.id)
+        exercise_slots = self.workout_plan_repo.get_exercises_by_day_id(
+            today_workout_day.id
+        )
         exercises: List[PlanExerciseInfo] = []
         for slot in exercise_slots:
             ce = slot.central_exercise
-            exercises.append(PlanExerciseInfo(
-                slot_id=slot.id,
-                exercise_id=slot.central_exercise_id,
-                exercise_name=ce.name if ce else f"Exercise #{slot.central_exercise_id}",
-                exercise_type=ce.exercise_type if ce else "Unknown",
-                primary_muscle_group=ce.primary_muscle_group if ce else "Unknown",
-                equipment_required=ce.equipment_required if ce else "Unknown",
-                sets=slot.sets,
-                reps=slot.reps,
-                weight_kg=slot.weight_kg,
-                duration_seconds=slot.duration_seconds,
-                rest_seconds=slot.rest_seconds,
-                instructions=ce.instructions if ce else slot.notes,
-                order_index=slot.order_index,
-                already_logged=(
-                    slot.id in logged_slot_ids
-                    or slot.central_exercise_id in logged_exercise_ids
-                ),
-            ))
+            exercises.append(
+                PlanExerciseInfo(
+                    slot_id=slot.id,
+                    exercise_id=slot.central_exercise_id,
+                    exercise_name=ce.name
+                    if ce
+                    else f"Exercise #{slot.central_exercise_id}",
+                    exercise_type=ce.exercise_type if ce else "Unknown",
+                    primary_muscle_group=ce.primary_muscle_group if ce else "Unknown",
+                    equipment_required=ce.equipment_required if ce else "Unknown",
+                    sets=slot.sets,
+                    reps=slot.reps,
+                    weight_kg=slot.weight_kg,
+                    duration_seconds=slot.duration_seconds,
+                    rest_seconds=slot.rest_seconds,
+                    instructions=ce.instructions if ce else slot.notes,
+                    order_index=slot.order_index,
+                    already_logged=(
+                        slot.id in logged_slot_ids
+                        or slot.central_exercise_id in logged_exercise_ids
+                    ),
+                )
+            )
 
         logged_count = sum(1 for e in exercises if e.already_logged)
         if not exercises:
@@ -285,26 +307,28 @@ class RecommendationService:
         today = date.today()
         yesterday = today - timedelta(days=1)
 
-        meal_logs    = self.meal_repo.list_logs_since(user_id, yesterday, today)
+        meal_logs = self.meal_repo.list_logs_since(user_id, yesterday, today)
         workout_logs = self.workout_repo.list_logs_since(user_id, yesterday, today)
-        weight_logs  = self.weight_repo.list_logs_since(user_id, yesterday, today)
+        weight_logs = self.weight_repo.list_logs_since(user_id, yesterday, today)
 
-        cals_consumed    = sum(l.calories  for l in meal_logs)
+        cals_consumed = sum(l.calories for l in meal_logs)
         protein_consumed = sum(l.protein_g for l in meal_logs)
-        carbs_consumed   = sum(l.carbs_g   for l in meal_logs)
-        fats_consumed    = sum(l.fats_g    for l in meal_logs)
-        meal_types_logged = list({
-            l.meal_type.value if hasattr(l.meal_type, "value") else l.meal_type
-            for l in meal_logs
-        })
+        carbs_consumed = sum(l.carbs_g for l in meal_logs)
+        fats_consumed = sum(l.fats_g for l in meal_logs)
+        meal_types_logged = list(
+            {
+                l.meal_type.value if hasattr(l.meal_type, "value") else l.meal_type
+                for l in meal_logs
+            }
+        )
         workout_sessions = len(set(l.log_date for l in workout_logs))
-        latest_weight    = weight_logs[-1].weight if weight_logs else None
+        latest_weight = weight_logs[-1].weight if weight_logs else None
 
         nutrition_plan = self.nutrition_plan_repo.get_active_plan(user_id)
-        target_cals    = nutrition_plan.daily_calories  if nutrition_plan else None
+        target_cals = nutrition_plan.daily_calories if nutrition_plan else None
         target_protein = nutrition_plan.daily_protein_g if nutrition_plan else None
-        calorie_gap    = (target_cals - cals_consumed)    if target_cals    else None
-        protein_gap    = (target_protein - protein_consumed) if target_protein else None
+        calorie_gap = (target_cals - cals_consumed) if target_cals else None
+        protein_gap = (target_protein - protein_consumed) if target_protein else None
 
         snapshot = DailySnapshot(
             calories_consumed=round(cals_consumed, 1),
@@ -343,16 +367,16 @@ class RecommendationService:
         today = date.today()
 
         if period == "week":
-            since       = today - timedelta(days=7)
+            since = today - timedelta(days=7)
             period_days = 7
-            label       = "Last 7 Days"
+            label = "Last 7 Days"
         elif period == "month":
-            since       = today - timedelta(days=30)
+            since = today - timedelta(days=30)
             period_days = 30
-            label       = "Last 30 Days"
+            label = "Last 30 Days"
         else:
             nutrition_plan = self.nutrition_plan_repo.get_active_plan(user_id)
-            workout_plan   = self.workout_plan_repo.get_active_plan(user_id)
+            workout_plan = self.workout_plan_repo.get_active_plan(user_id)
             dates = [p.start_date for p in [nutrition_plan, workout_plan] if p]
             if dates:
                 since = min(dates)
@@ -363,9 +387,13 @@ class RecommendationService:
 
         until = today
 
-        nutrition_features = self._features.engineer_nutrition_features(user_id, since, until, period_days)
-        workout_features   = self._features.engineer_workout_features(user_id, since, until, period_days)
-        weight_features    = self._features.engineer_weight_features(user_id, since, until)
+        nutrition_features = self._features.engineer_nutrition_features(
+            user_id, since, until, period_days
+        )
+        workout_features = self._features.engineer_workout_features(
+            user_id, since, until, period_days
+        )
+        weight_features = self._features.engineer_weight_features(user_id, since, until)
 
         overall_score = self._features.compute_overall_consistency(
             nutrition_features, workout_features, weight_features
@@ -389,7 +417,7 @@ class RecommendationService:
         )
 
         profile_ctx = self._profile_context(user_id)
-        ai_result   = self.ai_coach.generate_progress_report(
+        ai_result = self.ai_coach.generate_progress_report(
             features_data=features.model_dump(),
             user_profile_context=profile_ctx,
         )

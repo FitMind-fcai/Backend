@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func, text
-from typing import List, Optional
+from typing import List, Optional, Union
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralExercise
 from app.planning_module.models.enums import EquipmentAvailability, WorkoutDifficulty
@@ -391,6 +391,71 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
             {"vec": vec_str, "limit": limit},
         ).fetchall()
         return [dict(r._mapping) for r in rows]
+
+    def hybrid_search_by_text(
+        self, query: Union[str, List[str]], limit: int = 10
+    ) -> List[dict]:
+        """
+        Shared catalog search: exact substring match first, falling back to
+        vector/embedding similarity only if the text layer didn't fill the
+        quota. Used by every entry point that needs "find exercises matching
+        this text" — the manual search endpoint and the voice transcriber —
+        so both agree on one search behavior instead of separate
+        implementations drifting apart.
+
+        query: a single search phrase (manual text search), or a list of
+        terms (e.g. exercise names + tags from the voice AI) — a list is
+        joined into one phrase before searching either layer.
+        """
+        from app.ai_services.embedding_utils import embed_text
+
+        if isinstance(query, (list, tuple)):
+            query_clean = " ".join(t.strip() for t in query if t and t.strip()).strip()
+        else:
+            query_clean = (query or "").strip()
+        if not query_clean:
+            return []
+        seen_ids: set = set()
+        results: List[dict] = []
+
+        try:
+            text_rows = self.db.execute(
+                text("""
+                    SELECT id, name, exercise_type, primary_muscle_group,
+                           secondary_muscles, equipment_required, difficulty_level, location
+                    FROM central_exercises
+                    WHERE is_active = true AND name ILIKE :q
+                    LIMIT :lim
+                """),
+                {"q": f"%{query_clean}%", "lim": limit},
+            ).fetchall()
+            for r in text_rows:
+                if r.id in seen_ids:
+                    continue
+                seen_ids.add(r.id)
+                row = dict(r._mapping)
+                row["similarity_score"] = 1.0
+                results.append(row)
+        except Exception:
+            pass
+
+        if len(results) >= limit:
+            return results[:limit]
+
+        try:
+            vec = embed_text(query_clean)
+            vector_rows = self.search_by_vector(vec, limit=limit * 2)
+            for row in vector_rows:
+                if row["id"] in seen_ids or row["similarity_score"] < 0.55:
+                    continue
+                seen_ids.add(row["id"])
+                results.append(row)
+                if len(results) >= limit:
+                    break
+        except Exception:
+            pass
+
+        return results[:limit]
 
     def set_embedding(self, exercise_id: int, embedding: List[float]) -> None:
         """Persist the *embedding* vector for a single central_exercise row."""

@@ -8,7 +8,6 @@ from typing import Optional, Dict, Any, List
 from groq import Groq
 from openai import OpenAI
 
-from app.ai_services.embedding_utils import embed_text, embed_texts, vec_to_pg_str
 from app.ai_services.voice_transcriber.dtos import (
     TranscriptionRequestDTO,
     TranscriptionResultDTO,
@@ -198,87 +197,76 @@ class VoiceTranscriberService:
 
     @staticmethod
     def _search_foods(query_text: str, db, limit: int = 10) -> List[MatchedFoodDTO]:
-        """Cosine similarity search against central_foods."""
+        """
+        Match transcribed food text against the catalog using the same shared
+        search (CentralFoodRepository.hybrid_search_by_text) used by the
+        manual search endpoint and the camera meal scanner.
+        """
         if db is None:
             return []
-        try:
-            from sqlalchemy import text as sql_text
+        from app.shared.repositories.central_food_repository import (
+            CentralFoodRepository,
+        )
 
-            vec = vec_to_pg_str(embed_text(query_text))
-            rows = db.execute(
-                sql_text("""
-                    SELECT id, food_name, food_category,
-                           calories_per_100g, protein_per_100g, carbs_per_100g,
-                           fats_per_100g, fiber_per_100g, serving_size_g, serving_description,
-                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
-                    FROM central_foods
-                    WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> CAST(:vec AS vector)
-                    LIMIT :lim
-                """),
-                {"vec": vec, "lim": limit},
-            ).fetchall()
+        try:
+            rows = CentralFoodRepository(db).hybrid_search_by_text(
+                query_text, limit=limit
+            )
             return [
                 MatchedFoodDTO(
-                    id=r.id,
-                    food_name=r.food_name,
-                    food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g,
-                    protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g,
-                    fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g,
-                    serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description,
-                    similarity_score=float(r.similarity),
+                    id=r["id"],
+                    food_name=r["food_name"],
+                    food_category=r.get("food_category"),
+                    calories_per_100g=r.get("calories_per_100g"),
+                    protein_per_100g=r.get("protein_per_100g"),
+                    carbs_per_100g=r.get("carbs_per_100g"),
+                    fats_per_100g=r.get("fats_per_100g"),
+                    fiber_per_100g=r.get("fiber_per_100g"),
+                    serving_size_g=r.get("serving_size_g"),
+                    serving_description=r.get("serving_description"),
+                    similarity_score=r["similarity_score"],
                 )
                 for r in rows
-                if r.similarity >= 0.55
             ]
         except Exception as exc:
-            logger.warning("Food vector search failed: %s", exc)
+            logger.warning("Food catalog search failed: %s", exc)
             return []
 
     @staticmethod
     def _search_exercises(
         query_text: str, db, limit: int = 10
     ) -> List[MatchedExerciseDTO]:
-        """Cosine similarity search against central_exercises."""
+        """
+        Match transcribed exercise text against the catalog using the same
+        shared search (CentralExerciseRepository.hybrid_search_by_text) used
+        by the manual search endpoint.
+        """
         if db is None:
             return []
-        try:
-            from sqlalchemy import text as sql_text
+        from app.shared.repositories.central_exercise_repository import (
+            CentralExerciseRepository,
+        )
 
-            vec = vec_to_pg_str(embed_text(query_text))
-            rows = db.execute(
-                sql_text("""
-                    SELECT id, name, exercise_type, primary_muscle_group,
-                           secondary_muscles, equipment_required, difficulty_level, location,
-                           1 - (name_embedding <=> CAST(:vec AS vector)) AS similarity
-                    FROM central_exercises
-                    WHERE is_active = true AND name_embedding IS NOT NULL
-                    ORDER BY name_embedding <=> CAST(:vec AS vector)
-                    LIMIT :lim
-                """),
-                {"vec": vec, "lim": limit},
-            ).fetchall()
+        try:
+            rows = CentralExerciseRepository(db).hybrid_search_by_text(
+                query_text, limit=limit
+            )
             return [
                 MatchedExerciseDTO(
-                    id=r.id,
-                    name=r.name,
-                    exercise_type=r.exercise_type,
-                    primary_muscle_group=r.primary_muscle_group,
-                    secondary_muscles=r.secondary_muscles,
-                    equipment_required=r.equipment_required,
-                    difficulty_level=r.difficulty_level,
-                    location=r.location,
-                    similarity_score=float(r.similarity),
+                    id=r["id"],
+                    name=r["name"],
+                    exercise_type=r.get("exercise_type"),
+                    primary_muscle_group=r.get("primary_muscle_group"),
+                    secondary_muscles=r.get("secondary_muscles"),
+                    equipment_required=r.get("equipment_required"),
+                    difficulty_level=r.get("difficulty_level"),
+                    location=r.get("location"),
+                    similarity_score=r["similarity_score"],
                 )
                 for r in rows
-                if r.similarity >= 0.55
             ]
         except Exception as exc:
-            logger.warning("Exercise vector search failed: %s", exc)
+            logger.warning("Exercise catalog search failed: %s", exc)
             return []
 
     # ------------------------------------------------------------------
