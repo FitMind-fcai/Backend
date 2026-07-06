@@ -19,14 +19,13 @@ SQLALCHEMY_ECHO = os.getenv("SQLALCHEMY_ECHO", "false").strip().lower() in {"1",
 SQLALCHEMY_LOG_LEVEL = os.getenv("SQLALCHEMY_LOG_LEVEL", "WARNING").upper()
 
 # ========== Redis Configuration ==========
-# Use environment variable for Docker, fallback to localhost for local dev
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DB = 0
 REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD", None)  # Set if Redis has password
 REDIS_DECODE_RESPONSES = True  # Auto decode bytes to strings
 
-# Redis Key Prefixes (can be extended by individual modules)
+
 REDIS_OTP_PREFIX = "otp:"  # otp:user@email.com
 REDIS_OTP_ATTEMPTS_PREFIX = "otp_attempts:"  # otp_attempts:user@email.com
 REDIS_OTP_RESEND_COOLDOWN_PREFIX = "otp_cooldown:"  # otp_cooldown:user@email.com
@@ -75,22 +74,9 @@ AI_COACH_MAX_TOKENS = int(os.getenv("AI_COACH_MAX_TOKENS", "4000"))
 EVAL_GROQ_API_KEY = os.getenv("EVAL_GROQ_API_KEY", GROQ_API_KEY)
 EVAL_GROQ_MODEL = os.getenv("EVAL_GROQ_MODEL", GROQ_MODEL)
 
-# Max attempts for the INITIAL plan generation call when the model returns
-# malformed JSON or output that fails schema validation (regenerate instead
-# of failing the request).
 AI_MAX_GENERATION_RETRIES = int(os.getenv("AI_MAX_GENERATION_RETRIES", "2"))
 
-# Provider-agnostic LLM settings (used by AI Coach)
-# Supported providers include: groq, openrouter, openai, together, deepinfra, fireworks.
-# Main generator deliberately defaults to a strong reasoning model — this is
-# the one call that actually writes the plan and must hold up under many
-# simultaneous medical/allergy/macro constraints. The judge and context-builder
-# stay on fast/cheap models elsewhere, since neither benefits from a bigger
-# model for their narrower job.
-# GPT over Claude here specifically: this app relies on strict JSON-schema
-# output (response_format={"type": "json_object"} in llm_client.py), which
-# OpenAI models enforce natively and reliably — Claude (even via OpenRouter)
-# lacks that same native enforcement and drifted from the schema more often.
+
 AI_PROVIDER = os.getenv("AI_PROVIDER", "openrouter").lower()
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "")
