@@ -15,8 +15,6 @@ food/exercise fetch.  It does two things:
 
 The result replaces Channel C in the main prompt.  The main generator no
 longer needs to "recall" rules from training — it just applies them.
-The main prompt also drops Channel A (general RAG) because the context builder
-already extracts the relevant evidence into the rules block.
 """
 import logging
 import threading

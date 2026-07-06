@@ -4,8 +4,7 @@ LLM-based plan judge — second-pass safety and quality review.
 Design principles
 -----------------
 1. Severity is explicit and rubric-driven (1/2/3), not decided ad-hoc by the LLM.
-2. Pass/fail is applied mechanically in Python from severity counts — the LLM's
-   own "passed" field is ignored to eliminate randomness.
+2. Pass/fail is applied mechanically in Python from severity counts
 3. Every issue must include an exact "fix" instruction so the generator knows
    precisely what to change, not just what is wrong.
 4. The threshold is calibrated to pass "good enough" plans — only genuine safety
@@ -126,7 +125,11 @@ _OUTPUT_SCHEMA = """{
 # Serializers
 # ---------------------------------------------------------------------------
 
-def _serialize_nutrition_plan(plan: NutritionPlanDTO) -> str:
+def _serialize_nutrition_plan(
+    plan: NutritionPlanDTO,
+    food_id_to_name: Dict[int, str] = None,
+) -> str:
+    food_id_to_name = food_id_to_name or {}
     lines = [f"Plan: {plan.plan_name}", f"Description: {plan.description or '(none)'}"]
     for day in (plan.days or []):
         lines.append(f"\n{day.day_name} (Day {day.day_number}):")
@@ -134,6 +137,13 @@ def _serialize_nutrition_plan(plan: NutritionPlanDTO) -> str:
             lines.append(f"  Notes: {day.notes}")
         for meal in (day.meals or []):
             lines.append(f"  [{meal.meal_type}] {meal.meal_name}")
+            ingredient_names = [
+                food_id_to_name.get(ing.central_food_id)
+                for ing in (meal.ingredients or [])
+            ]
+            ingredient_names = [n for n in ingredient_names if n]
+            if ingredient_names:
+                lines.append(f"    Actual ingredients: {', '.join(ingredient_names)}")
             if meal.instructions:
                 lines.append(f"    Instructions: {meal.instructions[:600]}")
     return "\n".join(lines)
@@ -177,6 +187,7 @@ class PlanJudge:
         user_profile: UserProfileDTO,
         preferences: NutritionPreferencesDTO,
         planning_output=None,
+        food_id_to_name: Dict[int, str] = None,
     ) -> Tuple[bool, str, List[Dict]]:
         system = (
             "You are a senior clinical dietitian and food safety expert.\n"
@@ -210,7 +221,7 @@ class PlanJudge:
             f"DIETARY RESTRICTIONS: {getattr(preferences, 'dietary_restrictions', None) or 'None'}\n"
             f"{targets_block}\n"
             "GENERATED PLAN:\n"
-            f"{_serialize_nutrition_plan(plan)}\n\n"
+            f"{_serialize_nutrition_plan(plan, food_id_to_name)}\n\n"
             "Evaluate these areas in order:\n"
             "1. ALLERGEN CHECK — read instructions text of every meal for any ingredient "
             "matching the allergy list (exact or family). Severity 3 if found. Only flag real, "
@@ -230,7 +241,30 @@ class PlanJudge:
             "Severity 1 if minor miss, 2 if completely wrong.\n"
             "6. GOAL ALIGNMENT — protein and structure match the fitness goal? "
             "Severity 1-2 depending on how far off.\n"
-            "7. VARIETY — sufficient diversity over 7 days? Severity 1 if minor.\n\n"
+            "7. VARIETY — sufficient diversity over 7 days? Severity 1 if minor.\n"
+            "8. MEAL/INGREDIENT CONSISTENCY — for every meal, read its name, its "
+            "'Instructions' text, and its 'Actual ingredients' line together as one whole, and "
+            "judge whether they genuinely describe the same dish. Check ALL of the following, "
+            "not just one direction:\n"
+            "   a. NAME vs INGREDIENTS — does the name reference a specific food that is "
+            "completely absent from the actual ingredients (e.g. a meal called 'Ful Medames' "
+            "with no fava beans anywhere in its ingredients, or 'Grilled Salmon Bowl' with no "
+            "salmon/fish listed)?\n"
+            "   b. INSTRUCTIONS vs INGREDIENTS — do the cooking instructions reference "
+            "handling, cooking, or combining an ingredient that never actually appears in the "
+            "ingredient list (e.g. instructions say 'season the chicken and grill' but there is "
+            "no chicken/poultry among the actual ingredients)?\n"
+            "   c. INGREDIENTS vs THE DISH AS A WHOLE — is there a real listed ingredient that "
+            "has no plausible place in this dish at all, given its name and instructions (e.g. "
+            "a sweet breakfast oatmeal whose ingredient list includes raw fish, or a stated "
+            "vegan/vegetarian dish whose ingredients include meat)?\n"
+            "Flag any genuine mismatch as severity 2, since a user relying on the name or "
+            "instructions to know what they're actually eating would be misled or could eat "
+            "something they didn't expect. Do NOT flag harmless naming/style words (e.g. "
+            "'fresh', 'bowl', 'plate', 'homemade') that aren't real ingredients, and do NOT flag "
+            "a meal whose name is a general dish category that its ingredients do plausibly "
+            "satisfy — only flag a genuine, specific mismatch between what is claimed and what "
+            "is actually there.\n\n"
             "For every issue: state the day and meal, what exactly is wrong, and the exact fix.\n"
             "If the plan is clean, return an empty issues array."
         )

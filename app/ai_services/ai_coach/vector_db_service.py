@@ -18,46 +18,79 @@ logger = logging.getLogger(__name__)
 
 
 class VectorDBService:
-
     # Default paths
     BASE_DIR = os.path.dirname(__file__)
     DEFAULT_PERSIST_DIR = os.path.join(BASE_DIR, "chroma_db")
     DEFAULT_PDF_PATH = os.path.join(BASE_DIR, "fitness-handbook.pdf")
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-    DEFAULT_SCRAPED_PATH = os.path.join(PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json")
+    DEFAULT_SCRAPED_PATH = os.path.join(
+        PROJECT_ROOT, "data", "scraped_resources", "scraped_documents.json"
+    )
 
     # Embedding model configuration
-    EMBEDDING_MODEL_NAME = os.getenv("AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
+    EMBEDDING_MODEL_NAME = os.getenv(
+        "AI_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"
+    )
     COLLECTION_NAME = "fitness_knowledge"
 
     # Retrieval layers / sectioning
     WORKOUT_KEYWORDS = {
-        "programming":      ["programming", "guideline", "program design", "periodization", "prescription", "resistance training"],
-        "exercise_library": ["exercise database", "exercise directory", "exercise anatomy", "kinesiology", "muscle directory"],
-        "periodization":    ["periodization", "hypertrophy", "strength", "power", "endurance"],
-        "cardio":           ["cardio", "aerobic", "hiit", "interval", "endurance"],
-        "core":             ["core", "stability", "plank", "anti-rotation"],
-        "books":            ["handbook", "manual", "book", "guide"],
+        "programming": [
+            "programming",
+            "guideline",
+            "program design",
+            "periodization",
+            "prescription",
+            "resistance training",
+        ],
+        "exercise_library": [
+            "exercise database",
+            "exercise directory",
+            "exercise anatomy",
+            "kinesiology",
+            "muscle directory",
+        ],
+        "periodization": [
+            "periodization",
+            "hypertrophy",
+            "strength",
+            "power",
+            "endurance",
+        ],
+        "cardio": ["cardio", "aerobic", "hiit", "interval", "endurance"],
+        "core": ["core", "stability", "plank", "anti-rotation"],
+        "books": ["handbook", "manual", "book", "guide"],
     }
     NUTRITION_KEYWORDS = {
-        "guidelines":     ["nutrition", "diet", "healthy diet", "nutrition guidelines"],
-        "database":       ["fooddata central", "food database", "nutrient database", "usda"],
-        "sports_nutrition": ["sports nutrition", "supplement", "nutrient timing", "protein"],
-        "macros_tdee":    ["macro", "tdee", "calorie", "macronutrient", "energy expenditure"],
-        "books":          ["guide", "handbook", "book", "manual"],
+        "guidelines": ["nutrition", "diet", "healthy diet", "nutrition guidelines"],
+        "database": ["fooddata central", "food database", "nutrient database", "usda"],
+        "sports_nutrition": [
+            "sports nutrition",
+            "supplement",
+            "nutrient timing",
+            "protein",
+        ],
+        "macros_tdee": [
+            "macro",
+            "tdee",
+            "calorie",
+            "macronutrient",
+            "energy expenditure",
+        ],
+        "books": ["guide", "handbook", "book", "manual"],
     }
 
     # Text splitting configuration
-    CHUNK_SIZE            = 2200
-    CHUNK_OVERLAP         = 200
-    MAX_CONTEXT_CHARS     = 3600
-    LEXICAL_TOP_K         = 24
+    CHUNK_SIZE = 2200
+    CHUNK_OVERLAP = 200
+    MAX_CONTEXT_CHARS = 3600
+    LEXICAL_TOP_K = 24
     SEMANTIC_TOP_K_MULTIPLIER = 4
 
     # Phase 4 — retrieval constants
-    BM25_TOP_K   = 20
-    DENSE_TOP_K  = 20
-    RRF_K        = 60          # RRF constant (standard value)
+    BM25_TOP_K = 20
+    DENSE_TOP_K = 20
+    RRF_K = 60  # RRF constant 
 
     def __init__(
         self,
@@ -65,21 +98,13 @@ class VectorDBService:
         collection_name: Optional[str] = None,
     ):
         self.persist_directory = persist_directory or self.DEFAULT_PERSIST_DIR
-        self.collection_name   = collection_name   or self.COLLECTION_NAME
+        self.collection_name = collection_name or self.COLLECTION_NAME
 
-        self._embeddings   = None
-        self._vectorstore  = None
-        self._bm25_index   = None
+        self._embeddings = None
+        self._vectorstore = None
+        self._bm25_index = None
         self._bm25_docs: List[Dict[str, Any]] = []
 
-        # This service is a shared module-level singleton (get_vector_db_service),
-        # so many request threads hit these lazy properties concurrently on
-        # first use — without a lock each one independently reloads Chroma
-        # from disk / rebuilds the BM25 index (seen in production logs as
-        # duplicate "BM25 index built with N document chunks" lines).
-        # RLock (not Lock): _build_bm25_index() itself reads self.vectorstore,
-        # which needs to re-enter this same lock on the same thread — a plain
-        # Lock would deadlock there.
         self._lazy_lock = threading.RLock()
 
     # ------------------------------------------------------------------
@@ -92,6 +117,7 @@ class VectorDBService:
             with self._lazy_lock:
                 if self._embeddings is None:
                     from app.ai_services.embedding_utils import get_shared_embeddings
+
                     self._embeddings = get_shared_embeddings()
         return self._embeddings
 
@@ -120,19 +146,23 @@ class VectorDBService:
         try:
             from rank_bm25 import BM25Okapi
         except ImportError:
-            logger.warning("rank_bm25 not installed — BM25 retrieval disabled. Run: pip install rank-bm25")
+            logger.warning(
+                "rank_bm25 not installed — BM25 retrieval disabled. Run: pip install rank-bm25"
+            )
             return
 
         try:
             collection = self.vectorstore._collection
-            result     = collection.get(include=["documents", "metadatas"])
+            result = collection.get(include=["documents", "metadatas"])
         except Exception as exc:
-            logger.warning("Could not load documents from ChromaDB for BM25 indexing: %s", exc)
+            logger.warning(
+                "Could not load documents from ChromaDB for BM25 indexing: %s", exc
+            )
             return
 
-        docs    = result.get("documents") or []
-        metas   = result.get("metadatas") or []
-        ids     = result.get("ids") or []
+        docs = result.get("documents") or []
+        metas = result.get("metadatas") or []
+        ids = result.get("ids") or []
 
         if not docs:
             logger.warning("ChromaDB collection is empty — BM25 index will be empty.")
@@ -168,7 +198,9 @@ class VectorDBService:
             if score <= 0:
                 continue
             if domain_filter:
-                doc_domain = (self._bm25_docs[idx].get("metadata") or {}).get("domain", "")
+                doc_domain = (self._bm25_docs[idx].get("metadata") or {}).get(
+                    "domain", ""
+                )
                 if doc_domain and doc_domain != domain_filter:
                     continue
             candidates.append((idx, float(score)))
@@ -194,7 +226,7 @@ class VectorDBService:
         Documents that appear in both lists receive a higher combined score.
         """
         rrf_scores: Dict[str, float] = {}
-        key_to_doc:  Dict[str, Document] = {}
+        key_to_doc: Dict[str, Document] = {}
 
         def _doc_key(content: str) -> str:
             return content[:300]
@@ -202,13 +234,13 @@ class VectorDBService:
         # Dense ranking contribution
         for rank, doc in enumerate(dense_docs):
             key = _doc_key(doc.page_content)
-            rrf_scores[key]  = rrf_scores.get(key, 0.0) + 1.0 / (self.RRF_K + rank + 1)
+            rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (self.RRF_K + rank + 1)
             key_to_doc[key] = doc
 
         # BM25 ranking contribution
         for rank, (idx, _score) in enumerate(bm25_hits):
-            d    = self._bm25_docs[idx]
-            key  = _doc_key(d["text"])
+            d = self._bm25_docs[idx]
+            key = _doc_key(d["text"])
             rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (self.RRF_K + rank + 1)
             if key not in key_to_doc:
                 key_to_doc[key] = Document(
@@ -237,10 +269,33 @@ class VectorDBService:
 
     def _infer_domain(self, text: str) -> str:
         lowered = (text or "").lower()
-        nutrition_signals = ["nutrition", "diet", "meal", "food", "calorie", "macro", "tdee", "protein", "carb", "fat", "supplement"]
-        workout_signals   = ["workout", "exercise", "training", "strength", "cardio", "program", "periodization", "core", "mobility", "resistance"]
+        nutrition_signals = [
+            "nutrition",
+            "diet",
+            "meal",
+            "food",
+            "calorie",
+            "macro",
+            "tdee",
+            "protein",
+            "carb",
+            "fat",
+            "supplement",
+        ]
+        workout_signals = [
+            "workout",
+            "exercise",
+            "training",
+            "strength",
+            "cardio",
+            "program",
+            "periodization",
+            "core",
+            "mobility",
+            "resistance",
+        ]
         n = sum(1 for t in nutrition_signals if t in lowered)
-        w = sum(1 for t in workout_signals   if t in lowered)
+        w = sum(1 for t in workout_signals if t in lowered)
         if n > w:
             return "nutrition"
         if w > n:
@@ -248,8 +303,10 @@ class VectorDBService:
         return "general"
 
     def _infer_topic(self, domain: str, text: str) -> str:
-        lowered      = (text or "").lower()
-        keywords_map = self.NUTRITION_KEYWORDS if domain == "nutrition" else self.WORKOUT_KEYWORDS
+        lowered = (text or "").lower()
+        keywords_map = (
+            self.NUTRITION_KEYWORDS if domain == "nutrition" else self.WORKOUT_KEYWORDS
+        )
         for topic, keywords in keywords_map.items():
             if any(keyword in lowered for keyword in keywords):
                 return topic
@@ -259,8 +316,6 @@ class VectorDBService:
         path = Path(self.persist_directory)
         if not path.exists():
             return
-        # Delete contents only — don't remove the directory itself because it
-        # may be a Docker volume mount point (rmtree on a mount point → EBUSY).
         for item in path.iterdir():
             if item.is_dir():
                 shutil.rmtree(item)
@@ -278,33 +333,83 @@ class VectorDBService:
         return cleaned.strip()
 
     def _is_low_quality_document(self, text: str) -> bool:
-        lowered    = (text or "").lower()
+        lowered = (text or "").lower()
         word_count = len(lowered.split())
         if word_count < 60:
             return True
         boilerplate_markers = [
-            "about nsca", "membership overview", "contact us", "privacy policy",
-            "terms of use", "become a member", "report ceus", "login", "shop",
-            "donate", "all rights reserved",
+            "about nsca",
+            "membership overview",
+            "contact us",
+            "privacy policy",
+            "terms of use",
+            "become a member",
+            "report ceus",
+            "login",
+            "shop",
+            "donate",
+            "all rights reserved",
         ]
-        low_quality_markers = ["calculator result", "blog post", "read more articles", "leave a comment"]
+        low_quality_markers = [
+            "calculator result",
+            "blog post",
+            "read more articles",
+            "leave a comment",
+        ]
         if sum(1 for m in boilerplate_markers if m in lowered) >= 5:
             return True
-        if sum(1 for m in low_quality_markers  if m in lowered) >= 2:
+        if sum(1 for m in low_quality_markers if m in lowered) >= 2:
             return True
-        unique_tokens   = set(self._tokenize(lowered))
+        unique_tokens = set(self._tokenize(lowered))
         lexical_diversity = len(unique_tokens) / max(word_count, 1)
         if word_count > 300 and lexical_diversity < 0.08:
             return True
         return False
 
     def _extract_keywords(self, text: str, max_keywords: int = 8) -> List[str]:
-        tokens    = re.findall(r"[a-zA-Z][a-zA-Z0-9\-]{2,}", (text or "").lower())
+        tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9\-]{2,}", (text or "").lower())
         stop_words = {
-            "the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are",
-            "was", "were", "have", "has", "had", "not", "can", "may", "will", "about", "their",
-            "than", "then", "also", "when", "what", "where", "which", "while", "using", "used",
-            "these", "those", "over", "under", "between", "within", "should", "could", "would",
+            "the",
+            "and",
+            "for",
+            "with",
+            "that",
+            "this",
+            "from",
+            "into",
+            "your",
+            "you",
+            "are",
+            "was",
+            "were",
+            "have",
+            "has",
+            "had",
+            "not",
+            "can",
+            "may",
+            "will",
+            "about",
+            "their",
+            "than",
+            "then",
+            "also",
+            "when",
+            "what",
+            "where",
+            "which",
+            "while",
+            "using",
+            "used",
+            "these",
+            "those",
+            "over",
+            "under",
+            "between",
+            "within",
+            "should",
+            "could",
+            "would",
         }
         counts: Dict[str, int] = {}
         for token in tokens:
@@ -317,7 +422,7 @@ class VectorDBService:
         if not text:
             return ""
         sentences = re.split(r"(?<=[.!?])\s+", text)
-        summary   = " ".join([s.strip() for s in sentences if s.strip()][:2])
+        summary = " ".join([s.strip() for s in sentences if s.strip()][:2])
         return summary[:260]
 
     def _tokenize(self, text: str) -> List[str]:
@@ -329,7 +434,11 @@ class VectorDBService:
             return []
         variants = [base]
         if len(base.split()) <= 8:
-            variants += [f"{base} guidelines", f"{base} best practices", f"{base} safety recommendations"]
+            variants += [
+                f"{base} guidelines",
+                f"{base} best practices",
+                f"{base} safety recommendations",
+            ]
         else:
             variants += [f"summary of {base}", f"evidence for {base}"]
         seen: set = set()
@@ -340,7 +449,9 @@ class VectorDBService:
                 deduped.append(v)
         return deduped
 
-    def _format_filters(self, filters: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def _format_filters(
+        self, filters: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         if not filters:
             return None
         if len(filters) > 1:
@@ -348,11 +459,11 @@ class VectorDBService:
         return filters
 
     def _build_context_block(self, document: Document) -> str:
-        source   = document.metadata.get("source",        "Unknown")
-        title    = document.metadata.get("title",         "Unknown")
-        summary  = document.metadata.get("chunk_summary", "")
+        source = document.metadata.get("source", "Unknown")
+        title = document.metadata.get("title", "Unknown")
+        summary = document.metadata.get("chunk_summary", "")
         keywords = document.metadata.get("chunk_keywords", "")
-        text     = (document.page_content or "").strip()
+        text = (document.page_content or "").strip()
         if len(text) > 900:
             text = text[:900].rstrip() + "..."
         return (
@@ -373,21 +484,30 @@ class VectorDBService:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         scraped_docs = data if isinstance(data, list) else data.get("documents", [])
-        documents    = []
+        documents = []
         seen_sigs: set = set()
         for doc in scraped_docs:
-            domain = self._infer_domain(" ".join([
-                doc.get("category", ""),
-                doc.get("resource_name", doc.get("title", "")),
-                doc.get("description", ""),
-                doc.get("content", "")[:1000],
-            ]))
-            topic = self._infer_topic(domain, " ".join([
-                doc.get("category", ""),
-                doc.get("resource_name", doc.get("title", "")),
-                doc.get("key_features", ""),
-                doc.get("description", ""),
-            ]))
+            domain = self._infer_domain(
+                " ".join(
+                    [
+                        doc.get("category", ""),
+                        doc.get("resource_name", doc.get("title", "")),
+                        doc.get("description", ""),
+                        doc.get("content", "")[:1000],
+                    ]
+                )
+            )
+            topic = self._infer_topic(
+                domain,
+                " ".join(
+                    [
+                        doc.get("category", ""),
+                        doc.get("resource_name", doc.get("title", "")),
+                        doc.get("key_features", ""),
+                        doc.get("description", ""),
+                    ]
+                ),
+            )
             content = self._clean_text(doc.get("content", ""))
             if len(content) < 120:
                 continue
@@ -397,19 +517,21 @@ class VectorDBService:
             if sig in seen_sigs:
                 continue
             seen_sigs.add(sig)
-            documents.append(Document(
-                page_content=content,
-                metadata={
-                    "source":       doc["url"],
-                    "title":        doc.get("resource_name", doc.get("title", "Unknown")),
-                    "category":     doc.get("category",     "Unknown"),
-                    "section":      doc.get("section",      "Unknown"),
-                    "domain":       domain,
-                    "topic":        topic,
-                    "organization": doc.get("organization", "Unknown"),
-                    "scraped_at":   doc.get("scraped_at",   ""),
-                },
-            ))
+            documents.append(
+                Document(
+                    page_content=content,
+                    metadata={
+                        "source": doc["url"],
+                        "title": doc.get("resource_name", doc.get("title", "Unknown")),
+                        "category": doc.get("category", "Unknown"),
+                        "section": doc.get("section", "Unknown"),
+                        "domain": domain,
+                        "topic": topic,
+                        "organization": doc.get("organization", "Unknown"),
+                        "scraped_at": doc.get("scraped_at", ""),
+                    },
+                )
+            )
         print(f"Loaded {len(documents)} documents from JSON")
         return documents
 
@@ -417,7 +539,7 @@ class VectorDBService:
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found at {pdf_path}")
         print(f"Loading PDF file: {pdf_path}")
-        loader    = PyPDFLoader(pdf_path)
+        loader = PyPDFLoader(pdf_path)
         documents = loader.load()
         print(f"Loaded {len(documents)} pages from PDF")
         return documents
@@ -443,12 +565,14 @@ class VectorDBService:
 
         if source_type == "scraped":
             source_path = source_path or self.DEFAULT_SCRAPED_PATH
-            documents   = self._load_scraped_documents(source_path)
+            documents = self._load_scraped_documents(source_path)
         elif source_type == "pdf":
             source_path = source_path or self.DEFAULT_PDF_PATH
-            documents   = self._load_pdf_documents(source_path)
+            documents = self._load_pdf_documents(source_path)
         else:
-            raise ValueError(f"Invalid source_type: {source_type}. Must be 'scraped' or 'pdf'")
+            raise ValueError(
+                f"Invalid source_type: {source_type}. Must be 'scraped' or 'pdf'"
+            )
 
         print("Splitting documents into chunks...")
         text_splitter = RecursiveCharacterTextSplitter(
@@ -463,9 +587,9 @@ class VectorDBService:
             cleaned = self._clean_text(doc.page_content)
             if len(cleaned) < 80:
                 continue
-            doc.page_content          = cleaned
-            doc.metadata              = dict(doc.metadata or {})
-            doc.metadata["chunk_index"]   = idx
+            doc.page_content = cleaned
+            doc.metadata = dict(doc.metadata or {})
+            doc.metadata["chunk_index"] = idx
             doc.metadata["chunk_summary"] = self._summarize_text(cleaned)
             doc.metadata["chunk_keywords"] = ", ".join(self._extract_keywords(cleaned))
             texts.append(doc)
@@ -480,18 +604,18 @@ class VectorDBService:
         )
         # Invalidate BM25 index so it gets rebuilt on next retrieval
         self._bm25_index = None
-        self._bm25_docs  = []
+        self._bm25_docs = []
         print(f"Vector store saved in: {self.persist_directory}")
 
         return {
-            "status":            "created",
-            "message":           "Vector database created successfully",
-            "source_type":       source_type,
-            "source_path":       source_path,
-            "documents_loaded":  len(documents),
-            "chunks_created":    len(texts),
+            "status": "created",
+            "message": "Vector database created successfully",
+            "source_type": source_type,
+            "source_path": source_path,
+            "documents_loaded": len(documents),
+            "chunks_created": len(texts),
             "persist_directory": self.persist_directory,
-            "collection_name":   self.collection_name,
+            "collection_name": self.collection_name,
         }
 
     # ------------------------------------------------------------------
@@ -511,41 +635,36 @@ class VectorDBService:
           3. RRF Fusion       — combine both ranked lists → final top-k
         """
         formatted_filter = self._format_filters(filters)
-        domain_filter    = (filters or {}).get("domain") if filters else None
+        domain_filter = (filters or {}).get("domain") if filters else None
 
         # ── Step 1: Dense retrieval across query variants ──────────────
-        query_variants  = self._expand_query(query)
+        query_variants = self._expand_query(query)
         dense_seen: Dict[str, Tuple[float, Document]] = {}
 
         def _doc_key(doc: Document) -> str:
-            src   = doc.metadata.get("source",      "")
-            title = doc.metadata.get("title",        "")
-            cidx  = doc.metadata.get("chunk_index",  "")
+            src = doc.metadata.get("source", "")
+            title = doc.metadata.get("title", "")
+            cidx = doc.metadata.get("chunk_index", "")
             return f"{src}|{title}|{cidx}|{hash(doc.page_content)}"
 
         semantic_k = max(k * self.SEMANTIC_TOP_K_MULTIPLIER, self.DENSE_TOP_K)
-
-        # Batch-embed all query variants in a single encode() call instead of
-        # one per variant (embed_query would otherwise re-invoke the model
-        # once per variant inside similarity_search_with_relevance_scores).
-        # The by-vector variant returns raw distance, not a relevance score, so
-        # the same relevance_score_fn Chroma would normally apply internally is
-        # applied here manually to keep scoring identical to before.
         variant_embeddings = embed_texts(query_variants)
         relevance_score_fn = self.vectorstore._select_relevance_score_fn()
 
         for embedding in variant_embeddings:
-            raw_results = self.vectorstore.similarity_search_by_vector_with_relevance_scores(
-                embedding,
-                k=semantic_k,
-                filter=formatted_filter,
+            raw_results = (
+                self.vectorstore.similarity_search_by_vector_with_relevance_scores(
+                    embedding,
+                    k=semantic_k,
+                    filter=formatted_filter,
+                )
             )
             results = [(doc, relevance_score_fn(score)) for doc, score in raw_results]
             for doc, score in results:
                 # Gold-source boost / blog penalty
-                title  = doc.metadata.get("title",  "").lower()
+                title = doc.metadata.get("title", "").lower()
                 source = doc.metadata.get("source", "").lower()
-                gold   = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
+                gold = ["acsm", "nsca", "who", "issn", "ioc", "nih"]
                 if any(g in title or g in source for g in gold):
                     score += 0.15
                 if "blog" in source or "calculator" in source or "blog" in title:
@@ -556,11 +675,14 @@ class VectorDBService:
 
         # Sort dense results by combined score
         dense_docs: List[Document] = [
-            doc for _, doc in sorted(dense_seen.values(), key=lambda x: x[0], reverse=True)
+            doc
+            for _, doc in sorted(dense_seen.values(), key=lambda x: x[0], reverse=True)
         ]
 
         # ── Step 2: BM25 retrieval ─────────────────────────────────────
-        bm25_hits = self._bm25_search(query, k=self.BM25_TOP_K, domain_filter=domain_filter)
+        bm25_hits = self._bm25_search(
+            query, k=self.BM25_TOP_K, domain_filter=domain_filter
+        )
 
         # ── Step 3: RRF Fusion → take top-k ───────────────────────────
         fused_docs = self._rrf_fusion(dense_docs, bm25_hits)
@@ -569,14 +691,21 @@ class VectorDBService:
         # ── Logging ────────────────────────────────────────────────────
         logger.info("=" * 60)
         logger.info("Hybrid RAG Query: %s", query)
-        logger.info("Dense candidates: %d | BM25 hits: %d | After RRF: %d | Final: %d",
-                    len(dense_docs), len(bm25_hits), len(fused_docs), len(final_docs))
+        logger.info(
+            "Dense candidates: %d | BM25 hits: %d | After RRF: %d | Final: %d",
+            len(dense_docs),
+            len(bm25_hits),
+            len(fused_docs),
+            len(final_docs),
+        )
         for idx, doc in enumerate(final_docs, 1):
-            logger.info("  [%d] %s | %s | %s",
-                        idx,
-                        doc.metadata.get("title",    "?"),
-                        doc.metadata.get("source",   "?"),
-                        doc.page_content[:120])
+            logger.info(
+                "  [%d] %s | %s | %s",
+                idx,
+                doc.metadata.get("title", "?"),
+                doc.metadata.get("source", "?"),
+                doc.page_content[:120],
+            )
         logger.info("=" * 60)
 
         return final_docs
@@ -603,7 +732,9 @@ class VectorDBService:
         if inferred_topic != "general":
             effective_filters.setdefault("topic", inferred_topic)
 
-        documents = self.similarity_search(query, k=k, filters=effective_filters or None)
+        documents = self.similarity_search(
+            query, k=k, filters=effective_filters or None
+        )
 
         # Broadening fallback: if results are too few, relax filters progressively
         if effective_filters and len(documents) < max(1, k // 2):

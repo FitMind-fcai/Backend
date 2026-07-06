@@ -19,20 +19,12 @@ from app.ai_services.meal_scanner.dtos import (
 logger = logging.getLogger(__name__)
 
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
-_DEFAULT_MODEL   = "qwen/qwen2.5-vl-72b-instruct"
+_DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct"
 
 
 class MealScannerService:
-    """
-    Vision-language meal scanner backed by Qwen2.5-VL via OpenRouter.
-
-    Uses the same AI_API_KEY as the AI Coach — no extra keys required.
-    After recognition the service generates semantic tags which are embedded
-    and used for pgvector similarity search against central_foods.
-    """
-
     DEFAULT_TEMPERATURE = 0.1
-    DEFAULT_MAX_TOKENS  = 2048
+    DEFAULT_MAX_TOKENS = 2048
 
     def __init__(
         self,
@@ -52,8 +44,10 @@ class MealScannerService:
             api_key=self.api_key,
             base_url=_OPENROUTER_BASE,
             default_headers={
-                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
-                "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+                "HTTP-Referer": os.getenv(
+                    "OPENROUTER_SITE_URL", "http://localhost:8000"
+                ),
+                "X-Title": os.getenv("OPENROUTER_APP_NAME", "FitMind"),
             },
         )
         logger.info("MealScannerService ready — model=%s", self.model)
@@ -65,15 +59,18 @@ class MealScannerService:
     def _build_scan_prompt(self, request: MealScanRequestDTO) -> str:
         dietary_ctx = (
             f"\nUser's Dietary Preference: {request.user_dietary_preference}"
-            if request.user_dietary_preference else ""
+            if request.user_dietary_preference
+            else ""
         )
         allergen_ctx = (
             f"\nUser's Known Allergies: {request.user_allergies} — flag any item that may contain these!"
-            if request.user_allergies else ""
+            if request.user_allergies
+            else ""
         )
         lang_instruction = (
             "\nProvide meal_name and health_notes in Arabic."
-            if request.language == "ar" else ""
+            if request.language == "ar"
+            else ""
         )
 
         return f"""Analyze this food image and estimate its nutritional content.
@@ -149,7 +146,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text",      "text": user_prompt},
+                        {"type": "text", "text": user_prompt},
                         {"type": "image_url", "image_url": {"url": image_url}},
                     ],
                 },
@@ -168,7 +165,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
         cleaned = response.strip()
         for fence in ("```json", "```"):
             if cleaned.startswith(fence):
-                cleaned = cleaned[len(fence):]
+                cleaned = cleaned[len(fence) :]
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
         return json.loads(cleaned.strip())
@@ -183,7 +180,9 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
 
         db: optional SQLAlchemy session for pgvector similarity search.
         """
-        logger.info("Scanning meal image — format=%s model=%s", request.image_format, self.model)
+        logger.info(
+            "Scanning meal image — format=%s model=%s", request.image_format, self.model
+        )
 
         try:
             system_prompt = (
@@ -221,7 +220,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 for w in data.get("allergen_warnings", [])
             ]
             tags: List[str] = data.get("tags", [])
-            food_item_names: List[str] = [item.get("name", "") for item in data.get("food_items", []) if item.get("name")]
+            food_item_names: List[str] = [
+                item.get("name", "")
+                for item in data.get("food_items", [])
+                if item.get("name")
+            ]
 
             matched_foods: List[MatchedFoodDTO] = []
             if db is not None and (food_item_names or tags):
@@ -230,7 +233,10 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
             meal_name = data.get("meal_name", "Unidentified Meal")
             logger.info(
                 "Meal scan OK: %s — %s kcal, tags=%s, matches=%d",
-                meal_name, data.get("total_calories"), tags, len(matched_foods),
+                meal_name,
+                data.get("total_calories"),
+                tags,
+                len(matched_foods),
             )
 
             return MealScanResultDTO(
@@ -282,11 +288,17 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
 
             return [
                 MatchedFoodDTO(
-                    id=r.id, food_name=r.food_name, food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description, similarity_score=float(r.similarity),
+                    id=r.id,
+                    food_name=r.food_name,
+                    food_category=r.food_category,
+                    calories_per_100g=r.calories_per_100g,
+                    protein_per_100g=r.protein_per_100g,
+                    carbs_per_100g=r.carbs_per_100g,
+                    fats_per_100g=r.fats_per_100g,
+                    fiber_per_100g=r.fiber_per_100g,
+                    serving_size_g=r.serving_size_g,
+                    serving_description=r.serving_description,
+                    similarity_score=float(r.similarity),
                 )
                 for r in rows
                 if r.similarity >= 0.55
@@ -298,12 +310,20 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     @staticmethod
     def _error_result(message: str) -> MealScanResultDTO:
         return MealScanResultDTO(
-            meal_name="Scan Failed", meal_type="Unknown",
-            food_items=[], total_calories=0,
-            total_protein_g=0.0, total_carbs_g=0.0, total_fats_g=0.0,
-            allergen_warnings=[], health_notes=None,
-            confidence_score=0.0, tags=[], matched_foods=[],
-            scan_successful=False, error_message=message,
+            meal_name="Scan Failed",
+            meal_type="Unknown",
+            food_items=[],
+            total_calories=0,
+            total_protein_g=0.0,
+            total_carbs_g=0.0,
+            total_fats_g=0.0,
+            allergen_warnings=[],
+            health_notes=None,
+            confidence_score=0.0,
+            tags=[],
+            matched_foods=[],
+            scan_successful=False,
+            error_message=message,
         )
 
 

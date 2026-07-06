@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _ev(v) -> str:
     """Return the string value of an enum instance or a plain string."""
     return v.value if hasattr(v, "value") else str(v)
@@ -23,46 +24,46 @@ def _ev(v) -> str:
 # ---------------------------------------------------------------------------
 
 GOAL_MAP: Dict[str, str] = {
-    FitnessGoal.LOSE_WEIGHT.value:       "lose_weight",
-    FitnessGoal.GET_BULKS.value:         "build_muscle",
+    FitnessGoal.LOSE_WEIGHT.value: "lose_weight",
+    FitnessGoal.GET_BULKS.value: "build_muscle",
     FitnessGoal.IMPROVE_ENDURANCE.value: "improve_fitness",
-    FitnessGoal.TRY_AI_COACH.value:      "maintain",
+    FitnessGoal.TRY_AI_COACH.value: "maintain",
 }
 
 ACTIVITY_MAP: Dict[str, float] = {
-    ActivityLevel.SEDENTARY.value:         1.20,
-    ActivityLevel.LIGHTLY_ACTIVE.value:    1.375,
+    ActivityLevel.SEDENTARY.value: 1.20,
+    ActivityLevel.LIGHTLY_ACTIVE.value: 1.375,
     ActivityLevel.MODERATELY_ACTIVE.value: 1.55,
-    ActivityLevel.VERY_ACTIVE.value:       1.725,
-    ActivityLevel.EXTRA_ACTIVE.value:      1.90,
+    ActivityLevel.VERY_ACTIVE.value: 1.725,
+    ActivityLevel.EXTRA_ACTIVE.value: 1.90,
 }
 
 GOAL_CALORIE_DELTA: Dict[str, int] = {
-    "build_muscle":    +450,
-    "lose_weight":     -400,
-    "maintain":           0,
-    "improve_fitness":    0,
+    "build_muscle": +450,
+    "lose_weight": -400,
+    "maintain": 0,
+    "improve_fitness": 0,
 }
 
 GOAL_PROTEIN_PER_KG: Dict[str, float] = {
-    "build_muscle":    1.8,
-    "lose_weight":     1.6,
-    "maintain":        1.4,
+    "build_muscle": 1.8,
+    "lose_weight": 1.6,
+    "maintain": 1.4,
     "improve_fitness": 1.4,
 }
 
 GOAL_FAT_PCT: Dict[str, float] = {
-    "build_muscle":    0.28,
-    "lose_weight":     0.30,
-    "maintain":        0.28,
+    "build_muscle": 0.28,
+    "lose_weight": 0.30,
+    "maintain": 0.28,
     "improve_fitness": 0.28,
 }
 
 # Recommended training days by goal (min, max)
 GOAL_TRAINING_DAYS: Dict[str, tuple] = {
-    "build_muscle":    (3, 5),
-    "lose_weight":     (3, 5),
-    "maintain":        (2, 4),
+    "build_muscle": (3, 5),
+    "lose_weight": (3, 5),
+    "maintain": (2, 4),
     "improve_fitness": (3, 5),
 }
 
@@ -99,9 +100,9 @@ GOAL_SPLIT: Dict[str, Dict[int, str]] = {
 }
 
 GOAL_VOLUME_SETS_PER_MUSCLE: Dict[str, int] = {
-    "build_muscle":    16,
-    "lose_weight":     10,
-    "maintain":        10,
+    "build_muscle": 16,
+    "lose_weight": 10,
+    "maintain": 10,
     "improve_fitness": 12,
 }
 
@@ -109,6 +110,7 @@ GOAL_VOLUME_SETS_PER_MUSCLE: Dict[str, int] = {
 # ---------------------------------------------------------------------------
 # Output dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class NutritionTargets:
@@ -121,9 +123,9 @@ class NutritionTargets:
 
     def to_prompt_block(self) -> str:
         protein_pct = round(self.protein_g * 4 / max(self.calories, 1) * 100)
-        fat_pct     = round(self.fat_g     * 9 / max(self.calories, 1) * 100)
-        carb_pct    = round(self.carbs_g   * 4 / max(self.calories, 1) * 100)
-        per_meal    = round(self.calories / max(self.meals_per_day, 1))
+        fat_pct = round(self.fat_g * 9 / max(self.calories, 1) * 100)
+        carb_pct = round(self.carbs_g * 4 / max(self.calories, 1) * 100)
+        per_meal = round(self.calories / max(self.meals_per_day, 1))
         return (
             "PRE-COMPUTED NUTRITION TARGETS (computed by Planning Engine — do NOT recalculate):\n"
             f"  TDEE               : {self.tdee:.0f} kcal/day (maintenance baseline)\n"
@@ -172,13 +174,13 @@ class PlanningEngineOutput:
 
     def to_dict(self) -> dict:
         return {
-            "goal":          self.goal,
-            "calories":      self.nutrition.calories,
-            "protein_g":     self.nutrition.protein_g,
-            "fat_g":         self.nutrition.fat_g,
-            "carbs_g":       self.nutrition.carbs_g,
+            "goal": self.goal,
+            "calories": self.nutrition.calories,
+            "protein_g": self.nutrition.protein_g,
+            "fat_g": self.nutrition.fat_g,
+            "carbs_g": self.nutrition.carbs_g,
             "training_days": self.training.training_days,
-            "split":         self.training.split,
+            "split": self.training.split,
         }
 
 
@@ -186,13 +188,11 @@ class PlanningEngineOutput:
 # Planning Engine
 # ---------------------------------------------------------------------------
 
+
 class PlanningEngine:
     """
     Deterministic planning engine that computes macro and training parameters
     from user profile data BEFORE the LLM is invoked.
-
-    Accepts the actual profile enum types (FitnessGoal, ActivityLevel, Gender)
-    directly — no string-lowercasing or alias guessing needed.
     """
 
     def compute(
@@ -213,7 +213,9 @@ class PlanningEngine:
         nutrition = self._compute_nutrition(
             weight_kg, tdee, goal, custom_calorie_target, meals_per_day
         )
-        training = self._compute_training(goal, training_days_per_week, session_duration_minutes)
+        training = self._compute_training(
+            goal, training_days_per_week, session_duration_minutes
+        )
 
         logger.info(
             "PlanningEngine — goal=%s calories=%d protein=%dg fat=%dg carbs=%dg days=%d split=%s",
@@ -260,7 +262,7 @@ class PlanningEngine:
         else:
             bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
 
-        act_val    = _ev(activity_level)
+        act_val = _ev(activity_level)
         multiplier = ACTIVITY_MAP.get(act_val)
         if multiplier is None:
             logger.warning(
@@ -283,14 +285,14 @@ class PlanningEngine:
         if custom_calorie_target:
             calories = int(custom_calorie_target)
         else:
-            delta    = GOAL_CALORIE_DELTA.get(goal, 0)
+            delta = GOAL_CALORIE_DELTA.get(goal, 0)
             calories = int(tdee + delta)
             calories = max(1200, min(calories, 5000))
 
         protein_g = round(weight_kg * GOAL_PROTEIN_PER_KG.get(goal, 1.4))
-        fat_pct   = GOAL_FAT_PCT.get(goal, 0.28)
-        fat_g     = round((calories * fat_pct) / 9)
-        carbs_g   = max(50, round((calories - protein_g * 4 - fat_g * 9) / 4))
+        fat_pct = GOAL_FAT_PCT.get(goal, 0.28)
+        fat_g = round((calories * fat_pct) / 9)
+        carbs_g = max(50, round((calories - protein_g * 4 - fat_g * 9) / 4))
 
         return NutritionTargets(
             calories=calories,
@@ -311,7 +313,7 @@ class PlanningEngine:
         training_days = max(min_days, min(max_days, training_days))
 
         split_map = GOAL_SPLIT.get(goal, {})
-        split     = split_map.get(training_days, "full_body")
+        split = split_map.get(training_days, "full_body")
 
         weekly_volume = GOAL_VOLUME_SETS_PER_MUSCLE.get(goal, 10)
 

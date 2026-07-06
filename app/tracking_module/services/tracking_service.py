@@ -9,9 +9,14 @@ from app.tracking_module.repositories.workout_log_repository import WorkoutLogRe
 from app.tracking_module.repositories.meal_log_repository import MealLogRepository
 from app.tracking_module.repositories.weight_log_repository import WeightLogRepository
 from app.tracking_module.repositories.sleep_log_repository import SleepLogRepository
-from app.tracking_module.repositories.hydration_log_repository import HydrationLogRepository
+from app.tracking_module.repositories.hydration_log_repository import (
+    HydrationLogRepository,
+)
 from app.shared.repositories.central_food_repository import CentralFoodRepository
-from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.shared.repositories.central_exercise_repository import (
+    CentralExerciseRepository,
+)
+from app.profile_module.repositories.profile_repository import ProfileRepository
 from app.tracking_module.schemas.tracking import (
     MealLogResponse,
     WorkoutLogResponse,
@@ -38,7 +43,10 @@ from app.tracking_module.schemas.tracking import (
     DailyMacroSummary,
 )
 from app.ai_services.meal_scanner.dtos import MealScanRequestDTO
-from app.ai_services.voice_transcriber.dtos import TranscriptionRequestDTO, TranscriptionContextType
+from app.ai_services.voice_transcriber.dtos import (
+    TranscriptionRequestDTO,
+    TranscriptionContextType,
+)
 from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 
 logger = logging.getLogger(__name__)
@@ -54,6 +62,7 @@ class TrackingService:
         hydration_repo: HydrationLogRepository,
         central_food_repo: CentralFoodRepository,
         central_exercise_repo: CentralExerciseRepository,
+        profile_repo: ProfileRepository,
     ):
         self.workout_repo = workout_repo
         self.meal_repo = meal_repo
@@ -62,6 +71,7 @@ class TrackingService:
         self.hydration_repo = hydration_repo
         self.central_food_repo = central_food_repo
         self.central_exercise_repo = central_exercise_repo
+        self.profile_repo = profile_repo
 
     # ──────────────────────────────────────────────────────────────────────────
     # Private helpers — macro resolution
@@ -81,7 +91,10 @@ class TrackingService:
         if central_food_id is not None:
             food = self.central_food_repo.get_by_id(central_food_id)
             if not food:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Central food not found.")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Central food not found.",
+                )
             sg = float(food.serving_size_g or 100.0)
             desc = food.serving_description or f"{sg:g} g"
             m = (sg * servings) / 100.0
@@ -171,12 +184,6 @@ class TrackingService:
     def _suggest_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
         """
         Hybrid text + semantic search — top catalog foods for a free-text query.
-
-        Pure vector similarity can rank an exact/near-exact text match lower
-        than a merely-related item (embedding similarity isn't the same thing
-        as "the user typed this word"), so a direct substring match (English
-        or Arabic name) is checked first and given priority, then the
-        existing pgvector cosine search fills any remaining slots.
         """
         if not query or not query.strip():
             return []
@@ -186,12 +193,18 @@ class TrackingService:
 
         def _to_response(r, similarity: float) -> MatchedFoodResponse:
             return MatchedFoodResponse(
-                id=r.id, food_name=r.food_name, food_name_ar=r.food_name_ar,
+                id=r.id,
+                food_name=r.food_name,
+                food_name_ar=r.food_name_ar,
                 food_category=r.food_category,
-                calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
-                carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
-                fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
-                serving_description=r.serving_description, similarity_score=similarity,
+                calories_per_100g=r.calories_per_100g,
+                protein_per_100g=r.protein_per_100g,
+                carbs_per_100g=r.carbs_per_100g,
+                fats_per_100g=r.fats_per_100g,
+                fiber_per_100g=r.fiber_per_100g,
+                serving_size_g=r.serving_size_g,
+                serving_description=r.serving_description,
+                similarity_score=similarity,
             )
 
         try:
@@ -213,7 +226,9 @@ class TrackingService:
                 seen_ids.add(r.id)
                 results.append(_to_response(r, similarity=1.0))
         except Exception as exc:
-            logger.warning("Food text search failed (continuing with vector only): %s", exc)
+            logger.warning(
+                "Food text search failed (continuing with vector only): %s", exc
+            )
 
         if len(results) >= limit:
             return results[:limit]
@@ -241,11 +256,15 @@ class TrackingService:
                 if len(results) >= limit:
                     break
         except Exception as exc:
-            logger.warning("Food vector search failed (returning text-only results): %s", exc)
+            logger.warning(
+                "Food vector search failed (returning text-only results): %s", exc
+            )
 
         return results[:limit]
 
-    def _suggest_exercises(self, query: str, limit: int = 10) -> List[MatchedExerciseResponse]:
+    def _suggest_exercises(
+        self, query: str, limit: int = 10
+    ) -> List[MatchedExerciseResponse]:
         """
         Hybrid text + semantic search — top catalog exercises for a free-text query.
         See _suggest_foods for why a text layer is checked before/alongside vector search.
@@ -258,11 +277,14 @@ class TrackingService:
 
         def _to_response(r, similarity: float) -> MatchedExerciseResponse:
             return MatchedExerciseResponse(
-                id=r.id, name=r.name, exercise_type=r.exercise_type,
+                id=r.id,
+                name=r.name,
+                exercise_type=r.exercise_type,
                 primary_muscle_group=r.primary_muscle_group,
                 secondary_muscles=r.secondary_muscles,
                 equipment_required=r.equipment_required,
-                difficulty_level=r.difficulty_level, location=r.location,
+                difficulty_level=r.difficulty_level,
+                location=r.location,
                 similarity_score=similarity,
             )
 
@@ -283,7 +305,9 @@ class TrackingService:
                 seen_ids.add(r.id)
                 results.append(_to_response(r, similarity=1.0))
         except Exception as exc:
-            logger.warning("Exercise text search failed (continuing with vector only): %s", exc)
+            logger.warning(
+                "Exercise text search failed (continuing with vector only): %s", exc
+            )
 
         if len(results) >= limit:
             return results[:limit]
@@ -310,7 +334,9 @@ class TrackingService:
                 if len(results) >= limit:
                     break
         except Exception as exc:
-            logger.warning("Exercise vector search failed (returning text-only results): %s", exc)
+            logger.warning(
+                "Exercise vector search failed (returning text-only results): %s", exc
+            )
 
         return results[:limit]
 
@@ -321,7 +347,9 @@ class TrackingService:
     def search_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
         return self._suggest_foods(query, limit)
 
-    def search_exercises(self, query: str, limit: int = 10) -> List[MatchedExerciseResponse]:
+    def search_exercises(
+        self, query: str, limit: int = 10
+    ) -> List[MatchedExerciseResponse]:
         return self._suggest_exercises(query, limit)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -337,14 +365,17 @@ class TrackingService:
             saved = []
             for entry in request.meal_entries:
                 meal_name = (entry.meal_name or "").strip() or None
-                calories, protein_g, carbs_g, fats_g, sg, desc = self._resolve_meal_macros(
-                    central_food_id=entry.central_food_id,
-                    servings=entry.servings,
-                    fallback_cals=entry.calories or 0,
-                    fallback_protein=entry.protein_g or 0,
-                    fallback_carbs=entry.carbs_g or 0,
-                    fallback_fats=entry.fats_g or 0,
-                    fallback_desc=entry.serving_description_snapshot or "manual serving",
+                calories, protein_g, carbs_g, fats_g, sg, desc = (
+                    self._resolve_meal_macros(
+                        central_food_id=entry.central_food_id,
+                        servings=entry.servings,
+                        fallback_cals=entry.calories or 0,
+                        fallback_protein=entry.protein_g or 0,
+                        fallback_carbs=entry.carbs_g or 0,
+                        fallback_fats=entry.fats_g or 0,
+                        fallback_desc=entry.serving_description_snapshot
+                        or "manual serving",
+                    )
                 )
                 if entry.central_food_id is not None and not meal_name:
                     food = self.central_food_repo.get_by_id(entry.central_food_id)
@@ -365,7 +396,9 @@ class TrackingService:
                     serving_description_snapshot=desc,
                 )
                 saved.append(MealLogResponse.model_validate(log))
-            return SaveLogsResponse(category="meal", saved_count=len(saved), meal_logs=saved)
+            return SaveLogsResponse(
+                category="meal", saved_count=len(saved), meal_logs=saved
+            )
 
         if request.category == "workout":
             saved = []
@@ -383,7 +416,9 @@ class TrackingService:
                     log_method=request.log_method,
                 )
                 saved.append(WorkoutLogResponse.model_validate(log))
-            return SaveLogsResponse(category="workout", saved_count=len(saved), workout_logs=saved)
+            return SaveLogsResponse(
+                category="workout", saved_count=len(saved), workout_logs=saved
+            )
 
         if request.category == "weight":
             saved = []
@@ -395,7 +430,9 @@ class TrackingService:
                     notes=entry.notes.strip() if entry.notes else None,
                 )
                 saved.append(WeightLogResponse.model_validate(log))
-            return SaveLogsResponse(category="weight", saved_count=len(saved), weight_logs=saved)
+            return SaveLogsResponse(
+                category="weight", saved_count=len(saved), weight_logs=saved
+            )
 
         if request.category == "sleep":
             saved = []
@@ -408,7 +445,9 @@ class TrackingService:
                     notes=entry.notes.strip() if entry.notes else None,
                 )
                 saved.append(SleepLogResponse.model_validate(log))
-            return SaveLogsResponse(category="sleep", saved_count=len(saved), sleep_logs=saved)
+            return SaveLogsResponse(
+                category="sleep", saved_count=len(saved), sleep_logs=saved
+            )
 
         # hydration
         saved = []
@@ -420,26 +459,48 @@ class TrackingService:
                 notes=entry.notes.strip() if entry.notes else None,
             )
             saved.append(HydrationLogResponse.model_validate(log))
-        return SaveLogsResponse(category="hydration", saved_count=len(saved), hydration_logs=saved)
+        return SaveLogsResponse(
+            category="hydration", saved_count=len(saved), hydration_logs=saved
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Get logs by date  (public — used by GET /tracking/logs/* endpoints)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def get_meal_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
-        return self.meal_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+    def get_meal_logs(
+        self, user_id: int, log_date: Optional[date] = None, limit: int = 50
+    ):
+        return self.meal_repo.list_logs(
+            user_id=user_id, skip=0, limit=limit, log_date=log_date
+        )
 
-    def get_workout_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
-        return self.workout_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+    def get_workout_logs(
+        self, user_id: int, log_date: Optional[date] = None, limit: int = 50
+    ):
+        return self.workout_repo.list_logs(
+            user_id=user_id, skip=0, limit=limit, log_date=log_date
+        )
 
-    def get_weight_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
-        return self.weight_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+    def get_weight_logs(
+        self, user_id: int, log_date: Optional[date] = None, limit: int = 50
+    ):
+        return self.weight_repo.list_logs(
+            user_id=user_id, skip=0, limit=limit, log_date=log_date
+        )
 
-    def get_sleep_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
-        return self.sleep_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+    def get_sleep_logs(
+        self, user_id: int, log_date: Optional[date] = None, limit: int = 50
+    ):
+        return self.sleep_repo.list_logs(
+            user_id=user_id, skip=0, limit=limit, log_date=log_date
+        )
 
-    def get_hydration_logs(self, user_id: int, log_date: Optional[date] = None, limit: int = 50):
-        return self.hydration_repo.list_logs(user_id=user_id, skip=0, limit=limit, log_date=log_date)
+    def get_hydration_logs(
+        self, user_id: int, log_date: Optional[date] = None, limit: int = 50
+    ):
+        return self.hydration_repo.list_logs(
+            user_id=user_id, skip=0, limit=limit, log_date=log_date
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Update log
@@ -448,42 +509,54 @@ class TrackingService:
     def _get_user_log(self, repo, log_id: int, user_id: int):
         log = repo.get_by_id(log_id)
         if not log or log.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Log not found.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Log not found."
+            )
         return log
 
     def update_meal_log(self, log_id: int, user_id: int, data: MealLogUpdate):
         self._get_user_log(self.meal_repo, log_id, user_id)
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update."
+            )
         return self.meal_repo.update(log_id, updates)
 
     def update_workout_log(self, log_id: int, user_id: int, data: WorkoutLogUpdate):
         self._get_user_log(self.workout_repo, log_id, user_id)
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update."
+            )
         return self.workout_repo.update(log_id, updates)
 
     def update_weight_log(self, log_id: int, user_id: int, data: WeightLogUpdate):
         self._get_user_log(self.weight_repo, log_id, user_id)
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update."
+            )
         return self.weight_repo.update(log_id, updates)
 
     def update_sleep_log(self, log_id: int, user_id: int, data: SleepLogUpdate):
         self._get_user_log(self.sleep_repo, log_id, user_id)
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update."
+            )
         return self.sleep_repo.update(log_id, updates)
 
     def update_hydration_log(self, log_id: int, user_id: int, data: HydrationLogUpdate):
         self._get_user_log(self.hydration_repo, log_id, user_id)
         updates = data.model_dump(exclude_unset=True)
         if not updates:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update."
+            )
         return self.hydration_repo.update(log_id, updates)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -500,7 +573,9 @@ class TrackingService:
         }
         repo = repo_map.get(category)
         if not repo:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category."
+            )
         self._get_user_log(repo, log_id, user_id)
         repo.delete(log_id)
 
@@ -508,7 +583,9 @@ class TrackingService:
     # Daily macro summary
     # ──────────────────────────────────────────────────────────────────────────
 
-    def get_daily_macro_summary(self, user_id: int, log_date: date) -> DailyMacroSummary:
+    def get_daily_macro_summary(
+        self, user_id: int, log_date: date
+    ) -> DailyMacroSummary:
         meals = self.meal_repo.list_logs(user_id=user_id, log_date=log_date, limit=200)
 
         total_cal = sum(m.calories or 0 for m in meals)
@@ -579,12 +656,23 @@ class TrackingService:
     # AI · Scanner  (returns suggestions — does NOT save)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def scan_meal(self, scanner, image_bytes: bytes, image_format: str, meal_type, language: str, user) -> MealScanResponse:
+    def scan_meal(
+        self,
+        scanner,
+        image_bytes: bytes,
+        image_format: str,
+        meal_type,
+        language: str,
+        user,
+    ) -> MealScanResponse:
+        # Allergies/dietary preference live on Profile, not User — fetch it explicitly
+        # rather than reading (nonexistent) attributes off the auth User object.
+        profile = self.profile_repo.get_by_user_id(user.id)
         dto = MealScanRequestDTO(
             image_bytes=image_bytes,
             image_format=image_format,
-            user_dietary_preference=getattr(user, "dietary_preference", None),
-            user_allergies=getattr(user, "allergies", None),
+            user_dietary_preference=getattr(profile, "dietary_preference", None),
+            user_allergies=getattr(profile, "allergies", None),
             language=language,
         )
         result = scanner.scan_meal(dto, db=self.meal_repo.db)
@@ -593,9 +681,14 @@ class TrackingService:
             meal_type=meal_type or result.meal_type,
             food_items=[
                 ScannedFoodItemResponse(
-                    name=fi.name, portion_size=fi.portion_size, calories=fi.calories,
-                    protein_g=fi.protein_g, carbs_g=fi.carbs_g, fats_g=fi.fats_g,
-                    fiber_g=fi.fiber_g, confidence=fi.confidence,
+                    name=fi.name,
+                    portion_size=fi.portion_size,
+                    calories=fi.calories,
+                    protein_g=fi.protein_g,
+                    carbs_g=fi.carbs_g,
+                    fats_g=fi.fats_g,
+                    fiber_g=fi.fiber_g,
+                    confidence=fi.confidence,
                 )
                 for fi in result.food_items
             ],
@@ -608,11 +701,17 @@ class TrackingService:
             confidence_score=result.confidence_score,
             matched_foods=[
                 MatchedFoodResponse(
-                    id=m.id, food_name=m.food_name, food_category=m.food_category,
-                    calories_per_100g=m.calories_per_100g, protein_per_100g=m.protein_per_100g,
-                    carbs_per_100g=m.carbs_per_100g, fats_per_100g=m.fats_per_100g,
-                    fiber_per_100g=m.fiber_per_100g, serving_size_g=m.serving_size_g,
-                    serving_description=m.serving_description, similarity_score=m.similarity_score,
+                    id=m.id,
+                    food_name=m.food_name,
+                    food_category=m.food_category,
+                    calories_per_100g=m.calories_per_100g,
+                    protein_per_100g=m.protein_per_100g,
+                    carbs_per_100g=m.carbs_per_100g,
+                    fats_per_100g=m.fats_per_100g,
+                    fiber_per_100g=m.fiber_per_100g,
+                    serving_size_g=m.serving_size_g,
+                    serving_description=m.serving_description,
+                    similarity_score=m.similarity_score,
                 )
                 for m in result.matched_foods
             ],
@@ -625,10 +724,14 @@ class TrackingService:
     # AI · Voice  (returns suggestions — does NOT save)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def voice_meal(self, transcriber, audio_bytes: bytes, audio_format: str, language, user) -> MealVoiceResponse:
+    def voice_meal(
+        self, transcriber, audio_bytes: bytes, audio_format: str, language, user
+    ) -> MealVoiceResponse:
         req = TranscriptionRequestDTO(
-            audio_bytes=audio_bytes, audio_format=audio_format,
-            language=language, context_type=TranscriptionContextType.MEAL_LOG,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
+            context_type=TranscriptionContextType.MEAL_LOG,
         )
         parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
         return MealVoiceResponse(
@@ -644,11 +747,17 @@ class TrackingService:
             estimated_fats_g=parsed.estimated_fats_g,
             matched_foods=[
                 MatchedFoodResponse(
-                    id=m.id, food_name=m.food_name, food_category=m.food_category,
-                    calories_per_100g=m.calories_per_100g, protein_per_100g=m.protein_per_100g,
-                    carbs_per_100g=m.carbs_per_100g, fats_per_100g=m.fats_per_100g,
-                    fiber_per_100g=m.fiber_per_100g, serving_size_g=m.serving_size_g,
-                    serving_description=m.serving_description, similarity_score=m.similarity_score,
+                    id=m.id,
+                    food_name=m.food_name,
+                    food_category=m.food_category,
+                    calories_per_100g=m.calories_per_100g,
+                    protein_per_100g=m.protein_per_100g,
+                    carbs_per_100g=m.carbs_per_100g,
+                    fats_per_100g=m.fats_per_100g,
+                    fiber_per_100g=m.fiber_per_100g,
+                    serving_size_g=m.serving_size_g,
+                    serving_description=m.serving_description,
+                    similarity_score=m.similarity_score,
                 )
                 for m in parsed.matched_foods
             ],
@@ -656,30 +765,44 @@ class TrackingService:
             notes=parsed.notes,
         )
 
-    def voice_workout(self, transcriber, audio_bytes: bytes, audio_format: str, language, user) -> WorkoutVoiceResponse:
+    def voice_workout(
+        self, transcriber, audio_bytes: bytes, audio_format: str, language, user
+    ) -> WorkoutVoiceResponse:
         req = TranscriptionRequestDTO(
-            audio_bytes=audio_bytes, audio_format=audio_format,
-            language=language, context_type=TranscriptionContextType.WORKOUT_LOG,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
+            context_type=TranscriptionContextType.WORKOUT_LOG,
         )
-        parsed = transcriber.transcribe_and_parse_workout_log(req, db=self.workout_repo.db)
+        parsed = transcriber.transcribe_and_parse_workout_log(
+            req, db=self.workout_repo.db
+        )
         exercises = []
         for ex in parsed.exercises:
-            exercises.append(ParsedExerciseResponse(
-                name=ex.name, sets=ex.sets, reps=ex.reps,
-                weight_str=ex.weight_str, weight_kg=ex.weight_kg,
-                duration_seconds=ex.duration_seconds,
-                matched_exercises=[
-                    MatchedExerciseResponse(
-                        id=m.id, name=m.name, exercise_type=m.exercise_type,
-                        primary_muscle_group=m.primary_muscle_group,
-                        secondary_muscles=m.secondary_muscles,
-                        equipment_required=m.equipment_required,
-                        difficulty_level=m.difficulty_level, location=m.location,
-                        similarity_score=m.similarity_score,
-                    )
-                    for m in ex.matched_exercises
-                ],
-            ))
+            exercises.append(
+                ParsedExerciseResponse(
+                    name=ex.name,
+                    sets=ex.sets,
+                    reps=ex.reps,
+                    weight_str=ex.weight_str,
+                    weight_kg=ex.weight_kg,
+                    duration_seconds=ex.duration_seconds,
+                    matched_exercises=[
+                        MatchedExerciseResponse(
+                            id=m.id,
+                            name=m.name,
+                            exercise_type=m.exercise_type,
+                            primary_muscle_group=m.primary_muscle_group,
+                            secondary_muscles=m.secondary_muscles,
+                            equipment_required=m.equipment_required,
+                            difficulty_level=m.difficulty_level,
+                            location=m.location,
+                            similarity_score=m.similarity_score,
+                        )
+                        for m in ex.matched_exercises
+                    ],
+                )
+            )
         return WorkoutVoiceResponse(
             raw_text=parsed.raw_text,
             exercises=exercises,
@@ -689,10 +812,14 @@ class TrackingService:
             notes=parsed.notes,
         )
 
-    def voice_weight(self, transcriber, audio_bytes: bytes, audio_format: str, language, user) -> WeightVoiceResponse:
+    def voice_weight(
+        self, transcriber, audio_bytes: bytes, audio_format: str, language, user
+    ) -> WeightVoiceResponse:
         req = TranscriptionRequestDTO(
-            audio_bytes=audio_bytes, audio_format=audio_format,
-            language=language, context_type=TranscriptionContextType.GENERAL,
+            audio_bytes=audio_bytes,
+            audio_format=audio_format,
+            language=language,
+            context_type=TranscriptionContextType.GENERAL,
         )
         parsed = transcriber.transcribe_and_parse_weight_log(req)
         return WeightVoiceResponse(

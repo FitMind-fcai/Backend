@@ -12,26 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class LLMClient:
-
-    DEFAULT_PROVIDER       = "openrouter"
-    DEFAULT_MODEL          = "qwen/qwen3-235b-a22b-2507"
-    DEFAULT_TEMPERATURE    = 0.25
-    DEFAULT_MAX_TOKENS     = 8000
-    # GPT-4o-mini: strong medical/safety calibration, available via OpenRouter.
-    # Override via AI_JUDGE_MODEL (e.g. google/gemini-flash-1.5, openai/gpt-4o).
-    DEFAULT_JUDGE_MODEL      = "openai/gpt-4o-mini"
+    DEFAULT_PROVIDER = "openrouter"
+    DEFAULT_MODEL = "qwen/qwen3-235b-a22b-2507"
+    DEFAULT_TEMPERATURE = 0.01
+    DEFAULT_MAX_TOKENS = 8000
+    DEFAULT_JUDGE_MODEL = "openai/gpt-4o-mini"
     DEFAULT_JUDGE_MAX_TOKENS = 2000
-    # Context builder: same fast model as judge, small output (rules list only)
-    DEFAULT_CONTEXT_BUILDER_MODEL      = "openai/gpt-4o-mini"
+    DEFAULT_CONTEXT_BUILDER_MODEL = "openai/gpt-4o-mini"
     DEFAULT_CONTEXT_BUILDER_MAX_TOKENS = 1200
 
     PROVIDER_BASE_URLS: Dict[str, str] = {
-        "groq":       "https://api.groq.com/openai/v1",
+        "groq": "https://api.groq.com/openai/v1",
         "openrouter": "https://openrouter.ai/api/v1",
-        "openai":     "https://api.openai.com/v1",
-        "together":   "https://api.together.xyz/v1",
-        "deepinfra":  "https://api.deepinfra.com/v1/openai",
-        "fireworks":  "https://api.fireworks.ai/inference/v1",
+        "openai": "https://api.openai.com/v1",
+        "together": "https://api.together.xyz/v1",
+        "deepinfra": "https://api.deepinfra.com/v1/openai",
+        "fireworks": "https://api.fireworks.ai/inference/v1",
     }
 
     def __init__(
@@ -42,7 +38,10 @@ class LLMClient:
         model: Optional[str] = None,
     ):
         self.provider = (
-            provider or os.getenv("AI_PROVIDER") or config.AI_PROVIDER or self.DEFAULT_PROVIDER
+            provider
+            or os.getenv("AI_PROVIDER")
+            or config.AI_PROVIDER
+            or self.DEFAULT_PROVIDER
         ).lower()
 
         self.api_key = (
@@ -66,7 +65,9 @@ class LLMClient:
         if not self.base_url:
             raise ValueError(f"No base URL configured for provider '{self.provider}'.")
 
-        self.model = model or os.getenv("AI_MODEL") or config.AI_MODEL or self.DEFAULT_MODEL
+        self.model = (
+            model or os.getenv("AI_MODEL") or config.AI_MODEL or self.DEFAULT_MODEL
+        )
         self.temperature = float(
             os.getenv("AI_COACH_TEMPERATURE")
             or str(config.AI_COACH_TEMPERATURE or self.DEFAULT_TEMPERATURE)
@@ -84,7 +85,10 @@ class LLMClient:
         )
         self.judge_max_tokens = int(
             os.getenv("AI_JUDGE_MAX_TOKENS")
-            or str(getattr(config, "AI_JUDGE_MAX_TOKENS", None) or self.DEFAULT_JUDGE_MAX_TOKENS)
+            or str(
+                getattr(config, "AI_JUDGE_MAX_TOKENS", None)
+                or self.DEFAULT_JUDGE_MAX_TOKENS
+            )
         )
 
         self.context_builder_model = (
@@ -94,7 +98,10 @@ class LLMClient:
         )
         self.context_builder_max_tokens = int(
             os.getenv("AI_CONTEXT_BUILDER_MAX_TOKENS")
-            or str(getattr(config, "AI_CONTEXT_BUILDER_MAX_TOKENS", None) or self.DEFAULT_CONTEXT_BUILDER_MAX_TOKENS)
+            or str(
+                getattr(config, "AI_CONTEXT_BUILDER_MAX_TOKENS", None)
+                or self.DEFAULT_CONTEXT_BUILDER_MAX_TOKENS
+            )
         )
 
         self._client = OpenAI(
@@ -105,7 +112,10 @@ class LLMClient:
 
         logger.info(
             "LLMClient ready — provider=%s model=%s judge_model=%s base_url=%s",
-            self.provider, self.model, self.judge_model, self.base_url,
+            self.provider,
+            self.model,
+            self.judge_model,
+            self.base_url,
         )
 
     # ------------------------------------------------------------------
@@ -114,12 +124,21 @@ class LLMClient:
 
     def _get_provider_api_key(self, provider: str) -> str:
         mapping = {
-            "groq":       ("GROQ_API_KEY",      getattr(config, "GROQ_API_KEY",      "")),
-            "openrouter": ("OPENROUTER_API_KEY", getattr(config, "OPENROUTER_API_KEY", "")),
-            "openai":     ("OPENAI_API_KEY",     getattr(config, "OPENAI_API_KEY",     "")),
-            "together":   ("TOGETHER_API_KEY",   getattr(config, "TOGETHER_API_KEY",   "")),
-            "deepinfra":  ("DEEPINFRA_API_KEY",  getattr(config, "DEEPINFRA_API_KEY",  "")),
-            "fireworks":  ("FIREWORKS_API_KEY",  getattr(config, "FIREWORKS_API_KEY",  "")),
+            "groq": ("GROQ_API_KEY", getattr(config, "GROQ_API_KEY", "")),
+            "openrouter": (
+                "OPENROUTER_API_KEY",
+                getattr(config, "OPENROUTER_API_KEY", ""),
+            ),
+            "openai": ("OPENAI_API_KEY", getattr(config, "OPENAI_API_KEY", "")),
+            "together": ("TOGETHER_API_KEY", getattr(config, "TOGETHER_API_KEY", "")),
+            "deepinfra": (
+                "DEEPINFRA_API_KEY",
+                getattr(config, "DEEPINFRA_API_KEY", ""),
+            ),
+            "fireworks": (
+                "FIREWORKS_API_KEY",
+                getattr(config, "FIREWORKS_API_KEY", ""),
+            ),
         }
         if provider in mapping:
             env_key, cfg_val = mapping[provider]
@@ -130,8 +149,12 @@ class LLMClient:
         if provider != "openrouter":
             return None
         headers: Dict[str, str] = {}
-        site_url = os.getenv("OPENROUTER_SITE_URL") or getattr(config, "OPENROUTER_SITE_URL", "")
-        app_name = os.getenv("OPENROUTER_APP_NAME") or getattr(config, "OPENROUTER_APP_NAME", "")
+        site_url = os.getenv("OPENROUTER_SITE_URL") or getattr(
+            config, "OPENROUTER_SITE_URL", ""
+        )
+        app_name = os.getenv("OPENROUTER_APP_NAME") or getattr(
+            config, "OPENROUTER_APP_NAME", ""
+        )
         if site_url:
             headers["HTTP-Referer"] = site_url
         if app_name:
@@ -160,12 +183,18 @@ class LLMClient:
             return {}
         return {"extra_body": {"provider": {"sort": "throughput"}}}
 
-    def call_llm(self, system_prompt: str, user_prompt: str, json_mode: bool = True, model: Optional[str] = None) -> str:
+    def call_llm(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        json_mode: bool = True,
+        model: Optional[str] = None,
+    ) -> str:
         """Main generation call. Uses model override if given, else configured default."""
         call_kwargs: Dict[str, Any] = dict(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             model=model or self.model,
             temperature=self.temperature,
@@ -190,7 +219,7 @@ class LLMClient:
         completion = self._client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             model=self.judge_model,
             temperature=0.1,
@@ -211,7 +240,7 @@ class LLMClient:
         completion = self._client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": user_prompt},
+                {"role": "user", "content": user_prompt},
             ],
             model=self.context_builder_model,
             temperature=0.1,
@@ -224,13 +253,14 @@ class LLMClient:
 
     def _log_usage(self, label: str, completion) -> None:
         finish = completion.choices[0].finish_reason if completion.choices else None
-        usage  = getattr(completion, "usage", None)
+        usage = getattr(completion, "usage", None)
         logger.info(
             "LLM [%s] finish=%s prompt=%s completion=%s total=%s",
-            label, finish,
-            getattr(usage, "prompt_tokens",     None) if usage else None,
+            label,
+            finish,
+            getattr(usage, "prompt_tokens", None) if usage else None,
             getattr(usage, "completion_tokens", None) if usage else None,
-            getattr(usage, "total_tokens",      None) if usage else None,
+            getattr(usage, "total_tokens", None) if usage else None,
         )
 
     # ------------------------------------------------------------------
@@ -240,14 +270,14 @@ class LLMClient:
     def parse_json_response(self, response: str) -> Dict[str, Any]:
         """
         Parse an LLM response to a dict, handling:
-          - Qwen3 <think>...</think> reasoning blocks emitted before the JSON
+          - Model <think>...</think> reasoning blocks emitted before the JSON
           - Markdown code fences
           - Stray text before or after the JSON object
         """
         cleaned = (response or "").strip()
         cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL).strip()
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$",           "", cleaned).strip()
+        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
 
         try:
             return json.loads(cleaned)
@@ -278,7 +308,7 @@ class LLMClient:
                     depth -= 1
                     if depth == 0:
                         try:
-                            return json.loads(cleaned[start: idx + 1])
+                            return json.loads(cleaned[start : idx + 1])
                         except json.JSONDecodeError:
                             break
 
@@ -298,5 +328,7 @@ class LLMClient:
         if len(context) <= self.rag_max_context_chars:
             return context
         trimmed = context[: self.rag_max_context_chars].rstrip()
-        logger.info("✂️ RAG [%s] trimmed %d → %d chars", context_name, len(context), len(trimmed))
+        logger.info(
+            "✂️ RAG [%s] trimmed %d → %d chars", context_name, len(context), len(trimmed)
+        )
         return trimmed

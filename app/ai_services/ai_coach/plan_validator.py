@@ -95,17 +95,6 @@ def validate_nutrition_semantics(
     Parses the free-text allergies field (any format, any allergen),
     expands umbrella terms to their constituent ingredients, then checks
     every ingredient's real food name in the plan. Raises ValueError on any hit.
-
-    IngredientDTO only ever carries a central_food_id + amount_g — the LLM
-    never outputs a food name, so food_id_to_name (built during retrieval,
-    see CentralFoodRepository.get_diet_friendly_foods_for_ai) is required to
-    resolve IDs back to real names. Without it this check cannot see what
-    food is actually in the meal and silently passes everything.
-
-    This runs after schema validation as a last-resort safety net;
-    the primary enforcement happens at generation time via the prompt.
-    Macro/calorie accuracy is NOT checked here — the backend recomputes
-    those from CentralFood DB records.
     """
     allergy_str = (user_profile.allergies or "").lower().strip()
     if not allergy_str or allergy_str == "none":
@@ -168,13 +157,7 @@ def check_meal_ingredient_consistency(
 ) -> List[str]:
     """
     Deterministic, LLM-free heuristic: flags meals whose name mentions a
-    food-like word not backed by any actual listed ingredient — e.g. a meal
-    named "Ful Medames with Baladi Bread" whose real ingredients are just
-    tomatoes/onions/peppers, with no fava beans or bread among them.
-
-    This is a diagnostic, not an enforcement gate — it logs mismatches for
-    visibility (does not raise or block generation) so retrieval/prompt
-    improvements can be measured rather than trusted blindly.
+    food-like word not backed by any actual listed ingredient
     """
     food_id_to_name = food_id_to_name or {}
     mismatches: List[str] = []

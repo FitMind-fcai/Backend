@@ -21,14 +21,7 @@ _model_lock = threading.Lock()
 
 
 def _get_model():
-    """
-    Double-checked locking: without the lock, every thread that calls this
-    before the first load finishes sees `_model is None` and independently
-    constructs its own copy (a full SentenceTransformer load, several seconds
-    each) — this is exactly what happens under concurrent requests, e.g. the
-    parallel RAG threads used per plan generation. The lock ensures only the
-    first caller actually loads it; everyone else just waits and reuses it.
-    """
+
     global _model
     if _model is None:
         with _model_lock:

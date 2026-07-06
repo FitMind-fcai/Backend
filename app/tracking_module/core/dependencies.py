@@ -10,6 +10,7 @@ from app.tracking_module.repositories.hydration_log_repository import HydrationL
 from app.tracking_module.services.tracking_service import TrackingService
 from app.shared.repositories.central_food_repository import CentralFoodRepository
 from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.profile_module.repositories.profile_repository import ProfileRepository
 from app.ai_services.meal_scanner.meal_scanner_service import MealScannerService, get_meal_scanner_service
 from app.ai_services.voice_transcriber.voice_transcriber_service import VoiceTranscriberService, get_voice_transcriber_service
 
@@ -42,6 +43,10 @@ def get_central_exercise_repository(db: Session = Depends(get_db)) -> CentralExe
     return CentralExerciseRepository(db)
 
 
+def get_profile_repository_dep(db: Session = Depends(get_db)) -> ProfileRepository:
+    return ProfileRepository(db)
+
+
 def get_meal_scanner_service_dep() -> MealScannerService:
     return get_meal_scanner_service()
 
@@ -58,6 +63,7 @@ def get_tracking_service(
     hydration_repo: HydrationLogRepository = Depends(get_hydration_log_repository),
     central_food_repo: CentralFoodRepository = Depends(get_central_food_repository),
     central_exercise_repo: CentralExerciseRepository = Depends(get_central_exercise_repository),
+    profile_repo: ProfileRepository = Depends(get_profile_repository_dep),
 ) -> TrackingService:
     return TrackingService(
         workout_repo=workout_repo,
@@ -67,4 +73,5 @@ def get_tracking_service(
         hydration_repo=hydration_repo,
         central_food_repo=central_food_repo,
         central_exercise_repo=central_exercise_repo,
+        profile_repo=profile_repo,
     )

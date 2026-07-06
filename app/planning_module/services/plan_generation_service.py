@@ -5,15 +5,19 @@ from typing import Optional
 from app.planning_module.services.workout_plan_service import WorkoutPlanService
 from app.planning_module.services.nutrition_plan_service import NutritionPlanService
 from app.planning_module.repositories.workout_repository import WorkoutPlanRepository
-from app.planning_module.repositories.nutrition_repository import NutritionPlanRepository
-from app.shared.repositories.central_exercise_repository import CentralExerciseRepository
+from app.planning_module.repositories.nutrition_repository import (
+    NutritionPlanRepository,
+)
+from app.shared.repositories.central_exercise_repository import (
+    CentralExerciseRepository,
+)
 from app.shared.repositories.central_food_repository import CentralFoodRepository
 from app.planning_module.schemas.plan import (
     WorkoutPlanResponse,
     NutritionPlanResponse,
     CombinedPlanResponse,
     WorkoutPreferences,
-    NutritionPreferences
+    NutritionPreferences,
 )
 from app.planning_module.models import WorkoutPlan, NutritionPlan
 from app.planning_module.models import CentralFood
@@ -25,7 +29,7 @@ from app.planning_module.services.converters import (
     workout_plan_dto_to_create,
     nutrition_plan_dto_to_create,
     workout_plan_model_to_dto,
-    nutrition_plan_model_to_dto
+    nutrition_plan_model_to_dto,
 )
 from app.ai_services.ai_coach import get_ai_coach_service
 from app.ai_services.ai_coach.context_builder import get_context_builder
@@ -39,7 +43,6 @@ _PROTEIN_TOLERANCE_PCT = 0.25
 
 
 class PlanGenerationService:
-
     def __init__(self, db: Session):
         self.db = db
         self.workout_service = WorkoutPlanService(db)
@@ -49,7 +52,7 @@ class PlanGenerationService:
         self.nutrition_repo = NutritionPlanRepository(db)
         self.central_food_repo = CentralFoodRepository(db)
         self.planning_engine = PlanningEngine()
-    
+
     def generate_workout_plan(
         self,
         profile: Profile,
@@ -67,11 +70,6 @@ class PlanGenerationService:
           - draft_plan: WorkoutPlanCreate (the full generated structure)
           - generated_from_preferences: dict
           - update_plan_id: int | None (existing plan ID to replace, or None for new)
-
-        The caller must explicitly call save_workout_plan() to persist.
-
-        coach_feedback: optional free-text instructions (from weekly coaching
-        analysis) describing exactly what to change on the existing plan.
         """
         existing_plan = self.workout_service.get_active_plan(profile.user_id)
         existing_plan_dto = None
@@ -79,7 +77,9 @@ class PlanGenerationService:
 
         if existing_plan:
             # Load full details as AI context — do NOT delete yet (user hasn't confirmed)
-            existing_plan_full = self.workout_service.get_plan_with_details(existing_plan.id)
+            existing_plan_full = self.workout_service.get_plan_with_details(
+                existing_plan.id
+            )
             existing_plan_dto = workout_plan_model_to_dto(existing_plan_full)
             existing_plan_id = existing_plan.id
 
@@ -124,7 +124,9 @@ class PlanGenerationService:
 
         if existing_plan:
             # Load full details as AI context — do NOT delete yet (user hasn't confirmed)
-            existing_plan_full = self.nutrition_service.get_plan_with_full_details(existing_plan.id)
+            existing_plan_full = self.nutrition_service.get_plan_with_full_details(
+                existing_plan.id
+            )
             existing_plan_dto = nutrition_plan_model_to_dto(existing_plan_full)
             existing_plan_id = existing_plan.id
 
@@ -153,18 +155,28 @@ class PlanGenerationService:
         """
         Generate workout and nutrition plan drafts concurrently.
 
-        Both LLM generations run in parallel via ThreadPoolExecutor — cuts total
-        wall-clock time roughly in half compared to calling each endpoint separately.
-        Returns a dict with 'workout_draft' and 'nutrition_draft' keys.
+        Both LLM generations run in parallel via ThreadPoolExecutor
         """
         with ThreadPoolExecutor(max_workers=2) as pool:
             workout_future = pool.submit(
-                self.generate_workout_plan, profile, workout_preferences, duration_weeks, lang, model_override, skip_judge
+                self.generate_workout_plan,
+                profile,
+                workout_preferences,
+                duration_weeks,
+                lang,
+                model_override,
+                skip_judge,
             )
             nutrition_future = pool.submit(
-                self.generate_nutrition_plan, profile, nutrition_preferences, duration_weeks, lang, model_override, skip_judge
+                self.generate_nutrition_plan,
+                profile,
+                nutrition_preferences,
+                duration_weeks,
+                lang,
+                model_override,
+                skip_judge,
             )
-            workout_draft   = workout_future.result()
+            workout_draft = workout_future.result()
             nutrition_draft = nutrition_future.result()
 
         return {"workout_draft": workout_draft, "nutrition_draft": nutrition_draft}
@@ -172,58 +184,66 @@ class PlanGenerationService:
     def get_user_active_plans(self, user_id: int) -> CombinedPlanResponse:
         """
         Get user's currently active workout and nutrition plans.
-        
+
         Args:
             user_id: User ID
-            
+
         Returns:
             CombinedPlanResponse with active plans
         """
         workout_plan = self.workout_service.get_active_plan(user_id)
         nutrition_plan = self.nutrition_service.get_active_plan(user_id)
-        
+
         # Load full details if plans exist
         if workout_plan:
             workout_plan = self.workout_service.get_plan_with_details(workout_plan.id)
         if nutrition_plan:
-            nutrition_plan = self.nutrition_service.get_plan_with_full_details(nutrition_plan.id)
-        
+            nutrition_plan = self.nutrition_service.get_plan_with_full_details(
+                nutrition_plan.id
+            )
+
         message = "Active plans retrieved"
         if not workout_plan and not nutrition_plan:
             message = "No active plans found"
-        
+
         return CombinedPlanResponse(
-            workout_plan=WorkoutPlanResponse.model_validate(workout_plan) if workout_plan else None,
-            nutrition_plan=NutritionPlanResponse.model_validate(nutrition_plan) if nutrition_plan else None,
-            message=message
+            workout_plan=WorkoutPlanResponse.model_validate(workout_plan)
+            if workout_plan
+            else None,
+            nutrition_plan=NutritionPlanResponse.model_validate(nutrition_plan)
+            if nutrition_plan
+            else None,
+            message=message,
         )
-    
+
     def save_workout_plan(
         self,
         user_id: int,
         profile_id: int,
         plan_create,
         generated_from_preferences: dict,
-        update_plan_id: int = None
+        update_plan_id: int = None,
     ):
         """Persist a workout plan draft to the database (user-confirmed save)."""
         if update_plan_id:
             existing = self.workout_repo.get_by_id(update_plan_id)
             if not existing or existing.user_id != user_id:
-                raise ValueError(f"Workout plan {update_plan_id} not found for this user")
+                raise ValueError(
+                    f"Workout plan {update_plan_id} not found for this user"
+                )
             # Only NOW delete the old plan details before replacing
             self._delete_workout_plan_details(update_plan_id)
             return self._update_workout_plan_with_details(
                 plan_id=update_plan_id,
                 plan_create=plan_create,
-                generated_from_preferences=generated_from_preferences
+                generated_from_preferences=generated_from_preferences,
             )
         else:
             return self._create_workout_plan_with_details(
                 user_id=user_id,
                 profile_id=profile_id,
                 plan_create=plan_create,
-                generated_from_preferences=generated_from_preferences
+                generated_from_preferences=generated_from_preferences,
             )
 
     def save_nutrition_plan(
@@ -232,29 +252,30 @@ class PlanGenerationService:
         profile_id: int,
         plan_create,
         generated_from_preferences: dict,
-        update_plan_id: int = None
+        update_plan_id: int = None,
     ):
         """Persist a nutrition plan draft to the database (user-confirmed save)."""
-        # Authoritative nutrition numbers are always computed on server from ingredients.
         self._hydrate_nutrition_macros_from_ingredients(plan_create)
 
         if update_plan_id:
             existing = self.nutrition_repo.get_by_id(update_plan_id)
             if not existing or existing.user_id != user_id:
-                raise ValueError(f"Nutrition plan {update_plan_id} not found for this user")
+                raise ValueError(
+                    f"Nutrition plan {update_plan_id} not found for this user"
+                )
             # Only NOW delete the old plan details before replacing
             self._delete_nutrition_plan_details(update_plan_id)
             return self._update_nutrition_plan_with_meals(
                 plan_id=update_plan_id,
                 plan_create=plan_create,
-                generated_from_preferences=generated_from_preferences
+                generated_from_preferences=generated_from_preferences,
             )
         else:
             return self._create_nutrition_plan_with_meals(
                 user_id=user_id,
                 profile_id=profile_id,
                 plan_create=plan_create,
-                generated_from_preferences=generated_from_preferences
+                generated_from_preferences=generated_from_preferences,
             )
 
     def _generate_workout_draft(
@@ -270,11 +291,10 @@ class PlanGenerationService:
         coach_feedback: str = "",
     ) -> dict:
         """Internal: call AI and return WorkoutPlanCreate draft dict (no DB writes)."""
-        profile_dto     = profile_to_dto(profile)
+        profile_dto = profile_to_dto(profile)
         preferences_dto = workout_preferences_to_dto(preferences)
 
-        # Phase 1 — Planning Engine computes targets (fast, CPU-only; must run first
-        # because the exercise DB query needs planning_output.goal)
+        # Phase 1 — Planning Engine computes targets
         planning_output = self.planning_engine.compute(
             weight_kg=float(profile.weight or 70),
             height_cm=float(profile.height or 170),
@@ -286,8 +306,8 @@ class PlanGenerationService:
             session_duration_minutes=int(preferences.session_duration_minutes or 60),
         )
 
-        ai_coach         = get_ai_coach_service()
-        context_builder  = get_context_builder(ai_coach.llm)
+        ai_coach = get_ai_coach_service()
+        context_builder = get_context_builder(ai_coach.llm)
 
         # Phase 2 — three independent tasks run in parallel:
         #   • DB exercise fetch   (SQL, ~100-200ms)
@@ -303,11 +323,9 @@ class PlanGenerationService:
                 goal=planning_output.goal,
                 injuries=str(profile.injuries or ""),
             )
-            rules_future = pool.submit(
-                context_builder.build_workout_rules, profile_dto
-            )
+            rules_future = pool.submit(context_builder.build_workout_rules, profile_dto)
             allowed_exercises_str = exercises_future.result()
-            medical_rules         = rules_future.result()
+            medical_rules = rules_future.result()
 
         # Phase 3 — LLM generation + single-pass judge/fix
         workout_plan_dto = ai_coach.generate_workout_plan(
@@ -324,7 +342,7 @@ class PlanGenerationService:
             coach_feedback=coach_feedback,
         )
 
-        plan_create      = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
+        plan_create = workout_plan_dto_to_create(workout_plan_dto, duration_weeks)
         plan_create.language = lang
         preferences_dict = preferences.model_dump()
 
@@ -333,7 +351,7 @@ class PlanGenerationService:
             "generated_from_preferences": preferences_dict,
             "update_plan_id": update_plan_id,
         }
-    
+
     def _generate_nutrition_plan(
         self,
         profile: Profile,
@@ -347,7 +365,7 @@ class PlanGenerationService:
         coach_feedback: str = "",
     ) -> dict:
         """Internal: call AI and return NutritionPlanCreate draft dict (no DB writes)."""
-        profile_dto     = profile_to_dto(profile)
+        profile_dto = profile_to_dto(profile)
         preferences_dto = nutrition_preferences_to_dto(preferences)
 
         # Phase 1 — Planning Engine computes macro targets (fast, CPU-only; must run
@@ -363,7 +381,7 @@ class PlanGenerationService:
             meals_per_day=int(getattr(preferences, "meals_per_day", 3) or 3),
         )
 
-        ai_coach        = get_ai_coach_service()
+        ai_coach = get_ai_coach_service()
         context_builder = get_context_builder(ai_coach.llm)
 
         # Phase 2 — two independent tasks run in parallel:
@@ -372,7 +390,9 @@ class PlanGenerationService:
         with ThreadPoolExecutor(max_workers=2) as pool:
             foods_future = pool.submit(
                 self.central_food_repo.get_diet_friendly_foods_for_ai,
-                diet_type=profile.dietary_preference if hasattr(profile, "dietary_preference") else "balanced",
+                diet_type=profile.dietary_preference
+                if hasattr(profile, "dietary_preference")
+                else "balanced",
                 allergies=getattr(profile, "allergies", ""),
                 exclude_ingredients=getattr(preferences, "exclude_ingredients", []),
                 limit=100,
@@ -385,7 +405,7 @@ class PlanGenerationService:
                 context_builder.build_nutrition_rules, profile_dto
             )
             allowed_foods_str, food_id_to_name = foods_future.result()
-            medical_rules                      = rules_future.result()
+            medical_rules = rules_future.result()
 
         # Phase 3 — LLM generation + single-pass judge/fix
         nutrition_plan_dto = ai_coach.generate_nutrition_plan(
@@ -458,7 +478,7 @@ class PlanGenerationService:
             for meal in day.meals:
                 meal_calories = meal_protein = meal_carbs = meal_fats = meal_fiber = 0.0
 
-                for ing in (meal.ingredients or []):
+                for ing in meal.ingredients or []:
                     food = foods_by_id.get(ing.central_food_id)
                     if not food:
                         continue
@@ -487,10 +507,18 @@ class PlanGenerationService:
 
         if day_totals:
             days_count = float(len(day_totals))
-            nutrition_plan.daily_calories = round(sum(x[0] for x in day_totals) / days_count, 1)
-            nutrition_plan.daily_protein_g = round(sum(x[1] for x in day_totals) / days_count, 2)
-            nutrition_plan.daily_carbs_g = round(sum(x[2] for x in day_totals) / days_count, 2)
-            nutrition_plan.daily_fats_g = round(sum(x[3] for x in day_totals) / days_count, 2)
+            nutrition_plan.daily_calories = round(
+                sum(x[0] for x in day_totals) / days_count, 1
+            )
+            nutrition_plan.daily_protein_g = round(
+                sum(x[1] for x in day_totals) / days_count, 2
+            )
+            nutrition_plan.daily_carbs_g = round(
+                sum(x[2] for x in day_totals) / days_count, 2
+            )
+            nutrition_plan.daily_fats_g = round(
+                sum(x[3] for x in day_totals) / days_count, 2
+            )
 
     def _scale_portions_to_target(self, plan_create, planning_output) -> None:
         """Scale all ingredient amount_g proportionally so daily calories
@@ -507,11 +535,13 @@ class PlanGenerationService:
 
         logger.info(
             "Scaling all portions by %.2fx (actual=%d kcal, target=%d kcal)",
-            scale_factor, actual_cals, target_cals,
+            scale_factor,
+            actual_cals,
+            target_cals,
         )
         for day in plan_create.days:
             for meal in day.meals:
-                for ing in (meal.ingredients or []):
+                for ing in meal.ingredients or []:
                     ing.amount_g = round(ing.amount_g * scale_factor, 1)
 
     def _check_macro_compliance(self, plan_create, planning_output) -> list[str]:
@@ -556,7 +586,7 @@ class PlanGenerationService:
         user_id: int,
         profile_id: int,
         plan_create,
-        generated_from_preferences: dict
+        generated_from_preferences: dict,
     ) -> WorkoutPlan:
         """Create workout plan with all nested workout days and exercises."""
         # Create the plan
@@ -573,9 +603,7 @@ class PlanGenerationService:
         }
 
         plan = self.workout_repo.create_plan(
-            user_id=user_id,
-            profile_id=profile_id,
-            plan_data=plan_data
+            user_id=user_id, profile_id=profile_id, plan_data=plan_data
         )
 
         # Create workout days and exercises
@@ -585,16 +613,20 @@ class PlanGenerationService:
                 "day_number": day_create.day_number,
                 "focus_area": day_create.focus_area,
                 "estimated_duration": day_create.estimated_duration,
-                "notes": day_create.notes
+                "notes": day_create.notes,
             }
-            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
+            workout_day = self.workout_repo.create_day(
+                plan_id=plan.id, day_data=day_data, commit=False
+            )
 
             for exercise_create in day_create.exercises:
                 central_exercise = None
 
                 # Use provided ID directly if available
-                if getattr(exercise_create, 'central_exercise_id', None):
-                    central_exercise = self.central_exercise_repo.get_by_id(exercise_create.central_exercise_id)
+                if getattr(exercise_create, "central_exercise_id", None):
+                    central_exercise = self.central_exercise_repo.get_by_id(
+                        exercise_create.central_exercise_id
+                    )
 
                 # Fallback to name search or create new placeholder
                 if not central_exercise:
@@ -608,16 +640,18 @@ class PlanGenerationService:
                         "instructions": exercise_create.instructions,
                         "video_url": exercise_create.video_url,
                         "image_url": exercise_create.image_url,
-                        "is_active": True
+                        "is_active": True,
                     }
-                    central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
+                    central_exercise = self.central_exercise_repo.find_or_create(
+                        catalog_data
+                    )
                 slot_data = {
                     "sets": exercise_create.sets,
                     "reps": exercise_create.reps,
                     "weight_kg": exercise_create.weight_kg,
                     "duration_seconds": exercise_create.duration_seconds,
                     "rest_seconds": exercise_create.rest_seconds,
-                    "order_index": exercise_create.order_index
+                    "order_index": exercise_create.order_index,
                 }
                 self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
@@ -635,7 +669,7 @@ class PlanGenerationService:
         user_id: int,
         profile_id: int,
         plan_create,
-        generated_from_preferences: dict
+        generated_from_preferences: dict,
     ) -> NutritionPlan:
         """Create nutrition plan with 7 days and their meals."""
         # Create the plan
@@ -653,18 +687,18 @@ class PlanGenerationService:
         }
 
         plan = self.nutrition_repo.create_plan(
-            user_id=user_id,
-            profile_id=profile_id,
-            plan_data=plan_data
+            user_id=user_id, profile_id=profile_id, plan_data=plan_data
         )
 
         for day_create in plan_create.days:
             day_data = {
                 "day_number": day_create.day_number,
                 "day_name": day_create.day_name,
-                "notes": day_create.notes
+                "notes": day_create.notes,
             }
-            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
+            nutrition_day = self.nutrition_repo.create_day(
+                plan_id=plan.id, day_data=day_data, commit=False
+            )
 
             for meal_create in day_create.meals:
                 slot_data = {
@@ -675,12 +709,16 @@ class PlanGenerationService:
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
                     "fiber_g": meal_create.fiber_g,
-                    "ingredients": [ing.model_dump() for ing in (meal_create.ingredients or [])],
+                    "ingredients": [
+                        ing.model_dump() for ing in (meal_create.ingredients or [])
+                    ],
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,
-                    "servings": float(meal_create.servings) if meal_create.servings else 1.0,
-                    "order_index": meal_create.order_index
+                    "servings": float(meal_create.servings)
+                    if meal_create.servings
+                    else 1.0,
+                    "order_index": meal_create.order_index,
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,
@@ -691,8 +729,6 @@ class PlanGenerationService:
         # Single commit for the whole plan instead of one per day/meal row.
         self.db.commit()
         return self.nutrition_service.get_plan_with_full_details(plan.id)
-
-
 
     def _delete_workout_plan_details(self, plan_id: int):
         """Delete all workout days and their junction rows for a plan (for update)"""
@@ -707,12 +743,9 @@ class PlanGenerationService:
             self.nutrition_repo.delete_meal_slots_by_day_id(day.id)
             self.db.delete(day)
         self.db.commit()
-    
+
     def _update_workout_plan_with_details(
-        self,
-        plan_id: int,
-        plan_create,
-        generated_from_preferences: dict
+        self, plan_id: int, plan_create, generated_from_preferences: dict
     ) -> WorkoutPlan:
         """Update existing workout plan with new data."""
         # Update the plan
@@ -738,16 +771,20 @@ class PlanGenerationService:
                 "day_number": day_create.day_number,
                 "focus_area": day_create.focus_area,
                 "estimated_duration": day_create.estimated_duration,
-                "notes": day_create.notes
+                "notes": day_create.notes,
             }
-            workout_day = self.workout_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
+            workout_day = self.workout_repo.create_day(
+                plan_id=plan.id, day_data=day_data, commit=False
+            )
 
             for exercise_create in day_create.exercises:
                 central_exercise = None
 
                 # Use provided ID directly if available
-                if getattr(exercise_create, 'central_exercise_id', None):
-                    central_exercise = self.central_exercise_repo.get_by_id(exercise_create.central_exercise_id)
+                if getattr(exercise_create, "central_exercise_id", None):
+                    central_exercise = self.central_exercise_repo.get_by_id(
+                        exercise_create.central_exercise_id
+                    )
 
                 # Fallback to name search or create new placeholder
                 if not central_exercise:
@@ -761,16 +798,18 @@ class PlanGenerationService:
                         "instructions": exercise_create.instructions,
                         "video_url": exercise_create.video_url,
                         "image_url": exercise_create.image_url,
-                        "is_active": True
+                        "is_active": True,
                     }
-                    central_exercise = self.central_exercise_repo.find_or_create(catalog_data)
+                    central_exercise = self.central_exercise_repo.find_or_create(
+                        catalog_data
+                    )
                 slot_data = {
                     "sets": exercise_create.sets,
                     "reps": exercise_create.reps,
                     "weight_kg": exercise_create.weight_kg,
                     "duration_seconds": exercise_create.duration_seconds,
                     "rest_seconds": exercise_create.rest_seconds,
-                    "order_index": exercise_create.order_index
+                    "order_index": exercise_create.order_index,
                 }
                 self.workout_repo.create_exercise_slot(
                     day_id=workout_day.id,
@@ -784,10 +823,7 @@ class PlanGenerationService:
         return self.workout_service.get_plan_with_details(plan.id)
 
     def _update_nutrition_plan_with_meals(
-        self,
-        plan_id: int,
-        plan_create,
-        generated_from_preferences: dict
+        self, plan_id: int, plan_create, generated_from_preferences: dict
     ) -> NutritionPlan:
         """Update existing nutrition plan with new data."""
         # Update the plan
@@ -812,9 +848,11 @@ class PlanGenerationService:
             day_data = {
                 "day_number": day_create.day_number,
                 "day_name": day_create.day_name,
-                "notes": day_create.notes
+                "notes": day_create.notes,
             }
-            nutrition_day = self.nutrition_repo.create_day(plan_id=plan.id, day_data=day_data, commit=False)
+            nutrition_day = self.nutrition_repo.create_day(
+                plan_id=plan.id, day_data=day_data, commit=False
+            )
 
             for meal_create in day_create.meals:
                 slot_data = {
@@ -825,12 +863,16 @@ class PlanGenerationService:
                     "carbs_g": meal_create.carbs_g,
                     "fats_g": meal_create.fats_g,
                     "fiber_g": meal_create.fiber_g,
-                    "ingredients": [ing.model_dump() for ing in (meal_create.ingredients or [])],
+                    "ingredients": [
+                        ing.model_dump() for ing in (meal_create.ingredients or [])
+                    ],
                     "instructions": meal_create.instructions,
                     "prep_time_minutes": meal_create.prep_time_minutes,
                     "cook_time_minutes": meal_create.cook_time_minutes,
-                    "servings": float(meal_create.servings) if meal_create.servings else 1.0,
-                    "order_index": meal_create.order_index
+                    "servings": float(meal_create.servings)
+                    if meal_create.servings
+                    else 1.0,
+                    "order_index": meal_create.order_index,
                 }
                 self.nutrition_repo.create_meal_slot(
                     day_id=nutrition_day.id,

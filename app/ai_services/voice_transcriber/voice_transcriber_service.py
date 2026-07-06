@@ -33,10 +33,8 @@ class VoiceTranscriberService:
     Voice transcription + structured parsing service.
 
     Pipeline:
-    1. Groq Whisper          — speech → raw text  (always Groq; no alternative)
+    1. Groq Whisper          — speech → raw text 
     2. LLM parser            — raw text → structured JSON
-       • OpenRouter/OpenAI-compatible if AI_API_KEY or OPENROUTER_API_KEY is set
-       • Falls back to Groq LLaMA otherwise
     3. pgvector              — embed tags → top-5 central_foods or central_exercises
     """
 
@@ -52,14 +50,16 @@ class VoiceTranscriberService:
         whisper_model: Optional[str] = None,
         parser_model: Optional[str] = None,
     ):
-        # --- Whisper client (Groq, mandatory) ---
+        # --- Whisper client ---
         groq_key = api_key or os.getenv("GROQ_API_KEY")
         if not groq_key:
-            raise ValueError("GROQ_API_KEY not set — required for Whisper transcription.")
+            raise ValueError(
+                "GROQ_API_KEY not set — required for Whisper transcription."
+            )
         self.whisper_model = whisper_model or self.WHISPER_MODEL
         self.client = Groq(api_key=groq_key)
 
-        # --- LLM parser client (OpenRouter, same AI_API_KEY as the AI Coach) ---
+        # --- LLM parser client ---
         parser_api_key = os.getenv("AI_API_KEY")
 
         if parser_api_key:
@@ -67,17 +67,23 @@ class VoiceTranscriberService:
                 api_key=parser_api_key,
                 base_url=_OPENROUTER_BASE,
                 default_headers={
-                    "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000"),
-                    "X-Title":      os.getenv("OPENROUTER_APP_NAME", "FitMind"),
+                    "HTTP-Referer": os.getenv(
+                        "OPENROUTER_SITE_URL", "http://localhost:8000"
+                    ),
+                    "X-Title": os.getenv("OPENROUTER_APP_NAME", "FitMind"),
                 },
             )
-            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", _OPENROUTER_PARSER_MODEL)
+            self.parser_model = parser_model or os.getenv(
+                "LLM_PARSER_MODEL", _OPENROUTER_PARSER_MODEL
+            )
             self._parser_uses_openai_compat = True
             logger.info("LLM parser: OpenRouter — %s", self.parser_model)
         else:
             # Fall back to Groq when AI_API_KEY is not set.
             self._parser_client = None
-            self.parser_model = parser_model or os.getenv("LLM_PARSER_MODEL", self.GROQ_PARSER_MODEL)
+            self.parser_model = parser_model or os.getenv(
+                "LLM_PARSER_MODEL", self.GROQ_PARSER_MODEL
+            )
             self._parser_uses_openai_compat = False
             logger.info("LLM parser: Groq fallback — %s", self.parser_model)
 
@@ -108,7 +114,9 @@ class VoiceTranscriberService:
         }
         prompt = context_hints.get(request.context_type, "")
         if request.prompt_hint:
-            prompt = f"{prompt}, {request.prompt_hint}" if prompt else request.prompt_hint
+            prompt = (
+                f"{prompt}, {request.prompt_hint}" if prompt else request.prompt_hint
+            )
 
         try:
             audio_bytes = request.audio_bytes
@@ -144,7 +152,10 @@ class VoiceTranscriberService:
         except Exception as exc:
             logger.error("Transcription failed: %s", exc)
             return TranscriptionResultDTO(
-                text="", language="unknown", transcription_successful=False, error_message=str(exc)
+                text="",
+                language="unknown",
+                transcription_successful=False,
+                error_message=str(exc),
             )
 
     # ------------------------------------------------------------------
@@ -154,7 +165,10 @@ class VoiceTranscriberService:
     def _llm(self, system: str, user: str) -> str:
         client = self._parser_client if self._parser_uses_openai_compat else self.client
         resp = client.chat.completions.create(
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
             model=self.parser_model,
             temperature=self.PARSER_TEMPERATURE,
             max_tokens=self.PARSER_MAX_TOKENS,
@@ -163,7 +177,9 @@ class VoiceTranscriberService:
         content = resp.choices[0].message.content
         if not content:
             finish_reason = resp.choices[0].finish_reason if resp.choices else None
-            raise ValueError(f"LLM parser returned empty content (finish_reason={finish_reason})")
+            raise ValueError(
+                f"LLM parser returned empty content (finish_reason={finish_reason})"
+            )
         return content
 
     @staticmethod
@@ -171,7 +187,7 @@ class VoiceTranscriberService:
         s = raw.strip()
         for fence in ("```json", "```"):
             if s.startswith(fence):
-                s = s[len(fence):]
+                s = s[len(fence) :]
         if s.endswith("```"):
             s = s[:-3]
         return json.loads(s.strip())
@@ -187,6 +203,7 @@ class VoiceTranscriberService:
             return []
         try:
             from sqlalchemy import text as sql_text
+
             vec = vec_to_pg_str(embed_text(query_text))
             rows = db.execute(
                 sql_text("""
@@ -203,11 +220,17 @@ class VoiceTranscriberService:
             ).fetchall()
             return [
                 MatchedFoodDTO(
-                    id=r.id, food_name=r.food_name, food_category=r.food_category,
-                    calories_per_100g=r.calories_per_100g, protein_per_100g=r.protein_per_100g,
-                    carbs_per_100g=r.carbs_per_100g, fats_per_100g=r.fats_per_100g,
-                    fiber_per_100g=r.fiber_per_100g, serving_size_g=r.serving_size_g,
-                    serving_description=r.serving_description, similarity_score=float(r.similarity),
+                    id=r.id,
+                    food_name=r.food_name,
+                    food_category=r.food_category,
+                    calories_per_100g=r.calories_per_100g,
+                    protein_per_100g=r.protein_per_100g,
+                    carbs_per_100g=r.carbs_per_100g,
+                    fats_per_100g=r.fats_per_100g,
+                    fiber_per_100g=r.fiber_per_100g,
+                    serving_size_g=r.serving_size_g,
+                    serving_description=r.serving_description,
+                    similarity_score=float(r.similarity),
                 )
                 for r in rows
                 if r.similarity >= 0.55
@@ -217,12 +240,15 @@ class VoiceTranscriberService:
             return []
 
     @staticmethod
-    def _search_exercises(query_text: str, db, limit: int = 10) -> List[MatchedExerciseDTO]:
+    def _search_exercises(
+        query_text: str, db, limit: int = 10
+    ) -> List[MatchedExerciseDTO]:
         """Cosine similarity search against central_exercises."""
         if db is None:
             return []
         try:
             from sqlalchemy import text as sql_text
+
             vec = vec_to_pg_str(embed_text(query_text))
             rows = db.execute(
                 sql_text("""
@@ -238,11 +264,14 @@ class VoiceTranscriberService:
             ).fetchall()
             return [
                 MatchedExerciseDTO(
-                    id=r.id, name=r.name, exercise_type=r.exercise_type,
+                    id=r.id,
+                    name=r.name,
+                    exercise_type=r.exercise_type,
                     primary_muscle_group=r.primary_muscle_group,
                     secondary_muscles=r.secondary_muscles,
                     equipment_required=r.equipment_required,
-                    difficulty_level=r.difficulty_level, location=r.location,
+                    difficulty_level=r.difficulty_level,
+                    location=r.location,
                     similarity_score=float(r.similarity),
                 )
                 for r in rows
@@ -434,7 +463,6 @@ Rules:
             parse_successful=True,
             notes=data.get("notes"),
         )
-
 
     # ------------------------------------------------------------------
     # Weight parsing

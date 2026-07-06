@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 
 class AICoachService:
-
     def __init__(
         self,
         provider: Optional[str] = None,
@@ -33,12 +32,16 @@ class AICoachService:
         base_url: Optional[str] = None,
         model: Optional[str] = None,
     ):
-        self.llm   = LLMClient(provider=provider, api_key=api_key, base_url=base_url, model=model)
+        self.llm = LLMClient(
+            provider=provider, api_key=api_key, base_url=base_url, model=model
+        )
         self.judge = PlanJudge(self.llm)
 
         logger.info(
             "AI Coach initialised — provider=%s model=%s judge_model=%s",
-            self.llm.provider, self.llm.model, self.llm.judge_model,
+            self.llm.provider,
+            self.llm.model,
+            self.llm.judge_model,
         )
 
     # ------------------------------------------------------------------
@@ -64,25 +67,17 @@ class AICoachService:
         Generate a personalised 7-day nutrition plan.
 
         Workflow: Generate → Judge → Fix once (if failed) → Allergy gate → Return
-
-        medical_rules is a pre-built, KB-grounded rule block from ContextBuilder
-        (runs in a parallel thread in plan_generation_service).  It replaces both
-        the inline Channel C medical block and the general RAG Channel A.
-
-        food_id_to_name resolves each offered central_food_id to its real name —
-        the LLM only ever echoes back IDs, so this is required for the allergy
-        safety net and the meal/ingredient consistency check to work at all.
-
-        coach_feedback is optional free-text instructions from the weekly
-        coaching analysis (based on the user's actual logged data) describing
-        exactly what to change on an EXISTING plan — distinct from judge_feedback,
-        which is only ever produced internally by the post-generation judge.
         """
-        target_calories = calculate_target_calories(user_profile, preferences.custom_calorie_target)
-        macros          = calculate_macro_guidance(user_profile, target_calories)
+        target_calories = calculate_target_calories(
+            user_profile, preferences.custom_calorie_target
+        )
+        macros = calculate_macro_guidance(user_profile, target_calories)
         logger.info(
             "Portion-sizing guidance — calories=%d protein=%dg fat=%dg carbs=%dg",
-            target_calories, macros["protein_g"], macros["fat_g"], macros["carb_g"],
+            target_calories,
+            macros["protein_g"],
+            macros["fat_g"],
+            macros["carb_g"],
         )
 
         logger.info("===================================")
@@ -106,10 +101,20 @@ class AICoachService:
         )
 
         # ── Generate (regenerates on malformed/invalid output) ────────
-        logger.info("Nutrition — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
+        logger.info(
+            "Nutrition — generating plan (model_override=%s, skip_judge=%s)",
+            model_override,
+            skip_judge,
+        )
         plan = self._generate_nutrition_with_retries(
-            system_prompt, user_profile, preferences, duration_weeks,
-            medical_rules, existing_plan, allowed_foods_str, planning_output,
+            system_prompt,
+            user_profile,
+            preferences,
+            duration_weeks,
+            medical_rules,
+            existing_plan,
+            allowed_foods_str,
+            planning_output,
             language=language,
             model_override=model_override,
             coach_feedback=coach_feedback,
@@ -119,16 +124,26 @@ class AICoachService:
         if skip_judge:
             logger.info("Nutrition — judge skipped (skip_judge=True)")
         else:
-            passed, feedback, _issues = self.judge.judge_nutrition_plan(plan, user_profile, preferences, planning_output)
+            passed, feedback, _issues = self.judge.judge_nutrition_plan(
+                plan, user_profile, preferences, planning_output, food_id_to_name
+            )
             if passed:
                 logger.info("Nutrition — judge passed on first try")
             elif not feedback:
-                logger.info("Nutrition — judge failed but gave no feedback; skipping fix pass")
+                logger.info(
+                    "Nutrition — judge failed but gave no feedback; skipping fix pass"
+                )
             else:
                 logger.info("Nutrition — judge failed, applying one-time fix pass")
                 fixed = self._generate_nutrition_once(
-                    system_prompt, user_profile, preferences, duration_weeks,
-                    medical_rules, existing_plan, allowed_foods_str, planning_output,
+                    system_prompt,
+                    user_profile,
+                    preferences,
+                    duration_weeks,
+                    medical_rules,
+                    existing_plan,
+                    allowed_foods_str,
+                    planning_output,
                     judge_feedback=feedback,
                     coach_feedback=coach_feedback,
                     language=language,
@@ -137,13 +152,17 @@ class AICoachService:
                 if fixed is not None:
                     plan = fixed
                 else:
-                    logger.warning("Nutrition — fix pass produced invalid output; keeping original plan")
+                    logger.warning(
+                        "Nutrition — fix pass produced invalid output; keeping original plan"
+                    )
 
         # ── Allergy safety gate (last-resort deterministic check) ─────
         plan_validator.validate_nutrition_semantics(plan, user_profile, food_id_to_name)
 
         # ── Meal/ingredient consistency check (log-only diagnostic) ──
-        mismatches = plan_validator.check_meal_ingredient_consistency(plan, food_id_to_name)
+        mismatches = plan_validator.check_meal_ingredient_consistency(
+            plan, food_id_to_name
+        )
         if mismatches:
             logger.warning(
                 "Nutrition — meal/ingredient consistency check found %d issue(s):",
@@ -172,12 +191,6 @@ class AICoachService:
         Generate a personalised workout plan.
 
         Workflow: Generate → Judge → Fix once (if failed) → Return
-
-        medical_rules is a pre-built, KB-grounded rule block from ContextBuilder.
-
-        coach_feedback is optional free-text instructions from the weekly
-        coaching analysis describing exactly what to change on an EXISTING
-        plan — see generate_nutrition_plan for the same mechanism.
         """
         logger.info("===================================")
         logger.info("INJECTED DB EXERCISES STRING:")
@@ -197,10 +210,20 @@ class AICoachService:
         )
 
         # ── Generate (regenerates on malformed/invalid output) ────────
-        logger.info("Workout — generating plan (model_override=%s, skip_judge=%s)", model_override, skip_judge)
+        logger.info(
+            "Workout — generating plan (model_override=%s, skip_judge=%s)",
+            model_override,
+            skip_judge,
+        )
         plan = self._generate_workout_with_retries(
-            system_prompt, user_profile, preferences, duration_weeks,
-            medical_rules, existing_plan, allowed_exercises_str, planning_output,
+            system_prompt,
+            user_profile,
+            preferences,
+            duration_weeks,
+            medical_rules,
+            existing_plan,
+            allowed_exercises_str,
+            planning_output,
             language=language,
             model_override=model_override,
             coach_feedback=coach_feedback,
@@ -210,16 +233,26 @@ class AICoachService:
         if skip_judge:
             logger.info("Workout — judge skipped (skip_judge=True)")
         else:
-            passed, feedback, _issues = self.judge.judge_workout_plan(plan, user_profile, preferences, planning_output)
+            passed, feedback, _issues = self.judge.judge_workout_plan(
+                plan, user_profile, preferences, planning_output
+            )
             if passed:
                 logger.info("Workout — judge passed on first try")
             elif not feedback:
-                logger.info("Workout — judge failed but gave no feedback; skipping fix pass")
+                logger.info(
+                    "Workout — judge failed but gave no feedback; skipping fix pass"
+                )
             else:
                 logger.info("Workout — judge failed, applying one-time fix pass")
                 fixed = self._generate_workout_once(
-                    system_prompt, user_profile, preferences, duration_weeks,
-                    medical_rules, existing_plan, allowed_exercises_str, planning_output,
+                    system_prompt,
+                    user_profile,
+                    preferences,
+                    duration_weeks,
+                    medical_rules,
+                    existing_plan,
+                    allowed_exercises_str,
+                    planning_output,
                     judge_feedback=feedback,
                     coach_feedback=coach_feedback,
                     language=language,
@@ -228,7 +261,9 @@ class AICoachService:
                 if fixed is not None:
                     plan = fixed
                 else:
-                    logger.warning("Workout — fix pass produced invalid output; keeping original plan")
+                    logger.warning(
+                        "Workout — fix pass produced invalid output; keeping original plan"
+                    )
 
         return plan
 
@@ -280,7 +315,7 @@ User goal: {user_goal}
 {calorie_line}
 {protein_line}
 Meals logged today: {meal_types}
-Workout sessions logged today: {snapshot_data.get('workout_sessions_logged', 0)}
+Workout sessions logged today: {snapshot_data.get("workout_sessions_logged", 0)}
 Weight logged today: {weight_note}
 
 Based ONLY on this snapshot, reply with a JSON object:
@@ -320,8 +355,8 @@ urgency rules:
         Convert a fully engineered ProgressFeatures dict into a structured coaching report.
         Returns {assessment, positives, improvements, suggestions, projection}.
         """
-        n  = features_data["nutrition"]
-        w  = features_data["workout"]
+        n = features_data["nutrition"]
+        w = features_data["workout"]
         wt = features_data["weight"]
 
         calorie_adherence = (
@@ -347,7 +382,8 @@ urgency rules:
                 f"volume change {p['progression_pct']:+.1f}%"
             )
         progressions_block = (
-            "\n".join(prog_lines) if prog_lines
+            "\n".join(prog_lines)
+            if prog_lines
             else "  • Not enough data for exercise progressions."
         )
 
@@ -364,28 +400,28 @@ urgency rules:
             weight_section = f"Measurements: {wt['measurements_count']}"
 
         user_prompt = f"""
-## Client Progress Analysis — {features_data['period_label']}
-Period: {features_data['period_start']} → {features_data['period_end']} ({features_data['period_days']} days)
-Goal: {features_data['user_goal']}
-Overall consistency score: {features_data['overall_consistency_score']:.0%}
-On-track flag: {features_data['on_track']}
+## Client Progress Analysis — {features_data["period_label"]}
+Period: {features_data["period_start"]} → {features_data["period_end"]} ({features_data["period_days"]} days)
+Goal: {features_data["user_goal"]}
+Overall consistency score: {features_data["overall_consistency_score"]:.0%}
+On-track flag: {features_data["on_track"]}
 
 {user_profile_context}
 
 ## ENGINEERED NUTRITION FEATURES
-- Logging consistency: {n['days_with_logs']} / {features_data['period_days']} days ({n['logging_consistency_pct']:.1f}%)
-- Avg daily calories: {n['avg_daily_calories']:.0f} kcal | Target: {n.get('target_daily_calories') or 'N/A'} kcal | Adherence: {calorie_adherence}
-- Avg daily protein: {n['avg_daily_protein_g']:.1f}g | Target: {n.get('target_daily_protein_g') or 'N/A'}g | Adherence: {protein_adherence}
-- Avg daily carbs: {n['avg_daily_carbs_g']:.1f}g | Avg daily fats: {n['avg_daily_fats_g']:.1f}g
-- Calorie trend slope: {n['calorie_trend_slope']:+.2f} kcal/day (positive = increasing intake)
-- Macro balance score: {n['macro_balance_score']:.1f}/100
+- Logging consistency: {n["days_with_logs"]} / {features_data["period_days"]} days ({n["logging_consistency_pct"]:.1f}%)
+- Avg daily calories: {n["avg_daily_calories"]:.0f} kcal | Target: {n.get("target_daily_calories") or "N/A"} kcal | Adherence: {calorie_adherence}
+- Avg daily protein: {n["avg_daily_protein_g"]:.1f}g | Target: {n.get("target_daily_protein_g") or "N/A"}g | Adherence: {protein_adherence}
+- Avg daily carbs: {n["avg_daily_carbs_g"]:.1f}g | Avg daily fats: {n["avg_daily_fats_g"]:.1f}g
+- Calorie trend slope: {n["calorie_trend_slope"]:+.2f} kcal/day (positive = increasing intake)
+- Macro balance score: {n["macro_balance_score"]:.1f}/100
 
 ## ENGINEERED WORKOUT FEATURES
-- Sessions: {w['total_sessions']} actual | {w.get('planned_sessions') or 'N/A'} planned | Adherence: {freq_adherence}
-- Avg sets/session: {w['avg_sets_per_session']:.1f} | Avg reps/session: {w['avg_reps_per_session']:.1f}
-- Total training volume: {w['total_volume_kg']:.1f} kg (Σ sets×reps×weight)
-- Volume trend slope: {w['volume_trend_slope']:+.2f} kg/week (positive = progressive overload)
-- Unique exercises: {w['unique_exercises_count']}
+- Sessions: {w["total_sessions"]} actual | {w.get("planned_sessions") or "N/A"} planned | Adherence: {freq_adherence}
+- Avg sets/session: {w["avg_sets_per_session"]:.1f} | Avg reps/session: {w["avg_reps_per_session"]:.1f}
+- Total training volume: {w["total_volume_kg"]:.1f} kg (Σ sets×reps×weight)
+- Volume trend slope: {w["volume_trend_slope"]:+.2f} kg/week (positive = progressive overload)
+- Unique exercises: {w["unique_exercises_count"]}
 - Exercise progressions:
 {progressions_block}
 
@@ -439,69 +475,22 @@ RULES for the two *_plan_adjustment fields:
                 return {"needed": False, "instructions": ""}
             needed = bool(v.get("needed", False))
             instructions = str(v.get("instructions", "") or "")
-            return {"needed": needed and bool(instructions.strip()), "instructions": instructions}
+            return {
+                "needed": needed and bool(instructions.strip()),
+                "instructions": instructions,
+            }
 
         return {
-            "assessment":   str(result.get("assessment", "")),
-            "positives":    _to_list(result.get("positives", [])),
+            "assessment": str(result.get("assessment", "")),
+            "positives": _to_list(result.get("positives", [])),
             "improvements": _to_list(result.get("improvements", [])),
-            "suggestions":  _to_list(result.get("suggestions", [])),
-            "projection":   str(result.get("projection", "")),
-            "nutrition_adjustment": _to_adjustment(result.get("nutrition_plan_adjustment")),
-            "workout_adjustment":   _to_adjustment(result.get("workout_plan_adjustment")),
+            "suggestions": _to_list(result.get("suggestions", [])),
+            "projection": str(result.get("projection", "")),
+            "nutrition_adjustment": _to_adjustment(
+                result.get("nutrition_plan_adjustment")
+            ),
+            "workout_adjustment": _to_adjustment(result.get("workout_plan_adjustment")),
         }
-
-    def ask_coach(
-        self,
-        question: str,
-        user_profile: Optional[UserProfileDTO] = None,
-        language: str = "auto",
-    ) -> str:
-        """Answer a free-text fitness or nutrition question with RAG-augmented coaching advice."""
-        tags = ""
-        if user_profile:
-            tags = " ".join(filter(None, [
-                user_profile.injuries           and f"injuries:{user_profile.injuries}",
-                user_profile.medical_conditions and f"condition:{user_profile.medical_conditions}",
-                user_profile.allergies          and f"allergies:{user_profile.allergies}",
-                user_profile.fitness_goal       and f"goal:{user_profile.fitness_goal}",
-            ]))
-
-        query       = f"{question} {tags}".strip()
-        rag_context = self.vector_db.get_context(query, k=min(self.rag_top_k, 3))
-        rag_context = self.llm.trim_rag_context(rag_context, "ask_coach")
-
-        user_context = (
-            user_profile.to_context_string() if user_profile
-            else "No user profile available — give general evidence-based advice."
-        )
-
-        language_instruction = {
-            "auto": "Respond in the SAME LANGUAGE as the user's question.",
-            "ar":   "Respond in Arabic (Egyptian dialect preferred).",
-        }.get(language, "Respond in English.")
-
-        system_prompt = (
-            f"You are an experienced personal fitness coach with deep knowledge in exercise science and nutrition.\n\n"
-            f"{language_instruction}\n\n"
-            f"{user_context}\n\n"
-            "YOUR COACHING STYLE:\n"
-            "• Speak as a coach — direct, practical, encouraging.\n"
-            '• Never say "according to the handbook/guide/source" — give advice from YOUR expertise.\n'
-            "• Always account for the user's medical conditions, injuries, and medications.\n"
-            "• Give specific rep ranges, exercise names, food quantities, and timing — not vague guidance.\n"
-            "• Flag any safety concern before giving the main advice.\n"
-            "• End with one clear action the user can take TODAY."
-        )
-
-        user_prompt = (
-            f"Supporting fitness & nutrition knowledge:\n{rag_context}\n\n"
-            f"User question: {question}\n\n"
-            "Give your professional coaching advice. Be specific and practical.\n"
-            "When you reference a specific study or guideline, cite it inline as [SOURCE: title]."
-        )
-
-        return self.llm.call_llm(system_prompt, user_prompt, json_mode=False)
 
     # ------------------------------------------------------------------
     # Private generation helpers
@@ -532,8 +521,14 @@ RULES for the two *_plan_adjustment fields:
         for attempt in range(1, max_attempts + 1):
             try:
                 return self._generate_nutrition_once(
-                    system_prompt, user_profile, preferences, duration_weeks,
-                    medical_rules, existing_plan, allowed_foods_str, planning_output,
+                    system_prompt,
+                    user_profile,
+                    preferences,
+                    duration_weeks,
+                    medical_rules,
+                    existing_plan,
+                    allowed_foods_str,
+                    planning_output,
                     coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
@@ -542,7 +537,9 @@ RULES for the two *_plan_adjustment fields:
                 last_err = err
                 logger.warning(
                     "Nutrition — generation attempt %d/%d failed schema/JSON validation, regenerating: %s",
-                    attempt, max_attempts, err,
+                    attempt,
+                    max_attempts,
+                    err,
                 )
         raise last_err
 
@@ -566,8 +563,14 @@ RULES for the two *_plan_adjustment fields:
         for attempt in range(1, max_attempts + 1):
             try:
                 return self._generate_workout_once(
-                    system_prompt, user_profile, preferences, duration_weeks,
-                    medical_rules, existing_plan, allowed_exercises_str, planning_output,
+                    system_prompt,
+                    user_profile,
+                    preferences,
+                    duration_weeks,
+                    medical_rules,
+                    existing_plan,
+                    allowed_exercises_str,
+                    planning_output,
                     coach_feedback=coach_feedback,
                     language=language,
                     model_override=model_override,
@@ -576,7 +579,9 @@ RULES for the two *_plan_adjustment fields:
                 last_err = err
                 logger.warning(
                     "Workout — generation attempt %d/%d failed schema/JSON validation, regenerating: %s",
-                    attempt, max_attempts, err,
+                    attempt,
+                    max_attempts,
+                    err,
                 )
         raise last_err
 
@@ -599,8 +604,12 @@ RULES for the two *_plan_adjustment fields:
         is_fix_pass = bool(judge_feedback)
 
         user_prompt = prompt_builder.build_nutrition_prompt(
-            user_profile, preferences, duration_weeks,
-            medical_rules, existing_plan, allowed_foods_str,
+            user_profile,
+            preferences,
+            duration_weeks,
+            medical_rules,
+            existing_plan,
+            allowed_foods_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
             coach_feedback=coach_feedback,
@@ -614,7 +623,9 @@ RULES for the two *_plan_adjustment fields:
             plan_data = self.llm.parse_json_response(response)
         except ValueError as err:
             if is_fix_pass:
-                logger.warning("Fix-pass nutrition plan not valid JSON — keeping original. %s", err)
+                logger.warning(
+                    "Fix-pass nutrition plan not valid JSON — keeping original. %s", err
+                )
                 return None
             raise ValueError(
                 "Nutrition plan generation failed: model output was not valid JSON. "
@@ -625,7 +636,10 @@ RULES for the two *_plan_adjustment fields:
             return plan_validator.validate_nutrition_plan(plan_data)
         except ValueError as err:
             if is_fix_pass:
-                logger.warning("Fix-pass nutrition plan failed schema validation — keeping original. %s", err)
+                logger.warning(
+                    "Fix-pass nutrition plan failed schema validation — keeping original. %s",
+                    err,
+                )
                 return None
             raise
 
@@ -648,8 +662,12 @@ RULES for the two *_plan_adjustment fields:
         is_fix_pass = bool(judge_feedback)
 
         user_prompt = prompt_builder.build_workout_prompt(
-            user_profile, preferences, duration_weeks,
-            medical_rules, existing_plan, allowed_exercises_str,
+            user_profile,
+            preferences,
+            duration_weeks,
+            medical_rules,
+            existing_plan,
+            allowed_exercises_str,
             planning_output=planning_output,
             judge_feedback=judge_feedback,
             coach_feedback=coach_feedback,
@@ -663,7 +681,9 @@ RULES for the two *_plan_adjustment fields:
             plan_data = self.llm.parse_json_response(response)
         except ValueError as err:
             if is_fix_pass:
-                logger.warning("Fix-pass workout plan not valid JSON — keeping original. %s", err)
+                logger.warning(
+                    "Fix-pass workout plan not valid JSON — keeping original. %s", err
+                )
                 return None
             raise ValueError(
                 "Workout plan generation failed: model output was not valid JSON. "
@@ -674,10 +694,12 @@ RULES for the two *_plan_adjustment fields:
             return plan_validator.validate_workout_plan(plan_data)
         except ValueError as err:
             if is_fix_pass:
-                logger.warning("Fix-pass workout plan failed schema validation — keeping original. %s", err)
+                logger.warning(
+                    "Fix-pass workout plan failed schema validation — keeping original. %s",
+                    err,
+                )
                 return None
             raise
-
 
 
 # ---------------------------------------------------------------------------

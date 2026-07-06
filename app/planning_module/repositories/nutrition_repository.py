@@ -42,17 +42,6 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
 
     def get_with_full_details(self, plan_id: int) -> Optional[NutritionPlan]:
         """Eagerly load plan -> days -> meals -> ingredients (+ joined food details).
-        
-        A single SQL round-trip chain:
-          1. SELECT nutrition_plan WHERE id = plan_id
-          2. SELECT nutrition_plan_days WHERE nutrition_plan_id IN (...)
-          3. SELECT nutrition_plan_meals WHERE nutrition_plan_day_id IN (...)
-          4. SELECT nutrition_plan_meal_ingredients
-               JOIN central_foods ON ...
-               WHERE nutrition_plan_meal_id IN (...)
-        
-        No N+1 queries. The JOIN on central_foods is free because the
-        NutritionPlanMealIngredient.food relationship uses lazy='joined'.
         """
         from app.planning_module.models.plan import NutritionPlanMeal, NutritionPlanMealIngredient
         return (
@@ -60,7 +49,7 @@ class NutritionPlanRepository(BaseRepository[NutritionPlan]):
             .options(
                 selectinload(NutritionPlan.days)
                 .selectinload(NutritionPlanDay.meals)
-                .selectinload(NutritionPlanMeal.ingredients)   # ingredients JOIN food is automatic
+                .selectinload(NutritionPlanMeal.ingredients) 
             )
             .filter(NutritionPlan.id == plan_id)
             .first()

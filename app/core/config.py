@@ -36,7 +36,7 @@ REDIS_OTP_BLOCKED_PREFIX = "otp_blocked:"  # otp_blocked:user@email.com
 REDIS_VERIFICATION_PREFIX = "verify:"  # verify:token_string
 
 # ========== JWT Configuration ==========
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")  # Required — must be set in environment
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") 
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -48,7 +48,6 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")  # Set in environment
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")  # Change in production
 
 # ========== CORS Configuration ==========
-# Comma-separated list of allowed origins (e.g. landing page domains)
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
@@ -63,9 +62,6 @@ MIN_PASSWORD_LENGTH = 6
 MAX_PASSWORD_LENGTH = 50
 
 # ========== Firebase / FCM Configuration ==========
-# Provide one of these two; FIREBASE_CREDENTIALS_JSON takes priority.
-# FIREBASE_CREDENTIALS_JSON: the full service-account JSON as a single-line env var string
-# FIREBASE_CREDENTIALS_PATH: path to the service-account JSON file inside the container
 FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
 FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
 
@@ -81,8 +77,7 @@ EVAL_GROQ_MODEL = os.getenv("EVAL_GROQ_MODEL", GROQ_MODEL)
 
 # Max attempts for the INITIAL plan generation call when the model returns
 # malformed JSON or output that fails schema validation (regenerate instead
-# of failing the request). Does not apply to the post-judge fix pass, which
-# already falls back to the original plan on failure.
+# of failing the request).
 AI_MAX_GENERATION_RETRIES = int(os.getenv("AI_MAX_GENERATION_RETRIES", "2"))
 
 # Provider-agnostic LLM settings (used by AI Coach)

@@ -38,11 +38,6 @@ def get_current_user(
 
     Raises:
         HTTPException 401: If token is invalid, expired, or user not found
-
-    Usage:
-        @router.get("/protected")
-        async def protected_route(current_user: User = Depends(get_current_user)):
-            return {"user": current_user.email}
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,10 +89,6 @@ def get_current_verified_user(
     Raises:
         HTTPException 403: If user email is not verified
 
-    Usage:
-        @router.get("/verified-only")
-        async def verified_route(current_user: User = Depends(get_current_verified_user)):
-            return {"message": "Access granted to verified users only"}
     """
     if not current_user.is_verified:
         raise HTTPException(
@@ -125,13 +116,6 @@ def get_optional_current_user(
 
     Returns:
         User | None: Current user if authenticated, None otherwise
-
-    Usage:
-        @router.get("/public-or-private")
-        async def flexible_route(current_user: User | None = Depends(get_optional_current_user)):
-            if current_user:
-                return {"message": f"Welcome back, {current_user.name}"}
-            return {"message": "Welcome, guest"}
     """
     try:
         token = credentials.credentials
