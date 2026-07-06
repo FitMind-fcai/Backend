@@ -82,10 +82,15 @@ AI_MAX_GENERATION_RETRIES = int(os.getenv("AI_MAX_GENERATION_RETRIES", "2"))
 
 # Provider-agnostic LLM settings (used by AI Coach)
 # Supported providers include: groq, openrouter, openai, together, deepinfra, fireworks.
-AI_PROVIDER = os.getenv("AI_PROVIDER", "groq").lower()
+# Main generator deliberately defaults to a strong reasoning model — this is
+# the one call that actually writes the plan and must hold up under many
+# simultaneous medical/allergy/macro constraints. The judge and context-builder
+# stay on fast/cheap models elsewhere, since neither benefits from a bigger
+# model for their narrower job.
+AI_PROVIDER = os.getenv("AI_PROVIDER", "openrouter").lower()
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "")
-AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
+AI_MODEL = os.getenv("AI_MODEL", "anthropic/claude-sonnet-4.5")
 
 # Optional provider-specific keys (fallback when AI_API_KEY is not set)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
