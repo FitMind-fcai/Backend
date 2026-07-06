@@ -181,7 +181,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
         db: optional SQLAlchemy session for pgvector similarity search.
         """
         logger.info(
-            "Scanning meal image — format=%s model=%s", request.image_format, self.model
+            "Scanning meal image — format=%s model=%s user_allergies=%s user_dietary_preference=%s",
+            request.image_format,
+            self.model,
+            request.user_allergies or "none",
+            request.user_dietary_preference or "none",
         )
 
         try:
@@ -232,11 +236,12 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
 
             meal_name = data.get("meal_name", "Unidentified Meal")
             logger.info(
-                "Meal scan OK: %s — %s kcal, tags=%s, matches=%d",
+                "Meal scan OK: %s — %s kcal, tags=%s, matches=%d, allergen_warnings=%s",
                 meal_name,
                 data.get("total_calories"),
                 tags,
                 len(matched_foods),
+                [w.allergen for w in allergen_warnings] or "none",
             )
 
             return MealScanResultDTO(
