@@ -1,6 +1,6 @@
 import logging
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import HTTPException, status
 
@@ -46,7 +46,6 @@ from app.ai_services.voice_transcriber.dtos import (
     TranscriptionRequestDTO,
     TranscriptionContextType,
 )
-from app.ai_services.embedding_utils import embed_text, vec_to_pg_str
 
 logger = logging.getLogger(__name__)
 
@@ -180,12 +179,13 @@ class TrackingService:
     # Private helpers — vector search
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _suggest_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
+    def _suggest_foods(
+        self, query: Union[str, List[str]], limit: int = 10
+    ) -> List[MatchedFoodResponse]:
         """
-        Hybrid text + semantic search — top catalog foods for a free-text query.
-        Delegates to CentralFoodRepository.hybrid_search_by_text, the single
-        shared search implementation also used by the camera meal scanner and
-        the voice transcriber, so all three entry points agree on one behavior.
+        Hybrid text + semantic search — top catalog foods for a free-text query
+        (or a list of terms, e.g. food names + tags extracted by the AI
+        scanner/transcriber).
         """
         rows = self.central_food_repo.hybrid_search_by_text(query, limit)
         return [
@@ -207,12 +207,11 @@ class TrackingService:
         ]
 
     def _suggest_exercises(
-        self, query: str, limit: int = 10
+        self, query: Union[str, List[str]], limit: int = 10
     ) -> List[MatchedExerciseResponse]:
         """
-        Hybrid text + semantic search — top catalog exercises for a free-text query.
-        Delegates to CentralExerciseRepository.hybrid_search_by_text — see
-        _suggest_foods for why this is now one shared implementation.
+        Hybrid text + semantic search — top catalog exercises for a free-text
+        query (or a list of terms).
         """
         rows = self.central_exercise_repo.hybrid_search_by_text(query, limit)
         return [
@@ -234,11 +233,13 @@ class TrackingService:
     # Search  (public — used by GET search endpoints)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def search_foods(self, query: str, limit: int = 10) -> List[MatchedFoodResponse]:
+    def search_foods(
+        self, query: Union[str, List[str]], limit: int = 10
+    ) -> List[MatchedFoodResponse]:
         return self._suggest_foods(query, limit)
 
     def search_exercises(
-        self, query: str, limit: int = 10
+        self, query: Union[str, List[str]], limit: int = 10
     ) -> List[MatchedExerciseResponse]:
         return self._suggest_exercises(query, limit)
 
@@ -565,7 +566,13 @@ class TrackingService:
             user_allergies=getattr(profile, "allergies", None),
             language=language,
         )
-        result = scanner.scan_meal(dto, db=self.meal_repo.db)
+        result = scanner.scan_meal(dto)
+        food_names = [fi.name for fi in result.food_items if fi.name]
+        matched_foods = (
+            self._suggest_foods(food_names + result.tags)
+            if (food_names or result.tags)
+            else []
+        )
         return MealScanResponse(
             meal_name=result.meal_name,
             meal_type=meal_type or result.meal_type,
@@ -589,22 +596,7 @@ class TrackingService:
             tags=result.tags,
             health_notes=result.health_notes,
             confidence_score=result.confidence_score,
-            matched_foods=[
-                MatchedFoodResponse(
-                    id=m.id,
-                    food_name=m.food_name,
-                    food_category=m.food_category,
-                    calories_per_100g=m.calories_per_100g,
-                    protein_per_100g=m.protein_per_100g,
-                    carbs_per_100g=m.carbs_per_100g,
-                    fats_per_100g=m.fats_per_100g,
-                    fiber_per_100g=m.fiber_per_100g,
-                    serving_size_g=m.serving_size_g,
-                    serving_description=m.serving_description,
-                    similarity_score=m.similarity_score,
-                )
-                for m in result.matched_foods
-            ],
+            matched_foods=matched_foods,
             allergen_warnings=[w.model_dump() for w in result.allergen_warnings],
             scan_successful=result.scan_successful,
             error_message=result.error_message,
@@ -623,7 +615,9 @@ class TrackingService:
             language=language,
             context_type=TranscriptionContextType.MEAL_LOG,
         )
-        parsed = transcriber.transcribe_and_parse_meal_log(req, db=self.meal_repo.db)
+        parsed = transcriber.transcribe_and_parse_meal_log(req)
+        search_terms = parsed.food_items + parsed.tags
+        matched_foods = self._suggest_foods(search_terms) if search_terms else []
         return MealVoiceResponse(
             raw_text=parsed.raw_text,
             meal_name=parsed.meal_name,
@@ -635,22 +629,7 @@ class TrackingService:
             estimated_protein_g=parsed.estimated_protein_g,
             estimated_carbs_g=parsed.estimated_carbs_g,
             estimated_fats_g=parsed.estimated_fats_g,
-            matched_foods=[
-                MatchedFoodResponse(
-                    id=m.id,
-                    food_name=m.food_name,
-                    food_category=m.food_category,
-                    calories_per_100g=m.calories_per_100g,
-                    protein_per_100g=m.protein_per_100g,
-                    carbs_per_100g=m.carbs_per_100g,
-                    fats_per_100g=m.fats_per_100g,
-                    fiber_per_100g=m.fiber_per_100g,
-                    serving_size_g=m.serving_size_g,
-                    serving_description=m.serving_description,
-                    similarity_score=m.similarity_score,
-                )
-                for m in parsed.matched_foods
-            ],
+            matched_foods=matched_foods,
             parse_successful=parsed.parse_successful,
             notes=parsed.notes,
         )
@@ -664,35 +643,19 @@ class TrackingService:
             language=language,
             context_type=TranscriptionContextType.WORKOUT_LOG,
         )
-        parsed = transcriber.transcribe_and_parse_workout_log(
-            req, db=self.workout_repo.db
-        )
-        exercises = []
-        for ex in parsed.exercises:
-            exercises.append(
-                ParsedExerciseResponse(
-                    name=ex.name,
-                    sets=ex.sets,
-                    reps=ex.reps,
-                    weight_str=ex.weight_str,
-                    weight_kg=ex.weight_kg,
-                    duration_seconds=ex.duration_seconds,
-                    matched_exercises=[
-                        MatchedExerciseResponse(
-                            id=m.id,
-                            name=m.name,
-                            exercise_type=m.exercise_type,
-                            primary_muscle_group=m.primary_muscle_group,
-                            secondary_muscles=m.secondary_muscles,
-                            equipment_required=m.equipment_required,
-                            difficulty_level=m.difficulty_level,
-                            location=m.location,
-                            similarity_score=m.similarity_score,
-                        )
-                        for m in ex.matched_exercises
-                    ],
-                )
+        parsed = transcriber.transcribe_and_parse_workout_log(req)
+        exercises = [
+            ParsedExerciseResponse(
+                name=ex.name,
+                sets=ex.sets,
+                reps=ex.reps,
+                weight_str=ex.weight_str,
+                weight_kg=ex.weight_kg,
+                duration_seconds=ex.duration_seconds,
+                matched_exercises=self._suggest_exercises(ex.name) if ex.name else [],
             )
+            for ex in parsed.exercises
+        ]
         return WorkoutVoiceResponse(
             raw_text=parsed.raw_text,
             exercises=exercises,

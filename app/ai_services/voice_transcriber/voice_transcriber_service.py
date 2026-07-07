@@ -15,8 +15,6 @@ from app.ai_services.voice_transcriber.dtos import (
     MealLogTranscriptionDTO,
     WorkoutLogTranscriptionDTO,
     WeightLogTranscriptionDTO,
-    MatchedFoodDTO,
-    MatchedExerciseDTO,
     ParsedExerciseDTO,
 )
 
@@ -32,9 +30,11 @@ class VoiceTranscriberService:
     Voice transcription + structured parsing service.
 
     Pipeline:
-    1. Groq Whisper          — speech → raw text 
-    2. LLM parser            — raw text → structured JSON
-    3. pgvector              — embed tags → top-5 central_foods or central_exercises
+    1. Groq Whisper          — speech → raw text
+    2. LLM parser            — raw text → structured JSON (food/exercise names + tags)
+
+    No DB dependency — catalog matching (pgvector) is the caller's
+    responsibility, done via the shared hybrid_search_by_text repositories.
     """
 
     WHISPER_MODEL = "whisper-large-v3"
@@ -192,96 +192,18 @@ class VoiceTranscriberService:
         return json.loads(s.strip())
 
     # ------------------------------------------------------------------
-    # pgvector helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _search_foods(query_text: str, db, limit: int = 10) -> List[MatchedFoodDTO]:
-        """
-        Match transcribed food text against the catalog using the same shared
-        search (CentralFoodRepository.hybrid_search_by_text) used by the
-        manual search endpoint and the camera meal scanner.
-        """
-        if db is None:
-            return []
-        from app.shared.repositories.central_food_repository import (
-            CentralFoodRepository,
-        )
-
-        try:
-            rows = CentralFoodRepository(db).hybrid_search_by_text(
-                query_text, limit=limit
-            )
-            return [
-                MatchedFoodDTO(
-                    id=r["id"],
-                    food_name=r["food_name"],
-                    food_category=r.get("food_category"),
-                    calories_per_100g=r.get("calories_per_100g"),
-                    protein_per_100g=r.get("protein_per_100g"),
-                    carbs_per_100g=r.get("carbs_per_100g"),
-                    fats_per_100g=r.get("fats_per_100g"),
-                    fiber_per_100g=r.get("fiber_per_100g"),
-                    serving_size_g=r.get("serving_size_g"),
-                    serving_description=r.get("serving_description"),
-                    similarity_score=r["similarity_score"],
-                )
-                for r in rows
-            ]
-        except Exception as exc:
-            logger.warning("Food catalog search failed: %s", exc)
-            return []
-
-    @staticmethod
-    def _search_exercises(
-        query_text: str, db, limit: int = 10
-    ) -> List[MatchedExerciseDTO]:
-        """
-        Match transcribed exercise text against the catalog using the same
-        shared search (CentralExerciseRepository.hybrid_search_by_text) used
-        by the manual search endpoint.
-        """
-        if db is None:
-            return []
-        from app.shared.repositories.central_exercise_repository import (
-            CentralExerciseRepository,
-        )
-
-        try:
-            rows = CentralExerciseRepository(db).hybrid_search_by_text(
-                query_text, limit=limit
-            )
-            return [
-                MatchedExerciseDTO(
-                    id=r["id"],
-                    name=r["name"],
-                    exercise_type=r.get("exercise_type"),
-                    primary_muscle_group=r.get("primary_muscle_group"),
-                    secondary_muscles=r.get("secondary_muscles"),
-                    equipment_required=r.get("equipment_required"),
-                    difficulty_level=r.get("difficulty_level"),
-                    location=r.get("location"),
-                    similarity_score=r["similarity_score"],
-                )
-                for r in rows
-            ]
-        except Exception as exc:
-            logger.warning("Exercise catalog search failed: %s", exc)
-            return []
-
-    # ------------------------------------------------------------------
     # Meal parsing
     # ------------------------------------------------------------------
 
     def transcribe_and_parse_meal_log(
         self,
         request: TranscriptionRequestDTO,
-        db=None,
     ) -> MealLogTranscriptionDTO:
         """
-        Whisper → LLM meal parser → pgvector food search.
+        Whisper → LLM meal parser.
 
-        Returns full nutrition estimates + top-5 matched central_foods.
+        Returns nutrition estimates + food_items/tags for the caller to match
+        against the catalog.
         """
         request.context_type = TranscriptionContextType.MEAL_LOG
         transcription = self.transcribe(request)
@@ -334,23 +256,17 @@ Rules:
                 notes=f"Parse error: {exc}",
             )
 
-        tags: List[str] = data.get("tags", [])
-        food_items: List[str] = data.get("food_items", [])
-        search_text = " ".join(food_items + tags) or transcription.text
-        matched_foods = self._search_foods(search_text, db)
-
         return MealLogTranscriptionDTO(
             raw_text=transcription.text,
             meal_name=data.get("meal_name"),
             meal_type=data.get("meal_type"),
             food_items=data.get("food_items", []),
             portions=data.get("portions", []),
-            tags=tags,
+            tags=data.get("tags", []),
             estimated_calories=data.get("estimated_calories"),
             estimated_protein_g=data.get("estimated_protein_g"),
             estimated_carbs_g=data.get("estimated_carbs_g"),
             estimated_fats_g=data.get("estimated_fats_g"),
-            matched_foods=matched_foods,
             parse_successful=True,
             notes=data.get("notes"),
         )
@@ -362,12 +278,12 @@ Rules:
     def transcribe_and_parse_workout_log(
         self,
         request: TranscriptionRequestDTO,
-        db=None,
     ) -> WorkoutLogTranscriptionDTO:
         """
-        Whisper → LLM workout parser → per-exercise pgvector search.
+        Whisper → LLM workout parser.
 
-        Returns a list of ParsedExerciseDTO, each with top-5 matched central_exercises.
+        Returns a list of ParsedExerciseDTO (name/sets/reps/weight) for the
+        caller to match against the catalog.
         """
         request.context_type = TranscriptionContextType.WORKOUT_LOG
         transcription = self.transcribe(request)
@@ -426,22 +342,17 @@ Rules:
             )
 
         raw_exercises: List[Dict] = data.get("exercises", [])
-        parsed_exercises: List[ParsedExerciseDTO] = []
-
-        for ex in raw_exercises:
-            name = ex.get("name", "")
-            matches = self._search_exercises(name, db) if name else []
-            parsed_exercises.append(
-                ParsedExerciseDTO(
-                    name=name,
-                    sets=ex.get("sets"),
-                    reps=ex.get("reps"),
-                    weight_str=ex.get("weight_str"),
-                    weight_kg=ex.get("weight_kg"),
-                    duration_seconds=ex.get("duration_seconds"),
-                    matched_exercises=matches,
-                )
+        parsed_exercises: List[ParsedExerciseDTO] = [
+            ParsedExerciseDTO(
+                name=ex.get("name", ""),
+                sets=ex.get("sets"),
+                reps=ex.get("reps"),
+                weight_str=ex.get("weight_str"),
+                weight_kg=ex.get("weight_kg"),
+                duration_seconds=ex.get("duration_seconds"),
             )
+            for ex in raw_exercises
+        ]
 
         return WorkoutLogTranscriptionDTO(
             raw_text=transcription.text,

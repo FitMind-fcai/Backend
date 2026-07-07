@@ -40,43 +40,11 @@ class TranscriptionResultDTO(BaseModel):
 
 
 # ========================================
-# VECTOR SEARCH RESULT DTOs
-# ========================================
-
-class MatchedFoodDTO(BaseModel):
-    """Central food matched by semantic similarity to spoken food items."""
-    id: int
-    food_name: str
-    food_category: Optional[str] = None
-    calories_per_100g: float
-    protein_per_100g: float
-    carbs_per_100g: float
-    fats_per_100g: float
-    fiber_per_100g: Optional[float] = None
-    serving_size_g: Optional[float] = None
-    serving_description: Optional[str] = None
-    similarity_score: float = Field(..., ge=0, le=1)
-
-
-class MatchedExerciseDTO(BaseModel):
-    """Central exercise matched by semantic similarity to spoken exercise name."""
-    id: int
-    name: str
-    exercise_type: str
-    primary_muscle_group: str
-    secondary_muscles: Optional[str] = None
-    equipment_required: str
-    difficulty_level: str
-    location: str
-    similarity_score: float = Field(..., ge=0, le=1)
-
-
-# ========================================
 # PARSED LOG DTOs
 # ========================================
 
 class MealLogTranscriptionDTO(BaseModel):
-    """Structured meal data extracted from transcription + vector matches."""
+    """Structured meal data extracted from transcription."""
     raw_text: str
     meal_name: Optional[str] = Field(None, description="Combined/inferred meal name (e.g. 'Grilled Chicken and Rice')")
     meal_type: Optional[str] = Field(None, description="Breakfast / Lunch / Dinner / Snack")
@@ -87,7 +55,6 @@ class MealLogTranscriptionDTO(BaseModel):
     estimated_protein_g: Optional[float] = Field(None, ge=0)
     estimated_carbs_g: Optional[float] = Field(None, ge=0)
     estimated_fats_g: Optional[float] = Field(None, ge=0)
-    matched_foods: List[MatchedFoodDTO] = Field(default_factory=list, description="Top-5 similar foods from central catalog")
     parse_successful: bool = True
     notes: Optional[str] = None
 
@@ -100,7 +67,6 @@ class ParsedExerciseDTO(BaseModel):
     weight_str: Optional[str] = Field(None, description="Weight as spoken, e.g. '50kg', '80 pounds'")
     weight_kg: Optional[float] = Field(None, ge=0, description="Parsed weight in kg (None if not mentioned)")
     duration_seconds: Optional[int] = Field(None, ge=1, description="Duration in seconds if mentioned instead of sets/reps")
-    matched_exercises: List[MatchedExerciseDTO] = Field(default_factory=list, description="Top-5 similar exercises from central catalog")
 
 
 class WorkoutLogTranscriptionDTO(BaseModel):
