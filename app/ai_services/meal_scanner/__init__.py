@@ -1,5 +1,5 @@
 """
-Meal Scanner Service — Qwen2.5-VL vision recognition (nutrition estimates + tags).
+Meal Scanner Service — Qwen2.5-VL vision recognition + pgvector food matching.
 """
 from app.ai_services.meal_scanner.meal_scanner_service import (
     MealScannerService,
@@ -9,6 +9,7 @@ from app.ai_services.meal_scanner.dtos import (
     MealScanRequestDTO,
     FoodItemDTO,
     AllergenWarningDTO,
+    MatchedFoodDTO,
     MealScanResultDTO,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "MealScanRequestDTO",
     "FoodItemDTO",
     "AllergenWarningDTO",
+    "MatchedFoodDTO",
     "MealScanResultDTO",
 ]

@@ -38,6 +38,21 @@ class AllergenWarningDTO(BaseModel):
     severity: str = Field(default="warning")
 
 
+class MatchedFoodDTO(BaseModel):
+    """A food from the central catalog matched via vector similarity."""
+    id: int
+    food_name: str
+    food_category: Optional[str] = None
+    calories_per_100g: float
+    protein_per_100g: float
+    carbs_per_100g: float
+    fats_per_100g: float
+    fiber_per_100g: Optional[float] = None
+    serving_size_g: Optional[float] = None
+    serving_description: Optional[str] = None
+    similarity_score: float = Field(..., ge=0, le=1, description="Cosine similarity 0-1")
+
+
 class MealScanResultDTO(BaseModel):
     meal_name: str
     meal_type: str
@@ -50,5 +65,6 @@ class MealScanResultDTO(BaseModel):
     health_notes: Optional[str] = None
     confidence_score: float = Field(..., ge=0, le=1)
     tags: List[str] = Field(default_factory=list, description="Meal tags used for vector search (e.g. 'grilled', 'chicken', 'high-protein')")
+    matched_foods: List[MatchedFoodDTO] = Field(default_factory=list, description="Top 5 similar foods from central catalog")
     scan_successful: bool = Field(default=True)
     error_message: Optional[str] = None

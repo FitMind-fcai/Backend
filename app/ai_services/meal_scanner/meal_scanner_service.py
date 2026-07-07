@@ -12,6 +12,7 @@ from app.ai_services.meal_scanner.dtos import (
     MealScanResultDTO,
     FoodItemDTO,
     AllergenWarningDTO,
+    MatchedFoodDTO,
 )
 
 logger = logging.getLogger(__name__)
@@ -172,9 +173,11 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # Public API
     # ------------------------------------------------------------------
 
-    def scan_meal(self, request: MealScanRequestDTO) -> MealScanResultDTO:
+    def scan_meal(self, request: MealScanRequestDTO, db=None) -> MealScanResultDTO:
         """
-        Analyse a meal image and return nutrition estimates + semantic tags.
+        Analyse a meal image and return nutrition + tags + vector-matched foods.
+
+        db: optional SQLAlchemy session for pgvector similarity search.
         """
         logger.info(
             "Scanning meal image — format=%s model=%s user_allergies=%s user_dietary_preference=%s",
@@ -220,13 +223,23 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 for w in data.get("allergen_warnings", [])
             ]
             tags: List[str] = data.get("tags", [])
+            food_item_names: List[str] = [
+                item.get("name", "")
+                for item in data.get("food_items", [])
+                if item.get("name")
+            ]
+
+            matched_foods: List[MatchedFoodDTO] = []
+            if db is not None and (food_item_names or tags):
+                matched_foods = self._find_similar_foods(food_item_names + tags, db)
 
             meal_name = data.get("meal_name", "Unidentified Meal")
             logger.info(
-                "Meal scan OK: %s — %s kcal, tags=%s, allergen_warnings=%s",
+                "Meal scan OK: %s — %s kcal, tags=%s, matches=%d, allergen_warnings=%s",
                 meal_name,
                 data.get("total_calories"),
                 tags,
+                len(matched_foods),
                 [w.allergen for w in allergen_warnings] or "none",
             )
 
@@ -242,6 +255,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
                 health_notes=data.get("health_notes"),
                 confidence_score=data.get("confidence_score", 0.5),
                 tags=tags,
+                matched_foods=matched_foods,
                 scan_successful=True,
             )
 
@@ -255,6 +269,40 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _find_similar_foods(self, search_terms: List[str], db) -> List[MatchedFoodDTO]:
+        """
+        Match food names + tags against the catalog using the same shared
+        search (CentralFoodRepository.hybrid_search_by_text) used by the
+        manual search endpoint and the voice transcriber.
+        """
+        from app.shared.repositories.central_food_repository import (
+            CentralFoodRepository,
+        )
+
+        try:
+            rows = CentralFoodRepository(db).hybrid_search_by_text(
+                search_terms, limit=10
+            )
+            return [
+                MatchedFoodDTO(
+                    id=r["id"],
+                    food_name=r["food_name"],
+                    food_category=r.get("food_category"),
+                    calories_per_100g=r.get("calories_per_100g"),
+                    protein_per_100g=r.get("protein_per_100g"),
+                    carbs_per_100g=r.get("carbs_per_100g"),
+                    fats_per_100g=r.get("fats_per_100g"),
+                    fiber_per_100g=r.get("fiber_per_100g"),
+                    serving_size_g=r.get("serving_size_g"),
+                    serving_description=r.get("serving_description"),
+                    similarity_score=r["similarity_score"],
+                )
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.warning("Catalog search failed (returning empty list): %s", exc)
+            return []
 
     @staticmethod
     def _error_result(message: str) -> MealScanResultDTO:
@@ -270,6 +318,7 @@ CRITICAL: Return ONLY valid JSON. Be conservative with calorie estimates."""
             health_notes=None,
             confidence_score=0.0,
             tags=[],
+            matched_foods=[],
             scan_successful=False,
             error_message=message,
         )

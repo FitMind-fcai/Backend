@@ -1,5 +1,5 @@
 """
-Voice Transcriber Service — Whisper transcription + LLaMA structured parsing.
+Voice Transcriber Service — Whisper transcription + LLaMA parsing + pgvector matching.
 """
 from app.ai_services.voice_transcriber.voice_transcriber_service import (
     VoiceTranscriberService,
@@ -9,6 +9,8 @@ from app.ai_services.voice_transcriber.dtos import (
     TranscriptionContextType,
     TranscriptionRequestDTO,
     TranscriptionResultDTO,
+    MatchedFoodDTO,
+    MatchedExerciseDTO,
     ParsedExerciseDTO,
     MealLogTranscriptionDTO,
     WorkoutLogTranscriptionDTO,
@@ -20,6 +22,8 @@ __all__ = [
     "TranscriptionContextType",
     "TranscriptionRequestDTO",
     "TranscriptionResultDTO",
+    "MatchedFoodDTO",
+    "MatchedExerciseDTO",
     "ParsedExerciseDTO",
     "MealLogTranscriptionDTO",
     "WorkoutLogTranscriptionDTO",
