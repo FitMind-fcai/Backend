@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func, text
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 from app.shared.repositories.base_repository import BaseRepository
 from app.planning_module.models import CentralExercise
 from app.planning_module.models.enums import EquipmentAvailability, WorkoutDifficulty
@@ -404,30 +404,36 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         implementations drifting apart.
 
         query: a single search phrase (manual text search), or a list of
-        terms (e.g. exercise names + tags from the voice AI) — a list is
-        joined into one phrase before searching either layer.
+        terms (e.g. exercise names + tags from the voice AI). Each term is
+        searched independently in both layers and results are merged/deduped
+        — terms are NOT joined into one blended phrase (see
+        CentralFoodRepository.hybrid_search_by_text for why).
         """
-        from app.ai_services.embedding_utils import embed_text
+        from app.ai_services.embedding_utils import embed_texts
 
         if isinstance(query, (list, tuple)):
-            query_clean = " ".join(t.strip() for t in query if t and t.strip()).strip()
+            terms = [t.strip() for t in query if t and t.strip()]
         else:
-            query_clean = (query or "").strip()
-        if not query_clean:
+            terms = [query.strip()] if query and query.strip() else []
+        if not terms:
             return []
+
         seen_ids: set = set()
         results: List[dict] = []
 
+        # ── Layer 1: exact substring match — any term may match a row ──────
         try:
+            or_clauses = " OR ".join(f"name ILIKE :t{i}" for i in range(len(terms)))
+            params = {f"t{i}": f"%{term}%" for i, term in enumerate(terms)}
             text_rows = self.db.execute(
-                text("""
+                text(f"""
                     SELECT id, name, exercise_type, primary_muscle_group,
                            secondary_muscles, equipment_required, difficulty_level, location
                     FROM central_exercises
-                    WHERE is_active = true AND name ILIKE :q
+                    WHERE is_active = true AND ({or_clauses})
                     LIMIT :lim
                 """),
-                {"q": f"%{query_clean}%", "lim": limit},
+                {**params, "lim": limit},
             ).fetchall()
             for r in text_rows:
                 if r.id in seen_ids:
@@ -442,12 +448,19 @@ class CentralExerciseRepository(BaseRepository[CentralExercise]):
         if len(results) >= limit:
             return results[:limit]
 
+        # ── Layer 2: vector similarity — per term, keep best score per row ──
         try:
-            vec = embed_text(query_clean)
-            vector_rows = self.search_by_vector(vec, limit=limit * 2)
-            for row in vector_rows:
-                if row["id"] in seen_ids or row["similarity_score"] < 0.55:
-                    continue
+            best_by_id: Dict[int, dict] = {}
+            for vec in embed_texts(terms):
+                for row in self.search_by_vector(vec, limit=limit * 2):
+                    if row["id"] in seen_ids or row["similarity_score"] < 0.55:
+                        continue
+                    existing = best_by_id.get(row["id"])
+                    if existing is None or row["similarity_score"] > existing["similarity_score"]:
+                        best_by_id[row["id"]] = row
+            for row in sorted(
+                best_by_id.values(), key=lambda r: r["similarity_score"], reverse=True
+            ):
                 seen_ids.add(row["id"])
                 results.append(row)
                 if len(results) >= limit:
